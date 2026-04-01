@@ -105,3 +105,14 @@ class Producto(db.Model):
     descripcion = db.Column(db.Text, nullable=False)
     imagen = db.Column(LONGTEXT, nullable=True)
     estatus = db.Column(db.Boolean, default=True)
+    
+class Proveedores(db.Model):
+    __tablename__ = 'Proveedor'
+
+    id  = db.Column('id_proveedor', db.Integer, primary_key=True, autoincrement=True)
+    rfc = db.Column('RFC',    db.String(13),  unique=True, nullable=False)
+    nombre = db.Column(          db.String(100), nullable=False)
+    email = db.Column('correo', db.String(50),  nullable=True)
+    telefono = db.Column(          db.String(15),  nullable=True)
+    direccion = db.Column(          db.Text,        nullable=True)
+    estado = db.Column('estatus',db.Boolean,     default=True)

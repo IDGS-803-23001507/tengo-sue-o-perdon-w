@@ -1,0 +1,119 @@
+{% extends "layout/layout_produccion.html" %}
+{% block container %}
+{% import "_macros.html" as macros %}
+
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-800">Nuevo Proveedor</h1>
+    <p class="text-gray-500 mt-1">Registra un nuevo proveedor en el sistema.</p>
+</div>
+
+<form action="{{ url_for('proveedor.nuevo_proveedor') }}" 
+      method="POST" 
+      class="bg-white rounded-lg shadow-sm border p-6 md:p-8 max-w-4xl mx-auto"
+      novalidate>
+
+
+    <h2 class="text-xl font-semibold mb-6 text-gray-800 border-b pb-2">
+        Datos del Proveedor
+    </h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+
+        <div class="md:col-span-2">
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+                Nombre / Razón Social *
+            </label>
+
+            {{ form.nombre(class="bg-gray-50 border border-gray-300 text-sm rounded-lg 
+            focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
+            placeholder="Ingrese el nombre o razón social") }}
+
+            {% for error in form.nombre.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+            {% endfor %}
+        </div>
+
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+                RFC *
+            </label>
+
+            {{ form.rfc(class="bg-gray-50 border border-gray-300 text-sm rounded-lg 
+            focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm uppercase",
+            placeholder="Ej: DGC950824KF1") }}
+
+            <p class="text-xs text-gray-500 mt-1">13 caracteres (RFC con homoclave)</p>
+
+            {% for error in form.rfc.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+            {% endfor %}
+        </div>
+
+        <!-- Teléfono -->
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+                Teléfono
+            </label>
+
+            {{ form.telefono(class="bg-gray-50 border border-gray-300 text-sm rounded-lg 
+            focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
+            placeholder="Ej: 477-123-4567") }}
+
+            {% for error in form.telefono.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+            {% endfor %}
+        </div>
+
+        <!-- Email -->
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+                Correo Electrónico
+            </label>
+
+            {{ form.email(class="bg-gray-50 border border-gray-300 text-sm rounded-lg 
+            focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
+            placeholder="ejemplo@correo.com") }}
+
+            {% for error in form.email.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+            {% endfor %}
+        </div>
+
+        <!-- Dirección -->
+        <div class="md:col-span-2">
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+                Dirección
+            </label>
+
+            {{ form.direccion(class="bg-gray-50 border border-gray-300 text-sm rounded-lg 
+            focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
+            rows="2",
+            placeholder="Ej: Av. Principal #123, Col. Centro, León, Gto.") }}
+
+            {% for error in form.direccion.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+            {% endfor %}
+        </div>
+
+    </div>
+
+    <!-- BOTONES -->
+    <div class="flex flex-col md:flex-row justify-end gap-3 pt-4 border-t mt-4">
+
+        <a href="{{ url_for('proveedor.proveedores') }}"
+           class="w-full md:w-auto text-center text-gray-700 bg-white border border-gray-300 
+                  hover:bg-gray-50 font-medium rounded-lg text-sm px-5 py-2.5 transition">
+            Cancelar
+        </a>
+
+        <button type="submit"
+                class="w-full md:w-auto text-white bg-blue-600 hover:bg-blue-700 
+                       font-medium rounded-lg text-sm px-5 py-2.5 transition">
+            Guardar Proveedor
+        </button>
+
+    </div>
+
+</form>
+
+{% endblock %}
