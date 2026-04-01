@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Urban Coffee</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://unpkg.com/flowbite@latest/dist/flowbite.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+
+<body class="bg-gray-100 font-[Inter]">
+
+<div class="flex h-screen overflow-hidden">
+  <aside class="w-64 bg-white border-r flex flex-col">
+
+    <div class="flex items-center gap-3 px-6 py-5 border-b">
+      <img src="{{url_for('static',filename='src/imagenes/otros/logo.png')}}" class="h-10 w-10" alt="Logo">
+      <h1 class="text-sm font-semibold uppercase tracking-wide text-[#4B3621]">
+        Urban Coffee
+      </h1>
+    </div>
+
+    <div class="flex items-center gap-3 px-6 py-4 border-b">
+      <div class="w-10 h-10 flex items-center justify-center rounded-full bg-blue-500 text-white font-bold">
+        AD
+      </div>
+      <div>
+        <p class="text-sm font-semibold text-gray-700">Admin</p>
+        <p class="text-xs text-gray-400">Administrador</p>
+      </div>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto px-4 py-4 text-sm space-y-1">
+
+      <p class="text-xs text-gray-400 font-semibold px-2 mb-2 uppercase">Principal</p>
+
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-100 text-gray-900">
+        <i class="fa-solid fa-chart-line w-5"></i>
+        <span>Dashboard</span>
+      </a>
+
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
+        <i class="fa-solid fa-cash-register w-5"></i>
+        <span>Punto de Venta</span>
+      </a>
+
+      <p class="text-xs text-gray-400 font-semibold px-2 mt-4 mb-2 uppercase">Operación</p>
+
+      <a href="{{ url_for('inventario.materias_primas') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
+        <i class="fa-solid fa-boxes-stacked w-5"></i>
+        <span>Materias Primas</span>
+      </a>
+
+      <a href="{{ url_for('producto.producto_index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
+        <i class="fa-solid fa-mug-hot w-5"></i>
+        <span>Productos</span>
+      </a>
+
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
+        <i class="fa-solid fa-file-lines w-5"></i>
+        <span>Solicitudes</span>
+      </a>
+
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
+        <i class="fa-solid fa-industry w-5"></i>
+        <span>Producción</span>
+      </a>
+
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
+        <i class="fa-solid fa-book-open w-5"></i>
+        <span>Recetas</span>
+      </a>
+
+      <p class="text-xs text-gray-400 font-semibold px-2 mt-4 mb-2 uppercase">Administración</p>
+
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
+        <i class="fa-solid fa-cart-shopping w-5"></i>
+        <span>Compras</span>
+      </a>
+
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
+        <i class="fa-solid fa-truck w-5"></i>
+        <span>Proveedores</span>
+      </a>
+
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
+        <i class="fa-solid fa-users w-5"></i>
+        <span>Usuarios</span>
+      </a>
+
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
+        <i class="fa-solid fa-chart-pie w-5"></i>
+        <span>Costos y Utilidad</span>
+      </a>
+
+    </nav>
+
+    <div class="px-4 py-4 border-t">
+      <a href="{{ url_for('auth.cerrarSesion')}}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50">
+        <i class="fa-solid fa-right-from-bracket w-5"></i>
+        <span>Cerrar Sesión</span>
+      </a>
+    </div>
+
+  </aside>
+
+  <main class="flex-1 overflow-y-auto p-6">
+    {% block container %}
+    {% endblock %}
+  </main>
+
+</div>
+
+<script src="https://unpkg.com/flowbite@latest/dist/flowbite.min.js"></script>
+{% block scripts %}
+{% endblock %}
+</body>
+</html>

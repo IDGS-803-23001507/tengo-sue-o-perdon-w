@@ -1,0 +1,44 @@
+{% extends "layout/layout.html" %}
+{% block container %}
+
+<section>
+    <div class="w-full max-w-6xl mx-auto py-12 px-4 border-b-1 border-grey-50/30">
+
+        <div class="flex justify-center mb-10">
+            <h2 class="text-center text-4xl font-light text-[#814c59] tracking-wide uppercase">
+                Nuestros Productos
+            </h2>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+
+            {% for producto in productos %}
+            <div class="flex flex-col items-center text-center">
+
+                <div class="overflow-hidden rounded-lg shadow-md w-full">
+                    <img 
+                        src="{{ producto.imagen if producto.imagen else url_for('static', filename='img/default.png') }}" 
+                        alt="{{ producto.nombre }}"
+                        class="w-full h-72 object-cover hover:scale-105 transition-transform duration-300">
+                </div>
+
+                <p class="mt-3 text-lg font-medium text-gray-800">
+                    {{ producto.nombre }} - ${{ producto.precio_venta }}
+                </p>
+
+                <p class="text-sm text-gray-500">
+                    {{ producto.descripcion }}
+                </p>
+
+                <button class="bg-[#C27C3A] text-white px-6 py-2 mt-2 rounded hover:bg-[#A16730] transition">
+                    Ordenar
+                </button>
+
+            </div>
+            {% endfor %}
+
+        </div>
+
+    </div>
+</section>
+{% endblock %}

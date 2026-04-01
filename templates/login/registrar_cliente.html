@@ -1,0 +1,100 @@
+{% extends "layout/layout.html" %}
+
+{% block content_class %}
+{% endblock %}
+
+{% block container %}
+
+<section class="h-screen mt-6">
+    <div class="grid h-screen grid-cols-1 lg:grid-cols-2">
+        <div class="hidden lg:block">
+            <img
+                src="{{ url_for('static', filename='src/imagenes/otros/Caffe Login.jpg') }}"
+                alt="Tazas de café"
+                class="h-full w-full object-cover"
+            />
+        </div>
+
+        <div class="flex items-center justify-center px-4 py-10 sm:px-6 lg:px-16 bg-white">
+            <div class="w-full max-w-md">
+                <div class="mb-8">
+                       <h1 class="text-3xl md:text-4xl font-light tracking-wide text-gray-800"
+                       style="font-family: 'Montserrat', sans-serif;">Crea tu cuenta</h1>
+                    
+                    
+                       <p class="mt-2 text-sm text-gray-500">Regístrate para acceder a Urban Coffee.</p>
+                </div>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="mb-6 space-y-3">
+                            {% for category, message in messages %}
+                                {% if category == 'danger' %}
+                                    <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ message }}</div>
+                                {% elif category == 'success' %}
+                                    <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ message }}</div>
+                                {% else %}
+                                    <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">{{ message }}</div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST" action="" class="space-y-5">
+                    <div>
+                        <label for="nombre" class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500">Nombre</label>
+                        <input
+                            id="nombre"
+                            name="nombre"
+                            type="text"
+                            required
+                            class="block w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 focus:border-amber-500 focus:ring-amber-500"
+                            placeholder="Tu nombre"
+                        />
+                    </div>
+
+                    <div>
+                        <label for="correo" class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500">Correo electrónico</label>
+                        <input
+                            id="correo"
+                            name="correo"
+                            type="email"
+                            required
+                            class="block w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 focus:border-amber-500 focus:ring-amber-500"
+                            placeholder="nombre@urbancoffee.com"
+                        />
+                    </div>
+
+                    <div>
+                        <label for="contrasena" class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500">Contraseña</label>
+                        <input
+                            id="contrasena"
+                            name="contrasena"
+                            type="password"
+                            required
+                            class="block w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 focus:border-amber-500 focus:ring-amber-500"
+                            placeholder="••••••••"
+                        />
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="w-full rounded-full bg-amber-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-900 focus:outline-none focus:ring-4 focus:ring-amber-300"
+                    >
+                        Registrar
+                    </button>
+
+                    <p class="text-center text-sm text-gray-600">
+                        ¿Ya tienes cuenta?
+                        <a href="{{ url_for('auth.iniciarSesion') }}" class="font-semibold text-amber-700 hover:text-amber-800">Iniciar sesión</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% block footer %}
+{% endblock %}
+{% endblock %}

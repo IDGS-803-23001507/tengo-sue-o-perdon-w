@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Urban Coffee</title>
+  <link rel="icon" type="image/png" href="{{url_for('static',filename='src/logo_blanco.png')}}">
+  <link rel="stylesheet" href="{{url_for('static',filename='dist/output.css')}}">
+</head>
+
+<body>
+
+  <nav class="bg-neutral-primary fixed w-full z-20 top-0 start-0 border-b border-default shadow-md">
+    <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
+      <a href="{{url_for('home')}}" class="flex items-center space-x-3 rtl:space-x-reverse">
+        <img src="{{url_for('static',filename='src/imagenes/otros/logo.png')}}" class="h-14 w-14" alt="Urban Coffee Logo" />
+        <span class="self-center text-[1.30rem] font-medium tracking-[0.2em] uppercase text-[#4B3621]"
+          style="font-family: 'Cormorant Garamond', serif;">
+          Urban Coffee
+        </span>
+      </a>
+
+      <div class="flex items-center md:order-2 space-x-3 md:space-x-0 rtl:space-x-reverse relative">
+        <button type="button"
+          class="flex text-sm bg-neutral-primary rounded-full md:me-0 focus:ring-4 focus:ring-neutral-tertiary"
+          id="user-menu-button" aria-expanded="false" data-dropdown-toggle="user-dropdown"
+          data-dropdown-placement="bottom">
+          <span class="sr-only">Open user menu</span>
+          <img class="w-8 h-8 rounded-full" src="{{url_for('static',filename='src/imagenes/iconos/Usuario_icon.jpg')}}"
+            alt="usuario Icon">
+        </button>
+
+        <div id="user-dropdown"
+          class="hidden absolute right-0 mt-2 z-50 w-44 bg-neutral-primary-medium border border-default-medium rounded-base shadow-lg">
+
+          {% if session.get("user") %}
+
+          <div class="px-4 py-3 text-sm border-b border-default">
+            <span class="block font-medium">{{ session.user.name }}</span>
+            <span class="block truncate">{{ session.user.email }}</span>
+          </div>
+
+
+          <ul class="p-2 text-sm text-body font-medium" aria-labelledby="user-menu-button">
+            <li>
+              <a href="#" class="self-center text-[0.60rem] font-medium tracking-[0.2em] uppercase text-[#4B3621]"
+                style="font-family: 'Cormorant Garamond', serif;">Dashboard</a>
+            </li>
+            <li>
+              <a href="#"
+                class="inline-flex items-center w-full p-2 hover:bg-neutral-tertiary-medium hover:text-heading rounded">Settings</a>
+            </li>
+            <li>
+              <a href="#"
+                class="inline-flex items-center w-full p-2 hover:bg-neutral-tertiary-medium hover:text-heading rounded">Earnings</a>
+            </li>
+            <li>
+              <a href="#"
+                class="inline-flex items-center w-full p-2 hover:bg-neutral-tertiary-medium hover:text-heading rounded">Sign
+                out</a>
+            </li>
+          </ul>
+
+          {% else %}
+
+          <ul>
+            <li>
+              <a href="{{ url_for('auth.iniciarSesion') }}"
+                class="inline-flex items-center hover:text-[#07A607] text-[0.9rem] w-full p-2 hover:bg-neutral-tertiary-medium hover:text-heading rounded"
+                style="font-family: 'Montserrat', sans-serif;">Iniciar sesion</a>
+            </li>
+            <li>
+              <a href="#"
+                class="inline-flex items-center hover:text-[#07A607] text-[0.9rem] w-full p-2 hover:bg-neutral-tertiary-medium hover:text-heading rounded"
+                style="font-family: 'Montserrat', sans-serif;">Registrarse</a>
+              </li>
+          </ul>
+          {% endif %}
+        </div>
+    
+
+      <button data-collapse-toggle="navbar-user" type="button"
+        class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-body rounded-base md:hidden hover:bg-neutral-secondary-soft hover:text-heading focus:outline-none focus:ring-2 focus:ring-neutral-tertiary"
+        aria-controls="navbar-user" aria-expanded="false">
+        <span class="sr-only">Open main menu</span>
+        <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+          viewBox="0 0 24 24">
+          <path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="M5 7h14M5 12h14M5 17h14" />
+        </svg>
+      </button>
+    </div>
+    <div class="items-center justify-between hidden w-full md:flex md:w-auto md:order-1" id="navbar-user">
+      <ul
+        class="font-medium flex flex-col p-4 md:p-0 mt-4 border border-default rounded-base bg-neutral-secondary-soft md:flex-row md:space-x-8 rtl:space-x-reverse md:mt-0 md:border-0 md:bg-neutral-primary">
+        <li>
+          <a href="{{ url_for('home') }}"
+            class="inline-block pt-2 px-2 pb-2 text-[0.85rem] font-medium tracking-[0.1em] uppercase text-[#4B3621] hover:text-[#07A607] border-b-[3px] border-transparent hover:border-[#07A607] transition-all duration-75"
+            style="font-family: 'Montserrat', sans-serif;">
+            Home
+          </a>
+        </li>
+        <li>
+          <a href="{{ url_for('producto.producto_venta') }}"
+            class="inline-block pt-2 px-2 pb-2 text-[0.8rem] font-medium tracking-[0.1em] uppercase text-[#4B3621] hover:text-[#07A607] border-b-[3px] border-transparent hover:border-[#07A607] transition-all duration-75"
+            style="font-family: 'Montserrat', sans-serif;">
+            Productos
+          </a>
+        </li>
+        <li>
+          <a href="#"
+            class="inline-block pt-2 px-2 pb-2 text-[0.85rem] font-medium tracking-[0.1em] uppercase text-[#4B3621] hover:text-[#07A607] border-b-[3px] border-transparent hover:border-[#07A607] transition-all duration-75"
+            style="font-family: 'Montserrat', sans-serif;">
+            Services</a>
+        </li>
+        <li>
+          <a href="#"
+            class="inline-block pt-2 px-2 pb-2 text-[0.85rem] font-medium tracking-[0.1em] uppercase text-[#4B3621] hover:text-[#07A607] border-b-[3px] border-transparent hover:border-[#07A607] transition-all duration-75"
+            style="font-family: 'Montserrat', sans-serif;">
+            Pricing</a>
+        </li>
+
+      </ul>
+    </div>
+    </div>
+  </nav>
+
+  <div class="{% block content_class %}pt-[92px]{% endblock %}">
+
+    {%with messages=get_flashed_messages()%}
+    {%if messages%}
+    {%for message in messages%}
+    <div class="alert alert-success">
+      {{message}}
+    </div>
+    {%endfor%}
+    {%endif%}
+    {%endwith%}
+
+    {% block container %}
+
+    {% endblock %}
+
+  </div>
+
+  {% block footer %}
+  <footer class="bg-[#3E2723] text-white mt-auto">
+    <div class="max-w-6xl mx-auto px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
+  
+      <!-- Logo -->
+      <div class="flex items-center gap-3">
+        <img src="{{url_for('static',filename='src/imagenes/otros/logo_blanco.png')}}" 
+             alt="logo" 
+             class="h-10 w-10">
+        <span class="text-lg font-semibold">Urban Coffee</span>
+      </div>
+  
+      <!-- Texto -->
+      <p class="text-sm text-center md:text-left">
+        © 2026 Urban Coffee. Todos los derechos reservados.
+      </p>
+  
+      <!-- Redes -->
+      <div class="flex items-center gap-4">
+        <a href="#" class="hover:opacity-80 transition">
+          <i class="fa-brands fa-facebook text-xl"></i>
+        </a>
+  
+        <a href="#" class="hover:opacity-80 transition">
+          <i class="fa-brands fa-x-twitter text-xl"></i>
+        </a>
+  
+        <a href="#" class="hover:opacity-80 transition">
+          <i class="fa-brands fa-whatsapp text-xl"></i>
+        </a>
+      </div>
+  
+    </div>
+  </footer>
+  {% endblock %}
+
+  <script src="https://unpkg.com/flowbite@1.6.5/dist/flowbite.min.js"></script>
+  <script>
+    const button = document.getElementById("user-menu-button");
+    const dropdown = document.getElementById("user-dropdown");
+  
+    button.addEventListener("click", () => {
+      dropdown.classList.toggle("hidden");
+    });
+  
+    document.addEventListener("click", (e) => {
+      if (!button.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.classList.add("hidden");
+      }
+    });
+  </script>
+</body>
+
+</html>

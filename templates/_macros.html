@@ -1,0 +1,20 @@
+{% macro productos(name) %} 
+    <div class="mb-3">
+        <label for="{{name}}" class="form-label">{{name}}</label>
+        <input type="{{type}}" class="form-control" id="{{name}}" name="{{name}}" placeholder="{{placeholder}}">
+    </div>
+{%endmacro%}
+
+{% macro camposNuevos(field) %} 
+<td>{{field.label}}</td>
+<dd>{{field(**kwargs) | safe}}</dd>
+
+{%if field.errors%}
+<ul>
+    {%for error in field.errors%}
+    <li style="color: red">{{error}}</li>
+    {%endfor%}
+</ul>
+{%endif%}
+
+{%endmacro%}

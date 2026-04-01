@@ -1,0 +1,78 @@
+{% extends "layout/layout_produccion.html"%}
+
+    {% block container %}
+            <header class="content-header">
+                <div>
+                    <h1>Resumen de Operaciones</h1>
+                    <p>Métricas de rendimiento en tiempo real</p>
+                </div>
+                <button type="button" class="report-btn">Descargar Reporte</button>
+            </header>
+
+            <section class="stats-grid">
+                <article class="stat-card">
+                    <p class="stat-label">Ingresos Brutos</p>
+                    <div class="stat-main">$24,500.00</div>
+                    <div class="stat-foot">
+                        <span class="up">+12.5 %</span>
+                        <svg viewBox="0 0 90 45" aria-hidden="true"><path d="M4 36L22 14L36 24L52 8L66 16L86 5"/></svg>
+                    </div>
+                </article>
+
+                <article class="stat-card">
+                    <p class="stat-label">Tickets Promedio</p>
+                    <div class="stat-main">$142.50</div>
+                    <div class="stat-foot">
+                        <span class="down">-2.4 %</span>
+                        <svg class="trend-down" viewBox="0 0 90 45" aria-hidden="true"><path d="M4 8L20 20L36 16L52 30L68 22L86 36"/></svg>
+                    </div>
+                </article>
+
+                <article class="stat-card">
+                    <p class="stat-label">Pedidos Completados</p>
+                    <div class="stat-main">384</div>
+                    <p class="stat-sub">En las últimas 24h</p>
+                </article>
+            </section>
+
+            <section class="chart-card">
+                <div class="chart-head">
+                    <h2>Flujo de Ingresos</h2>
+                    <div class="legend">
+                        <span><i class="dot blue"></i>Esta semana</span>
+                        <span><i class="dot gray"></i>Semana pasada</span>
+                    </div>
+                </div>
+
+                <div class="chart-box">
+                    <svg viewBox="0 0 920 320" preserveAspectRatio="none" aria-hidden="true">
+                        <g class="grid-lines">
+                            <line x1="20" y1="50" x2="900" y2="50"/>
+                            <line x1="20" y1="100" x2="900" y2="100"/>
+                            <line x1="20" y1="150" x2="900" y2="150"/>
+                            <line x1="20" y1="200" x2="900" y2="200"/>
+                            <line x1="20" y1="250" x2="900" y2="250"/>
+                        </g>
+
+                        <path class="line-secondary" d="M40 210L160 180L280 220L400 140L520 170L640 190L760 170L880 130"/>
+                        <path class="area-primary" d="M40 180L160 200L280 135L400 165L520 95L640 125L760 90L880 45L880 250L40 250Z"/>
+                        <path class="line-primary" d="M40 180L160 200L280 135L400 165L520 95L640 125L760 90L880 45"/>
+
+                        <circle cx="520" cy="95" r="6" class="point"/>
+                        <circle cx="640" cy="125" r="6" class="point"/>
+                        <circle cx="880" cy="45" r="6" class="point"/>
+
+                        <g class="axis-labels">
+                            <text x="35" y="295">Lun</text>
+                            <text x="155" y="295">Mar</text>
+                            <text x="275" y="295">Mié</text>
+                            <text x="395" y="295">Jue</text>
+                            <text x="515" y="295">Vie</text>
+                            <text x="635" y="295">Sáb</text>
+                            <text x="755" y="295">Dom</text>
+                        </g>
+                    </svg>
+                </div>
+            </section>
+
+    {% endblock %}

@@ -1,0 +1,113 @@
+{% extends "layout/layout.html" %}
+{% block container %}
+
+<section>
+<div class="mx-4 space-y-4">
+
+    <div class="relative overflow-hidden rounded-base h-64 md:h-96 lg:h-[500px]">
+
+        <img 
+            class="w-full h-full object-cover"
+            src="{{url_for('static',filename='src/imagenes/otros/slider1.webp')}}" 
+            alt=""
+        >
+
+        <div class="absolute inset-0 bg-black/40"></div>
+
+        <div class="absolute inset-0 flex flex-col items-center justify-center text-center text-white px-4">
+            <h1 class="text-2xl md:text-4xl mb-4 uppercase" style="font-family: 'Montserrat', sans-serif;">
+                Hecho con amor y cafeína
+            </h1>
+
+            <p class="text-sm md:text-lg mb-6 max-w-xl">
+                Ordena en línea y recoge en nuestra sucursal
+            </p>
+            <button class="bg-[#56AB2E] hover:bg-[#488F27] px-6 py-2 rounded">
+                COMPRAR
+            </button>
+        </div>
+
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <img class="w-full h-32 object-cover rounded-base" src="{{url_for('static',filename='src/imagenes/productos/Expresso.jpeg')}}">
+        <img class="w-full h-32 object-cover rounded-base" src="{{url_for('static',filename='src/imagenes/productos/Croissant.jpg')}}">
+        <img class="w-full h-32 object-cover rounded-base" src="{{url_for('static',filename='src/imagenes/productos/Chocolate.jpg')}}">
+        <img class="w-full h-32 object-cover rounded-base" src="{{url_for('static',filename='src/imagenes/productos/Tostada.jpg')}}">
+        <img class="w-full h-32 object-cover rounded-base" src="{{url_for('static',filename='src/imagenes/productos/Waffle.jpg')}}">
+    </div>
+
+</div>
+</section>
+
+<section class="bg-white mt-16 mb-8 shadow-md">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 md:p-8">
+
+        <div class="relative">
+            <img src="{{url_for('static',filename='src/imagenes/otros/Cita.jpg')}}" 
+                 alt="imagen cita"
+                 class="rounded-xl w-full h-full object-cover">
+
+            <div class="absolute -top-4 -left-4 w-12 h-12 bg-purple-200 rounded-full opacity-50 hidden lg:block animate-pulse"></div>
+        </div>
+
+        <div class="bg-[#B57935] rounded-xl flex items-center justify-center p-6 md:p-10">
+
+            <div class="text-center space-y-6">
+
+                <p class="text-2xl md:text-4xl font-light text-white tracking-wide">
+                    Construimos momentos, inspiramos felicidad
+                </p>
+
+                <p class="text-lg md:text-2xl font-semibold text-white">
+                    Esta temporada las reuniones se disfrutan en familia <br>
+                    Ven y disfruta nuestros pasteles. ¡Te esperamos!
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+<section>
+    <div class="w-full max-w-6xl mx-auto py-12 px-4">
+        <h2 class="text-center text-4xl font-light text-[#814c59] mb-10 tracking-wide uppercase">
+            Una buena eleccion 
+        </h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+
+            <div class="flex flex-col items-center text-center">
+                <div class="overflow-hidden rounded-lg shadow-md">
+                    <img src="{{url_for('static',filename='src/imagenes/productos/Croissant.jpg')}}" alt="Croissant" class="w-full h-72 object-cover hover:scale-105 transition-transform duration-300">
+                </div>
+                <p class="mt-3 text-lg font-medium text-gray-800">Croissant de Jamon y Queso</p>
+                <p class="text-sm text-gray-500">Croissant de jamon y queso calentado al horno.</p>
+            </div>
+
+            <div class="flex flex-col items-center text-center">
+                <div class="overflow-hidden rounded-lg shadow-md">
+                    <img src="{{url_for('static',filename='src/imagenes/productos/Te_verde.jpg')}}" alt="Te verde" class="w-full h-72 object-cover hover:scale-105 transition-transform duration-300">
+                </div>
+                <p class="mt-3 text-lg font-medium text-gray-800">Té verde</p>
+                <p class="text-sm text-gray-500">Té verde con un toque de azucar calientito.</p>
+            </div>
+
+            <div class="flex flex-col items-center text-center">
+                <div class="overflow-hidden rounded-lg shadow-md">
+                    <img src="{{url_for('static',filename='src/imagenes/productos/Baguette.webp')}}" alt="Baguette" class="w-full h-72 object-cover hover:scale-105 transition-transform duration-300">
+                </div>
+                <p class="mt-3 text-lg font-medium text-gray-800">Baguette</p>
+                <p class="text-sm text-gray-500">Baguette clasica con jamon, lechuga, queso y jitomate.</p>
+
+            </div>
+        </div>
+    </div>
+
+</section>
+
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "layout/layout.html" %}
+
+{% block content_class %}
+{% endblock %}
+
+{% block container %}
+
+
+<section class="h-screen bg-gray-50">
+    <div class="grid h-screen grid-cols-1 lg:grid-cols-2">
+        <div class="hidden lg:block">
+            <img
+                src="{{ url_for('static', filename='src/imagenes/otros/Caffe Login2.jpg') }}"
+                alt="Tazas de café"
+                class="h-full w-full object-cover"
+            />
+        </div>
+
+        <div class="flex items-center justify-center px-4 sm:px-6 lg:px-16 bg-white">
+            <div class="w-full max-w-md">
+                <div class="mb-8">
+                    <h1 class="text-3xl md:text-4xl font-light tracking-wide text-gray-800"
+                    style="font-family: 'Montserrat', sans-serif;">Ingresa a tu cuenta</h1>
+                </div>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="mb-6 space-y-3">
+                            {% for category, message in messages %}
+                                {% if category == 'danger' %}
+                                    <div class="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+                                        <svg class="mt-0.5 h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10A8 8 0 114 4.5V3a1 1 0 10-2 0v1.5A8 8 0 1018 10zm-8-3a1 1 0 00-1 1v3a1 1 0 102 0V8a1 1 0 00-1-1zm0 8a1.25 1.25 0 100-2.5A1.25 1.25 0 0010 15z" clip-rule="evenodd"></path></svg>
+                                        <span>{{ message }}</span>
+                                    </div>
+                                {% elif category == 'warning' %}
+                                    <div class="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700" role="alert">
+                                        <svg class="mt-0.5 h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.981-1.742 2.981H4.42c-1.53 0-2.492-1.647-1.743-2.98l5.58-9.92zM11 13a1 1 0 10-2 0 1 1 0 002 0zm-1-2a1 1 0 001-1V8a1 1 0 10-2 0v2a1 1 0 001 1z" clip-rule="evenodd"></path></svg>
+                                        <span>{{ message }}</span>
+                                    </div>
+                                {% else %}
+                                    <div class="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700" role="alert">
+                                        <svg class="mt-0.5 h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10A8 8 0 114 4.5V3a1 1 0 10-2 0v1.5A8 8 0 1018 10zM9 9a1 1 0 012 0v4a1 1 0 11-2 0V9zm1-3a1.25 1.25 0 100 2.5A1.25 1.25 0 0010 6z" clip-rule="evenodd"></path></svg>
+                                        <span>{{ message }}</span>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                <form action="/login" method="POST" autocomplete="on" class="space-y-5">
+                    <div>
+                        <label for="correo" class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500">Correo electrónico</label>
+                        <input
+                            id="correo"
+                            name="correo"
+                            type="email"
+                            required
+                            class="block w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 focus:border-amber-500 focus:ring-amber-500"
+                            placeholder="nombre@urbancoffee.com"
+                        />
+                    </div>
+
+                    <div>
+                        <div class="mb-2 flex items-center justify-between gap-3">
+                            <label for="contrasena" class="block text-xs font-semibold uppercase tracking-widest text-gray-500">Contraseña</label>
+                            <a href="#" class="text-xs font-semibold uppercase tracking-wide text-amber-700 hover:text-amber-800">Recuperar contraseña</a>
+                        </div>
+                        <input
+                            id="contrasena"
+                            name="contrasena"
+                            type="password"
+                            required
+                            class="block w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 focus:border-amber-500 focus:ring-amber-500"
+                            placeholder="••••••••"
+                        />
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="w-full rounded-full bg-amber-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-900 focus:outline-none focus:ring-4 focus:ring-amber-300"
+                    >
+                        Iniciar sesión
+                    </button>
+
+                    <p class="text-center text-sm text-gray-600">
+                        ¿No tienes cuenta?
+                        <a href="{{ url_for('auth.registrarUsuario') }}" class="font-semibold text-amber-700 hover:text-amber-800">Registrar</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+    {% block footer %}
+    {% endblock %}
+{% endblock %}

@@ -1,0 +1,369 @@
+
+html, body {
+    height: 100%;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: #f3f4f6;
+    color: #334155;
+}
+
+.dashboard-layout {
+    height: 100vh;
+    display: grid;
+    grid-template-columns: 250px 1fr;
+}
+
+.sidebar {
+    background: #fff;
+    border-right: 1px solid #e5e7eb;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-top {
+    padding: 18px 18px;
+    border-bottom: 1px solid #eef0f2;
+}
+
+.brand-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.brand-logo {
+    height: 26px;
+    width: auto;
+    object-fit: contain;
+}
+
+.brand-fallback {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1f2937;
+    letter-spacing: -0.02em;
+}
+
+.profile-row {
+    margin-top: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    background: #3b82f6;
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.profile-meta .name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.profile-meta .role {
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+.menu {
+    padding: 12px 10px 18px;
+}
+
+.menu-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #9ca3af;
+    font-weight: 700;
+    margin: 10px 10px 8px;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #4b5563;
+    text-decoration: none;
+    border-radius: 6px;
+    padding: 9px 10px;
+    margin-bottom: 4px;
+}
+
+.menu-item i {
+    width: 14px;
+    text-align: center;
+    opacity: 0.8;
+}
+
+.menu-item:hover {
+    background: #f3f4f6;
+}
+
+.menu-item.active {
+    background: #edf2ff;
+    color: #2563eb;
+    font-weight: 700;
+    border-right: 4px solid #3b82f6;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.menu-item.logout {
+    color: #e11d48;
+    font-weight: 600;
+}
+
+.content {
+    padding: 24px 28px;
+    overflow-y: auto;
+}
+
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.content-header h1 {
+    font-size: 39px;
+    color: #111827;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.content-header p {
+    margin-top: 4px;
+    font-size: 14px;
+    color: #9ca3af;
+}
+
+.report-btn {
+    border: none;
+    background: #3b82f6;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 10px 16px;
+    cursor: pointer;
+}
+
+.stats-grid {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.stat-card {
+    background: #fff;
+    border: 1px solid #e6eaf0;
+    border-radius: 10px;
+    padding: 16px 14px;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: #8a94a6;
+    font-weight: 600;
+}
+
+.stat-main {
+    margin-top: 5px;
+    font-size: 35px;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #111827;
+}
+
+.stat-foot {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.stat-foot svg {
+    width: 82px;
+    height: 40px;
+}
+
+.stat-foot svg path {
+    fill: none;
+    stroke: #22c55e;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.stat-foot .trend-down path {
+    stroke: #ef4444;
+}
+
+.up,
+.down {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.up {
+    color: #22c55e;
+}
+
+.down {
+    color: #ef4444;
+}
+
+.stat-sub {
+    margin-top: 8px;
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+.chart-card {
+    margin-top: 16px;
+    background: #fff;
+    border: 1px solid #e6eaf0;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.chart-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.chart-head h2 {
+    font-size: 26px;
+    color: #111827;
+    font-weight: 800;
+}
+
+.legend {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.dot.blue {
+    background: #3b82f6;
+}
+
+.dot.gray {
+    background: #cbd5e1;
+}
+
+.chart-box {
+    margin-top: 12px;
+    height: 300px;
+    border: 1px solid #eef2f7;
+    border-radius: 10px;
+    padding: 10px;
+    background: #fbfcfe;
+}
+
+.chart-box svg {
+    width: 100%;
+    height: 100%;
+}
+
+.grid-lines line {
+    stroke: #e5e7eb;
+    stroke-width: 1;
+}
+
+.line-secondary {
+    fill: none;
+    stroke: #d1d5db;
+    stroke-width: 3;
+}
+
+.line-primary {
+    fill: none;
+    stroke: #3b82f6;
+    stroke-width: 4;
+}
+
+.area-primary {
+    fill: rgba(59, 130, 246, 0.12);
+}
+
+.point {
+    fill: #fff;
+    stroke: #3b82f6;
+    stroke-width: 3;
+}
+
+.axis-labels text {
+    font-size: 13px;
+    fill: #9ca3af;
+}
+
+@media (max-width: 1180px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 980px) {
+    .dashboard-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .content {
+        padding: 18px;
+    }
+
+    .content-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .content-header h1 {
+        font-size: 30px;
+    }
+
+    .brand-fallback {
+        font-size: 18px;
+    }
+}
