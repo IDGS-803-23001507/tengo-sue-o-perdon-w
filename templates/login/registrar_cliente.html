@@ -20,8 +20,8 @@
                 <div class="mb-8">
                        <h1 class="text-3xl md:text-4xl font-light tracking-wide text-gray-800"
                        style="font-family: 'Montserrat', sans-serif;">Crea tu cuenta</h1>
-                    
-                    
+
+
                        <p class="mt-2 text-sm text-gray-500">Regístrate para acceder a Urban Coffee.</p>
                 </div>
 
@@ -42,6 +42,8 @@
                 {% endwith %}
 
                 <form method="POST" action="" class="space-y-5">
+                <form method="POST" action="{{ url_for('auth.registrarUsuario') }}" class="space-y-5">
+                    {{ form.hidden_tag() }}
                     <div>
                         <label for="nombre" class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500">Nombre</label>
                         <input
@@ -95,6 +97,7 @@
     </div>
 </section>
 
-{% block footer %}
 {% endblock %}
+
+{% block footer %}
 {% endblock %}

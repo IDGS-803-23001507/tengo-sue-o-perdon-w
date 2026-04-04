@@ -5,7 +5,6 @@
 
 {% block container %}
 
-
 <section class="h-screen bg-gray-50">
     <div class="grid h-screen grid-cols-1 lg:grid-cols-2">
         <div class="hidden lg:block">
@@ -49,22 +48,26 @@
                 {% endwith %}
 
                 <form action="/login" method="POST" autocomplete="on" class="space-y-5">
+                <form action="{{ url_for('auth.iniciarSesion') }}" method="POST" autocomplete="on" class="space-y-5">
+                    {{ form.hidden_tag() }}
                     <div>
                         <label for="correo" class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500">Correo electrónico</label>
                         <input
                             id="correo"
                             name="correo"
                             type="email"
+                            type="text"
                             required
                             class="block w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 focus:border-amber-500 focus:ring-amber-500"
                             placeholder="nombre@urbancoffee.com"
+                            placeholder="nombre@urbancoffee.com o usuario"
                         />
                     </div>
 
                     <div>
                         <div class="mb-2 flex items-center justify-between gap-3">
                             <label for="contrasena" class="block text-xs font-semibold uppercase tracking-widest text-gray-500">Contraseña</label>
-                            <a href="#" class="text-xs font-semibold uppercase tracking-wide text-amber-700 hover:text-amber-800">Recuperar contraseña</a>
+                            <a href="{{ url_for('auth.recuperarContrasena') }}" class="text-xs font-semibold uppercase tracking-wide text-amber-700 hover:text-amber-800">Recuperar contraseña</a>
                         </div>
                         <input
                             id="contrasena"
@@ -92,7 +95,7 @@
         </div>
     </div>
 </section>
+{% endblock %}
 
     {% block footer %}
     {% endblock %}
-{% endblock %}

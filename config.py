@@ -1,10 +1,6 @@
 import os
 from urllib.parse import quote_plus
 
-# Este código carga variables de entorno desde un archivo .env local si existe, permitiendo que las variables de entorno del sistema tengan prioridad. Esto es útil para configurar la aplicación sin exponer credenciales en el código fuente.
-
-# Si quieren agregar una variable de entorno se añade en el archivo .env con el formato CLAVE=valor
-
 def _load_local_env() -> None:
     env_path = os.path.join(os.path.dirname(__file__), ".env")
 
@@ -32,12 +28,24 @@ _load_local_env()
 class Config:
     SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "urban-coffee-dev-secret-key")
 
-    MYSQL_HOST = os.getenv("MYSQL_HOST", "127.0.0.1")
+    MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
     MYSQL_PORT = int(os.getenv("MYSQL_PORT", 3307))
     MYSQL_USER = os.getenv("MYSQL_USER", "root")
     MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "root")
-    MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "urban")
+    MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "urban_coffee")
 
     SQLALCHEMY_DATABASE_URI = (
         f"mysql+pymysql://{MYSQL_USER}:{quote_plus(MYSQL_PASSWORD)}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}"
     )
+
+    SMTP_HOST = os.getenv("SMTP_HOST", "")
+    SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+    SMTP_USER = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USER or "no-reply@urbancoffee.local")
+    SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() in {"1", "true", "yes", "on"}
+    SMTP_USE_SSL = os.getenv("SMTP_USE_SSL", "false").lower() in {"1", "true", "yes", "on"}
+
+    USUARIO_GERENTE_NOMBRE = os.getenv("USUARIO_GERENTE_NOMBRE", "Administrador Urban Coffee")
+    USUARIO_GERENTE_CORREO = os.getenv("USUARIO_GERENTE_CORREO", "admin@urbancoffee.com")
+    USUARIO_GERENTE_PASSWORD = os.getenv("USUARIO_GERENTE_PASSWORD", "PasswordSegura123!")
