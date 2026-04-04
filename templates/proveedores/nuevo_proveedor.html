@@ -50,7 +50,7 @@
 
         <div>
             <label class="block mb-2 text-sm font-medium text-gray-900">
-                Teléfono
+                Teléfono *
             </label>
 
             {{ form.telefono(class="bg-gray-50 border border-gray-300 text-sm rounded-lg
@@ -64,7 +64,7 @@
 
         <div>
             <label class="block mb-2 text-sm font-medium text-gray-900">
-                Correo Electrónico
+                Correo Electrónico *
             </label>
 
             {{ form.email(class="bg-gray-50 border border-gray-300 text-sm rounded-lg
@@ -78,7 +78,7 @@
 
         <div>
             <label class="block mb-2 text-sm font-medium text-gray-900">
-                Colonia
+                Colonia *
             </label>
 
             {{ form.colonia(class="bg-gray-50 border border-gray-300 text-sm rounded-lg
@@ -92,7 +92,7 @@
 
         <div>
             <label class="block mb-2 text-sm font-medium text-gray-900">
-                Calle
+                Calle *
             </label>
 
             {{ form.calle(class="bg-gray-50 border border-gray-300 text-sm rounded-lg
@@ -106,7 +106,7 @@
 
         <div>
             <label class="block mb-2 text-sm font-medium text-gray-900">
-                Numero exterior
+                Numero exterior *
             </label>
 
             {{ form.num_exterior(class="bg-gray-50 border border-gray-300 text-sm rounded-lg
@@ -122,18 +122,79 @@
 
     <div class="flex flex-col md:flex-row justify-end gap-3 pt-4 border-t mt-4">
 
-        <a href="{{ url_for('proveedor.proveedores') }}" class="w-full md:w-auto text-center text-gray-700 bg-white border border-gray-300 
-                  hover:bg-gray-50 font-medium rounded-lg text-sm px-5 py-2.5 transition">
+        <a href="{{ url_for('proveedor.proveedores') }}" class="text-gray-700 bg-gray-200 hover:bg-gray-300 
+        font-medium rounded-lg text-sm px-5 py-2.5 transition">
             Cancelar
         </a>
 
-        <button type="submit" class="w-full md:w-auto text-white bg-blue-600 hover:bg-blue-700 
-                       font-medium rounded-lg text-sm px-5 py-2.5 transition">
+        <button type="button" onclick="abrirModalConfirmacion()" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 
+        font-medium rounded-lg text-sm px-5 py-2.5 transition">
             Guardar Proveedor
         </button>
 
     </div>
 
 </form>
+
+<div id="modalConfirmacion"
+    class="hidden fixed inset-0 z-[100] flex justify-center items-center bg-gray-900 bg-opacity-50 p-4">
+
+    <div class="w-full max-w-md">
+
+        <div class="bg-white rounded-2xl shadow p-6 md:p-8 text-center">
+
+            <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-circle-exclamation text-yellow-500 text-xl"></i>
+            </div>
+
+            <h3 class="mb-2 text-xl md:text-2xl font-bold text-gray-900">
+                Confirmar Proveedor
+            </h3>
+
+            <p class="text-gray-500 mb-6 text-sm md:text-base">
+                ¿Estás seguro de registrar este proveedor? 
+            </p>
+
+            <div class="flex flex-col gap-3">
+
+                <button onclick="confirmarEnvio()" class="text-white bg-blue-600 hover:bg-blue-700 
+                           font-medium rounded-lg text-sm px-5 py-3 transition">
+                    Sí, registrar
+                </button>
+
+                <button onclick="cerrarModalConfirmacion()" class="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 
+                           font-medium rounded-lg text-sm px-5 py-3 transition">
+                    Cancelar
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+
+const form = document.querySelector("form");
+const modal = document.getElementById("modalConfirmacion");
+
+function abrirModalConfirmacion() {
+    modal.classList.remove("hidden");
+}
+
+function cerrarModalConfirmacion() {
+    modal.classList.add("hidden");
+}
+
+function confirmarEnvio() {
+    form.submit();
+}
+</script>
 
 {% endblock %}

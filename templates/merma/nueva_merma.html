@@ -8,30 +8,158 @@
     </div>
 </div>
 
-<div class="bg-white rounded-lg shadow-sm border overflow-hidden max-w-3xl">
+<div class="flex justify-center">
 
-    {% if error_stock %}
-    <div class="fixed inset-0 z-[100] flex justify-center items-center bg-gray-900 bg-opacity-50 p-4">
+    <div class="bg-white rounded-lg shadow-sm border overflow-hidden w-full max-w-2xl">
 
-        <div class="w-full max-w-md">
+        {% if error_stock %}
+        <div class="fixed inset-0 z-[100] flex justify-center items-center bg-gray-900 bg-opacity-50 p-4">
 
-            <div class="bg-white rounded-2xl shadow p-6 md:p-8 text-center">
+            <div class="w-full max-w-md">
 
-                <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-                    <i class="fa-solid fa-triangle-exclamation text-red-500 text-xl"></i>
+                <div class="bg-white rounded-2xl shadow p-6 md:p-8 text-center">
+
+                    <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                        <i class="fa-solid fa-triangle-exclamation text-red-500 text-xl"></i>
+                    </div>
+
+                    <h3 class="mb-2 text-xl md:text-2xl font-bold text-gray-900">
+                        Error de Stock
+                    </h3>
+
+                    <p class="text-gray-500 mb-6 text-sm md:text-base">
+                        {{ error_stock }}
+                    </p>
+
+                    <button onclick="cerrarModal()" class="w-full text-white bg-red-500 hover:bg-red-600 
+                   font-medium rounded-lg text-sm px-5 py-3 transition">
+                        Entendido
+                    </button>
+
                 </div>
 
-                <h3 class="mb-2 text-xl md:text-2xl font-bold text-gray-900">
-                    Error de Stock
-                </h3>
+            </div>
 
-                <p class="text-gray-500 mb-6 text-sm md:text-base">
-                    {{ error_stock }}
-                </p>
+        </div>
+        {% endif %}
 
-                <button onclick="cerrarModal()" class="w-full text-white bg-red-500 hover:bg-red-600 
-                       font-medium rounded-lg text-sm px-5 py-3 transition">
-                    Entendido
+        <form method="POST" class="p-6 space-y-4">
+
+            {{ form.hidden_tag() }}
+
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <h2 class="col-span-1 md:col-span-2 text-xl font-semibold text-gray-800 border-b pb-2">
+                    Datos del registro
+                </h2>
+
+                <div class="md:col-span-2">
+                    <label class="block mb-2 text-sm font-medium text-gray-700">
+                        Materia Prima *
+                    </label>
+
+                    <select id="materia_id" name="materia_id" class="bg-gray-50 border border-gray-300 text-sm rounded-lg
+            focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm">
+
+                        <option value="">Selecciona una materia</option>
+
+                        {% for m in materias %}
+                        <option value="{{ m.id_materia }}" data-stock="{{ m.stock_actual }}"
+                            data-unidad="{{ m.unidad.abreviacion }}">
+                            {{ m.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+
+                    <p id="stockInfo" class="text-sm text-gray-500 mt-2">
+                        Stock disponible: -
+                    </p>
+                </div>
+
+                <div>
+                    <label class="block mb-2 text-sm font-medium text-gray-700">
+                        Cantidad *
+                    </label>
+                    {{ form.cantidad(
+                    class="bg-gray-50 border border-gray-300 text-sm rounded-lg
+                    focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
+                    placeholder="Ej. 10"
+                    ) }}
+                </div>
+
+                <div>
+                    <label class="block mb-2 text-sm font-medium text-gray-700">
+                        Fecha *
+                    </label>
+                    {{ form.fecha(
+                    class="bg-gray-50 border border-gray-300 text-sm rounded-lg
+                    focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm"
+                    ) }}
+                </div>
+
+            </div>
+
+            <!-- Motivo full width -->
+            <div>
+                <label class="block mb-2 text-sm font-medium text-gray-700">
+                    Motivo *
+                </label>
+                {{ form.motivo(
+                class="bg-gray-50 border border-gray-300 text-sm rounded-lg
+                focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
+                placeholder="Describe la razón de la merma..."
+                ) }}
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4 border-t">
+
+                <a href="{{ url_for('merma.merma') }}" class="text-gray-700 bg-gray-200 hover:bg-gray-300 
+                  font-medium rounded-lg text-sm px-5 py-2.5 transition">
+                    Cancelar
+                </a>
+
+                <button type="button" onclick="abrirModalConfirmacion()" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 
+               font-medium rounded-lg text-sm px-5 py-2.5 transition">
+                    Guardar Merma
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+<div id="modalConfirmacion"
+    class="hidden fixed inset-0 z-[100] flex justify-center items-center bg-gray-900 bg-opacity-50 p-4">
+
+    <div class="w-full max-w-md">
+
+        <div class="bg-white rounded-2xl shadow p-6 md:p-8 text-center">
+
+            <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-circle-exclamation text-yellow-500 text-xl"></i>
+            </div>
+
+            <h3 class="mb-2 text-xl md:text-2xl font-bold text-gray-900">
+                Confirmar Merma
+            </h3>
+
+            <p class="text-gray-500 mb-6 text-sm md:text-base">
+                ¿Estás seguro de registrar esta merma? Esta acción afectará el stock.
+            </p>
+
+            <div class="flex flex-col gap-3">
+
+                <button onclick="confirmarEnvio()" class="text-white bg-blue-600 hover:bg-blue-700 
+                           font-medium rounded-lg text-sm px-5 py-3 transition">
+                    Sí, registrar
+                </button>
+
+                <button onclick="cerrarModalConfirmacion()" class="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 
+                           font-medium rounded-lg text-sm px-5 py-3 transition">
+                    Cancelar
                 </button>
 
             </div>
@@ -39,82 +167,6 @@
         </div>
 
     </div>
-    {% endif %}
-
-    <form method="POST" class="p-6 space-y-6">
-
-        {{ form.hidden_tag() }}
-
-        <div>
-            <label class="block mb-2 text-sm font-medium text-gray-700">
-                Materia Prima
-            </label>
-
-            <select id="materia_id" name="materia_id"
-                class="w-full border border-gray-300 rounded-lg p-2.5 text-sm shadow-sm">
-
-                <option value="">Selecciona una materia</option>
-
-                {% for m in materias %}
-                    <option value="{{ m.id_materia }}" data-stock="{{ m.stock_actual }}" data-unidad="{{ m.unidad.abreviacion }}">
-                        {{ m.nombre }}
-                    </option>
-                {% endfor %}
-            </select>
-
-            
-            <p id="stockInfo" class="text-sm text-gray-500 mt-2">
-                Stock disponible: -
-            </p>
-        </div>
-
-        <div>
-            <label class="block mb-2 text-sm font-medium text-gray-700">
-                Cantidad
-            </label>
-            {{ form.cantidad(
-            class="w-full border border-gray-300 rounded-lg p-2.5 text-sm
-            focus:ring-blue-500 focus:border-blue-500 shadow-sm",
-            placeholder="Ej. 10"
-            ) }}
-        </div>
-
-        <div>
-            <label class="block mb-2 text-sm font-medium text-gray-700">
-                Fecha
-            </label>
-            {{ form.fecha(
-            class="w-full border border-gray-300 rounded-lg p-2.5 text-sm
-            focus:ring-blue-500 focus:border-blue-500 shadow-sm"
-            ) }}
-        </div>
-
-        <div>
-            <label class="block mb-2 text-sm font-medium text-gray-700">
-                Motivo
-            </label>
-            {{ form.motivo(
-            class="w-full border border-gray-300 rounded-lg p-2.5 text-sm
-            focus:ring-blue-500 focus:border-blue-500 shadow-sm",
-            placeholder="Describe la razón de la merma..."
-            ) }}
-        </div>
-
-        <div class="flex justify-end gap-3 pt-4 border-t">
-
-            <a href="{{ url_for('merma.merma') }}" class="text-gray-700 bg-gray-200 hover:bg-gray-300 
-                      font-medium rounded-lg text-sm px-5 py-2.5 transition">
-                Cancelar
-            </a>
-
-            <button type="submit" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 
-                           font-medium rounded-lg text-sm px-5 py-2.5 transition">
-                Guardar Merma
-            </button>
-
-        </div>
-
-    </form>
 
 </div>
 
@@ -123,32 +175,47 @@
 {% block scripts %}
 
 <script>
-const selectMateria = document.getElementById("materia_id");
-const stockInfo = document.getElementById("stockInfo");
-const btnGuardar = document.getElementById("btnGuardar");
+    const selectMateria = document.getElementById("materia_id");
+    const stockInfo = document.getElementById("stockInfo");
+    const btnGuardar = document.getElementById("btnGuardar");
 
-selectMateria.addEventListener("change", function() {
-    const selectedOption = this.options[this.selectedIndex];
-    const stock = selectedOption.getAttribute("data-stock");
-    const unidad = selectedOption.getAttribute("data-unidad");
+    selectMateria.addEventListener("change", function () {
+        const selectedOption = this.options[this.selectedIndex];
+        const stock = selectedOption.getAttribute("data-stock");
+        const unidad = selectedOption.getAttribute("data-unidad");
 
-    if (stock !== null) {
-        stockInfo.textContent = `Stock disponible: ${stock} ${unidad || ''}`
+        if (stock !== null) {
+            stockInfo.textContent = `Stock disponible: ${stock} ${unidad || ''}`
 
-        if (stock == 0) {
-            stockInfo.classList.remove("text-gray-500");
-            stockInfo.classList.add("text-red-500");
-            btnGuardar.disabled = true;
-        } else {
-            stockInfo.classList.remove("text-red-500");
-            stockInfo.classList.add("text-green-600");
-            btnGuardar.disabled = false;
+            if (stock == 0) {
+                stockInfo.classList.remove("text-gray-500");
+                stockInfo.classList.add("text-red-500");
+                btnGuardar.disabled = true;
+            } else {
+                stockInfo.classList.remove("text-red-500");
+                stockInfo.classList.add("text-green-600");
+                btnGuardar.disabled = false;
+            }
         }
-    }
-});
+    });
 
-function cerrarModal() {
-    document.querySelector('.fixed').style.display = 'none';
+    function cerrarModal() {
+        document.querySelector('.fixed').style.display = 'none';
+    }
+
+const form = document.querySelector("form");
+const modal = document.getElementById("modalConfirmacion");
+
+function abrirModalConfirmacion() {
+    modal.classList.remove("hidden");
+}
+
+function cerrarModalConfirmacion() {
+    modal.classList.add("hidden");
+}
+
+function confirmarEnvio() {
+    form.submit();
 }
 </script>
 {% endblock %}

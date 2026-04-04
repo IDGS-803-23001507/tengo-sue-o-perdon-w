@@ -1,0 +1,126 @@
+{% extends "layout/layout_produccion.html" %}
+{% block container %}
+
+<div class="max-w-5xl mx-auto">
+
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800">
+                Detalle de Compra #{{ compra.id_compra }}
+            </h2>
+            <p class="text-gray-500 mt-1">
+                Información completa de la compra
+            </p>
+        </div>
+
+    </div>
+
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+
+        <div class="bg-gray-800 text-white px-6 py-4">
+            <h3 class="text-lg font-semibold">
+                Compra #{{ compra.id_compra }}
+            </h3>
+            <p class="text-sm text-gray-300">
+                {{ compra.fecha.strftime('%d/%m/%Y %H:%M') if compra.fecha else 'N/A' }}
+            </p>
+        </div>
+
+        <div class="p-6">
+
+            <div class="mb-6">
+                <h4 class="text-lg font-semibold text-gray-800 mb-3">Proveedor</h4>
+
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="font-medium text-gray-800">
+                        {{ compra.proveedor.nombre if compra.proveedor else 'N/A' }}
+                    </p>
+                    <p class="text-sm text-gray-500">
+                        RFC: {{ compra.proveedor.rfc if compra.proveedor else 'N/A' }}
+                    </p>
+                    <p class="text-sm text-gray-500">
+                        Tel: {{ compra.proveedor.telefono if compra.proveedor else 'N/A' }}
+                    </p>
+                </div>
+            </div>
+
+            <h4 class="text-lg font-semibold text-gray-800 mb-3">
+                Insumos Comprados
+            </h4>
+
+            <div class="overflow-x-auto border rounded-xl">
+                <table class="w-full text-sm">
+
+                    <thead class="bg-gray-100 text-gray-600">
+                        <tr>
+                            <th class="px-4 py-3 text-left">Insumo</th>
+                            <th class="px-4 py-3 text-right">Cantidad</th>
+                            <th class="px-4 py-3 text-right">Unidad</th>
+                            <th class="px-4 py-3 text-right">Costo Unitario</th>
+                            <th class="px-4 py-3 text-right">Subtotal</th>
+                        </tr>
+                    </thead>
+
+                    <tbody class="divide-y">
+
+                        {% for detalle in compra.detalles %}
+                        <tr class="hover:bg-gray-50">
+
+                            <td class="px-4 py-3 font-medium text-gray-800">
+                                {{ detalle.materia_prima.nombre if detalle.materia_prima else 'N/A' }}
+                            </td>
+
+                            <td class="px-4 py-3 text-right">
+                                {{ "%.2f"|format(detalle.cantidad) }}
+                            </td>
+
+                            <td class="px-4 py-3 text-right text-gray-500">
+                                {{ detalle.unidad_medida.abreviacion if detalle.unidad_medida else 'ud' }}
+                            </td>
+
+                            <td class="px-4 py-3 text-right">
+                                ${{ "%.2f"|format(detalle.costo_unitario) }}
+                            </td>
+
+                            <td class="px-4 py-3 text-right font-semibold text-green-600">
+                                ${{ "%.2f"|format(detalle.cantidad * detalle.costo_unitario) }}
+                            </td>
+
+                        </tr>
+                        {% endfor %}
+
+                    </tbody>
+
+                    <tfoot class="bg-gray-50">
+                        <tr>
+                            <td colspan="4" class="px-4 py-3 text-right font-bold text-gray-700">
+                                Total
+                            </td>
+                            <td class="px-4 py-3 text-right font-bold text-green-600 text-base">
+                                ${{ "%.2f"|format(
+                                compra.detalles | sum(attribute='cantidad') *
+                                (compra.detalles | map(attribute='costo_unitario') | list | sum /
+                                (compra.detalles|length if compra.detalles|length > 0 else 1))
+                                ) }}
+                            </td>
+                        </tr>
+                    </tfoot>
+
+                </table>
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <a href="{{ url_for('compras.listar_compras') }}"
+                    class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm">
+                    Volver
+                </a>
+                
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

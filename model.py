@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone, date
+from decimal import Decimal
 from sqlalchemy import Enum
 from sqlalchemy.dialects.mysql import LONGTEXT
 from flask_sqlalchemy import SQLAlchemy
@@ -6,7 +7,6 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
 
- #Tabla login 
 class Usuario(db.Model):
     __tablename__ = "usuarios"
 
@@ -70,8 +70,6 @@ class RegistroSesion(db.Model):
     fechaFin = db.Column(db.DateTime(timezone=True), nullable=True)
     activa = db.Column(db.Boolean, nullable=False, default=True)
     
-    
-    
 #Tablas Feacture/Productos 
 
 class UnidadMedida(db.Model):
@@ -90,7 +88,31 @@ class MateriaPrima(db.Model):
     stock_minimo = db.Column(db.Numeric(10, 2), default=0.00)
     stock_actual = db.Column(db.Numeric(10, 2), default=0.00)
     estatus = db.Column(db.Boolean, default=True)
+    
     unidad = db.relationship('UnidadMedida', backref='materias_primas')
+    detalles_compra = db.relationship('DetalleCompra', backref='materia_prima', lazy=True)
+
+    def actualizar_stock(self, cantidad, costo_unitario):
+
+        if cantidad <= 0:
+            raise ValueError("La cantidad debe ser mayor a 0")
+
+        cantidad_dec     = Decimal(str(cantidad))
+        stock_actual_dec = Decimal(str(self.stock_actual or 0))
+
+        self.stock_actual = stock_actual_dec + cantidad_dec
+
+    def revertir_stock(self, cantidad):
+        
+        if cantidad <= 0:
+            raise ValueError("La cantidad debe ser mayor a 0")
+
+        cantidad_dec     = Decimal(str(cantidad))
+        stock_actual_dec = Decimal(str(self.stock_actual or 0))
+
+        nuevo_stock = stock_actual_dec - cantidad_dec
+
+        self.stock_actual = max(nuevo_stock, Decimal('0'))
 
 class Producto(db.Model):
     __tablename__ = 'Producto'
@@ -117,6 +139,9 @@ class Proveedores(db.Model):
     num_exterior = db.Column( db.String(5),  nullable=True)
     estado = db.Column('estatus',db.Boolean,     default=True)
 
+    compras = db.relationship('Compra', backref='proveedor', lazy=True)
+
+
 # Tabla de merma 
 class Merma(db.Model):
     id_merma = db.Column(db.Integer, primary_key=True)
@@ -141,3 +166,37 @@ class Merma(db.Model):
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
     usuario = db.relationship('Usuario', backref='mermas_registradas')
     
+
+class Compra(db.Model):
+    __tablename__ = 'compra'
+
+    id_compra = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id_proveedor = db.Column(db.Integer, db.ForeignKey('Proveedor.id_proveedor'), nullable=False)
+    fecha = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    detalles = db.relationship('DetalleCompra',
+        backref='compra', lazy=True, cascade='all, delete-orphan'
+    )
+    
+    @property
+    def precio_total(self):
+
+        return sum((detalle.cantidad * detalle.costo_unitario)
+            for detalle in self.detalles
+        )
+    
+class DetalleCompra(db.Model):
+    __tablename__ = 'detalle_compra'
+
+    id_detalle_compra = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id_compra = db.Column(db.Integer, db.ForeignKey('compra.id_compra'), nullable=False)
+    id_materia = db.Column(db.Integer, db.ForeignKey('Materia_prima.id_materia'), nullable=False)
+    cantidad = db.Column(db.Numeric(10, 2), nullable=False)
+    unidad = db.Column(db.Integer, db.ForeignKey('Unidad_medida.id_unidad'), nullable=False)
+    costo_unitario = db.Column(db.Numeric(10, 2), nullable=False)
+
+    unidad_medida = db.relationship('UnidadMedida', backref='detalles_compra')
+    
+    @property
+    def subtotal(self):    
+        return self.cantidad * self.costo_unitario

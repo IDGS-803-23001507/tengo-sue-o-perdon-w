@@ -55,15 +55,15 @@ def nueva_merma():
             
             if form.fecha.data > date.today():
                 error_stock = "No puedes registrar una merma en una fecha futura"
-                return render_template('merma/nueva_merma.html', form=form, error_stock=error_stock)
+                return render_template('merma/nueva_merma.html', materias=materias, form=form, error_stock=error_stock)
 
             if materia.stock_actual <= 0:
                 error_stock = "No hay stock disponible de esta materia prima"
-                return render_template('merma/nueva_merma.html', form=form, error_stock=error_stock)
+                return render_template('merma/nueva_merma.html', materias=materias, form=form, error_stock=error_stock)
             
             if form.cantidad.data > materia.stock_actual:
                 error_stock = "No hay suficiente stock disponible"
-                return render_template('merma/nueva_merma.html', form=form, error_stock=error_stock)
+                return render_template('merma/nueva_merma.html', materias=materias, form=form, error_stock=error_stock)
 
             
             materia.stock_actual -= form.cantidad.data

@@ -1,0 +1,128 @@
+{% extends "layout/layout_produccion.html" %}
+{% block container %}
+
+<div class="max-w-7xl mx-auto">
+
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800">
+                Lista de Compras
+            </h2>
+            <p class="text-gray-500 mt-1">
+                Gestión de compras de materia prima
+            </p>
+        </div>
+
+
+        <div class="flex gap-2">
+
+            <a href="{{ url_for('compras.nueva_compra') }}"
+                class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i>
+                Nueva Compra
+            </a>
+        </div>
+
+
+    </div>
+
+
+    <div class="bg-white rounded-xl shadow p-4 mb-6">
+        <form method="GET" action="{{ url_for('compras.listar_compras') }}" class="flex flex-wrap gap-4 items-end">
+
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">Fecha Inicio</label>
+                <input type="date" name="fecha_inicio" value="{{ filtro_form.fecha_inicio.data or '' }}"
+                    class="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">Fecha Fin</label>
+                <input type="date" name="fecha_fin" value="{{ filtro_form.fecha_fin.data or '' }}"
+                    class="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">Proveedor</label>
+                <select name="id_proveedor" onchange="this.form.submit()"
+                    class="bg-neutral-secondary-medium rounded-lg border border-default-medium text-heading text-sm rounded-base px-3 py-2">
+                    {% for value, label in filtro_form.id_proveedor.choices %}
+                    <option value="{{ value }}" {% if filtro_form.id_proveedor.data==value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">
+                Filtrar
+            </button>
+
+            <a href="{{ url_for('compras.listar_compras') }}"
+                class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm">
+                Limpiar
+            </a>
+
+        </form>
+
+
+    </div>
+
+    <div class="bg-white rounded-xl shadow overflow-x-auto">
+        <table class="w-full text-sm text-left">
+
+            <thead class="bg-gray-800 text-white">
+                <tr>
+                    <th class="px-6 py-3">Folio</th>
+                    <th class="px-6 py-3">Fecha</th>
+                    <th class="px-6 py-3">Proveedor</th>
+                    <th class="px-6 py-3">Total</th>
+                    <th class="px-6 py-3">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for compra in compras %}
+                <tr class="border-b hover:bg-gray-50">
+
+                    <td class="px-6 py-4 font-semibold">
+                        #{{ compra.id_compra }}
+                    </td>
+
+                    <td class="px-6 py-4">
+                        {{ compra.fecha.strftime('%d/%m/%Y %H:%M') if compra.fecha else 'N/A' }}
+                    </td>
+
+                    <td class="px-6 py-4">
+                        {{ compra.proveedor.nombre if compra.proveedor else 'N/A' }}
+                    </td>
+
+                    <td class="px-6 py-4 font-semibold text-green-600">
+                        ${{ "%.2f"|format(compra.precio_total) }}
+                    </td>
+
+                    <td class="px-6 py-4">
+                        <a href="{{ url_for('compras.detalle_compra', id=compra.id_compra) }}"
+                        class="text-blue-600 hover:underline">
+                            Ver Detalle
+                        </a>
+                    </td>
+
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center py-10 text-gray-500">
+                        <i class="fa-solid fa-box-open text-3xl mb-2"></i>
+                        <p>No hay compras registradas</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+{% endblock %}

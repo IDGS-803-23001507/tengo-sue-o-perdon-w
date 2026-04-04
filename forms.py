@@ -71,3 +71,48 @@ class MermaForm(FlaskForm):
         validators=[DataRequired(message="Selecciona una materia prima")]
     )
     
+class CompraForm(FlaskForm):
+
+    id_proveedor = SelectField('Proveedor', coerce=int,
+        validators=[DataRequired(message='Debe seleccionar un proveedor')]
+    )
+
+    fecha = DateField('Fecha de Compra',
+        format='%Y-%m-%d', validators=[DataRequired(message='La fecha es obligatoria')]
+    )
+
+    def set_proveedores(self, proveedores):
+        self.id_proveedor.choices = [(p.id, p.nombre) for p in proveedores]
+
+
+class FiltroComprasForm(FlaskForm):
+
+    fecha_inicio = DateField('Fecha Inicio',
+        format='%Y-%m-%d', validators=[Optional()]
+    )
+
+    fecha_fin = DateField('Fecha Fin', format='%Y-%m-%d',
+        validators=[Optional()]
+    )
+
+    id_proveedor = SelectField('Proveedor',
+        coerce=int, validators=[Optional()]
+    )
+
+    def set_proveedores(self, proveedores):     
+        self.id_proveedor.choices = [(0, 'Todos')] + [
+            (p.id, p.nombre) for p in proveedores
+        ]
+
+    def validate(self, extra_validators=None):
+        if not super().validate(extra_validators):
+            return False
+
+        if self.fecha_inicio.data and self.fecha_fin.data:
+            if self.fecha_inicio.data > self.fecha_fin.data:
+                self.fecha_fin.errors.append(
+                    "La fecha fin debe ser mayor o igual a la fecha inicio"
+                )
+                return False
+
+        return True
