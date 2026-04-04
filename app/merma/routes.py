@@ -38,7 +38,7 @@ def nueva_merma():
     form = MermaForm()
     error_stock = None
     
-    materias = MateriaPrima.query.all()
+    materias = MateriaPrima.query.filter_by(estatus=True).all()
 
     form.materia_id.choices = [
         (m.id_materia, m.nombre) for m in materias
