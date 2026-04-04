@@ -1,4 +1,5 @@
 {% extends "layout/layout_produccion.html" %}
+{% import '_macros.html' as modals%}
 {% block container %}
 
 <div class="flex justify-between items-center mb-8">
@@ -7,11 +8,10 @@
         <p class="text-gray-500 mt-1">Gestión de proveedores registrados</p>
     </div>
 
-    <a href="{{ url_for('proveedor.nuevo_proveedor') }}" 
-       class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 
+    <a href="{{ url_for('proveedor.nuevo_proveedor') }}" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 
               font-medium rounded-lg text-sm px-5 py-2.5 flex items-center gap-2 transition w-fit">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
         Nuevo Proveedor
     </a>
@@ -20,33 +20,28 @@
 <div class="bg-white rounded-lg shadow-sm border overflow-hidden">
 
     <div class="p-4 border-b flex justify-between items-center bg-gray-50">
-        <form method="GET" action="{{ url_for('proveedor.proveedores') }}" 
-              class="relative w-full md:w-1/2 flex gap-2">
+        <form method="GET" action="{{ url_for('proveedor.proveedores') }}" class="relative w-full md:w-1/2 flex gap-2">
 
             <div class="relative w-full">
                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                     <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        <path stroke-linecap="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                 </div>
 
-                <input type="text" name="busqueda"
-                       value="{{ busqueda or '' }}"
-                       class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg 
+                <input type="text" name="busqueda" value="{{ busqueda or '' }}" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg 
                               focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5 shadow-sm"
-                       placeholder="Buscar proveedor...">
+                    placeholder="Buscar proveedor...">
             </div>
 
-            <select name="estado"
-                    class="bg-white border border-gray-300 text-sm rounded-lg 
-                           focus:ring-blue-500 focus:border-blue-500 p-2.5 shadow-sm">
-                <option value="todos" {% if estado == 'todos' %}selected{% endif %}>Todos</option>
-                <option value="activos" {% if estado == 'activos' %}selected{% endif %}>Activos</option>
-                <option value="inactivos" {% if estado == 'inactivos' %}selected{% endif %}>Inactivos</option>
+            <select id="filtroEstado" name="estado" class="bg-white border border-gray-300 text-sm rounded-lg 
+               focus:ring-blue-500 focus:border-blue-500 p-2.5 shadow-sm">
+                <option value="todos" {% if estado=='todos' %}selected{% endif %}>Todos</option>
+                <option value="activos" {% if estado=='activos' %}selected{% endif %}>Activos</option>
+                <option value="inactivos" {% if estado=='inactivos' %}selected{% endif %}>Inactivos</option>
             </select>
 
-            <button type="submit"
-                    class="text-white bg-gray-800 hover:bg-gray-900 
+            <button type="submit" class="text-white bg-gray-800 hover:bg-gray-900 
                            font-medium rounded-lg text-sm px-4 py-2 transition shadow-sm">
                 Buscar
             </button>
@@ -78,51 +73,63 @@
 
                 <td class="px-6 py-4">
                     {% if proveedor.telefono %}
-                        <div>{{ proveedor.telefono }}</div>
+                    <div>{{ proveedor.telefono }}</div>
                     {% endif %}
                     {% if proveedor.email %}
-                        <div class="text-xs text-gray-500">{{ proveedor.email }}</div>
+                    <div class="text-xs text-gray-500">{{ proveedor.email }}</div>
                     {% endif %}
                 </td>
 
                 <td class="px-6 py-4 text-center">
                     {% if proveedor.estado %}
-                        <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                            Activo
-                        </span>
+                    <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                        Activo
+                    </span>
                     {% else %}
-                        <span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
-                            Inactivo
-                        </span>
+                    <span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
+                        Inactivo
+                    </span>
                     {% endif %}
                 </td>
 
                 <td class="px-6 py-4 text-center flex justify-center gap-2">
 
-                    <a href="{{ url_for('proveedores.detalle', id=proveedor.id) }}" 
-                       class="text-white bg-green-500 hover:bg-green-600 
-                              text-sm px-4 py-2 rounded-lg transition">
+                    <a href="{{ url_for('proveedor.detalle_proveedor', id=proveedor.id) }}"
+                        class="text-green-600 hover:underline">
                         Detalle
                     </a>
 
-                    <a href="{{ url_for('proveedores.modificar', id=proveedor.id) }}" 
-                       class="text-white bg-blue-600 hover:bg-blue-700 
-                              text-sm px-4 py-2 rounded-lg transition">
+                    <a href="{{ url_for('proveedor.modificar_proveedor', id=proveedor.id) }}"
+                        class="mx-2 text-blue-600 hover:underline">
                         Editar
                     </a>
 
                     {% if proveedor.estado %}
-                    <a href="{{ url_for('proveedores.eliminar', id=proveedor.id) }}" 
-                       class="text-white bg-red-500 hover:bg-red-600 
-                              text-sm px-4 py-2 rounded-lg transition">
+
+                    <button type="button" onclick='abrirModal(
+        {{ proveedor.id }},
+        {{ proveedor.nombre|tojson }},
+        "{{ url_for("proveedor.eliminar_proveedor", id=proveedor.id) }}",
+        "Desactivar Proveedor",
+        "Sí, Desactivar",
+        "red"
+    )' class="text-red-600 hover:underline">
                         Desactivar
-                    </a>
+                    </button>
+
                     {% else %}
-                    <a href="{{ url_for('proveedores.reactivar', id=proveedor.id) }}" 
-                       class="text-white bg-green-500 hover:bg-green-600 
-                              text-sm px-4 py-2 rounded-lg transition">
+
+                    <button type="button" onclick='abrirModal(
+        {{ proveedor.id }},
+        {{ proveedor.nombre|tojson }},
+        "{{ url_for("proveedor.reactivar_proveedor", id=proveedor.id) }}",
+        "Reactivar Proveedor",
+        "Sí, Reactivar",
+        "green"
+    )' class="text-green-600 hover:underline">
                         Reactivar
-                    </a>
+                    </button>
+
                     {% endif %}
 
                 </td>
@@ -139,7 +146,48 @@
             {% endfor %}
         </tbody>
     </table>
-
 </div>
 
+{{ modals.alerta_proveedor(form) }}
+
+{% endblock %}
+{% block scripts %}
+<script>
+    function abrirModal(id, nombre, formAction, titulo, botonTexto, botonColor) {
+        console.log("CLICK DETECTADO");
+        const modal = document.getElementById('modalAccion');
+        modal.classList.remove('hidden');
+
+        document.getElementById('nombreProveedor').textContent = nombre;
+        document.getElementById('tituloModal').textContent = titulo;
+
+        const boton = document.getElementById('botonModal');
+        boton.textContent = botonTexto;
+
+        let colorClase = '';
+
+        if (botonColor === 'red') {
+            colorClase = 'bg-red-500 hover:bg-red-600';
+        } else if (botonColor === 'green') {
+            colorClase = 'bg-green-500 hover:bg-green-600';
+        }
+
+        boton.className = `w-full text-white ${colorClase} font-medium rounded-lg text-sm px-5 py-3 transition mb-2`;
+
+
+        const form = document.getElementById('formModal');
+        form.action = formAction;
+    }
+
+    function cerrarModal() {
+        document.getElementById('modalAccion').classList.add('hidden');
+    }
+
+    const filtro = document.getElementById('filtroEstado');
+    if (filtro) {
+        filtro.addEventListener('change', function () {
+            this.closest('form').submit();
+        });
+    }
+</script>
 {% endblock %}

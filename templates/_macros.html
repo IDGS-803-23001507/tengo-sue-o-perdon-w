@@ -1,10 +1,4 @@
-{# ============================================================
-    _macros.html – Macros reutilizables para formularios
-    Uso: {% import "_macros.html" as macros %}
-         {{ macros.field(form.nombre) }}
-    ============================================================ #}
- 
- {# Renderiza un campo de texto / textarea con su label y errores #}
+
  {% macro field(f, label=None, placeholder='', extra_class='', rows=None) %}
    <div class="mb-5">
      <label for="{{ f.id }}"
@@ -29,8 +23,6 @@
    </div>
  {% endmacro %}
  
- 
- {# Botón de envío primario #}
  {% macro submit_btn(text='Guardar', full_width=true) %}
    <button type="submit"
            class="{{ 'w-full ' if full_width }}text-white bg-brand box-border border border-transparent
@@ -40,8 +32,6 @@
    </button>
  {% endmacro %}
  
- 
- {# Botón "Regresar" con flecha #}
  {% macro back_btn(url, text='Regresar') %}
    <a href="{{ url }}"
       class="text-white bg-gray-500 box-border border border-transparent hover:bg-gray-600
@@ -54,3 +44,33 @@
      {{ text }}
    </a>
  {% endmacro %}
+
+ {% macro alerta_proveedor(form) %}
+<div id="modalAccion" class="fixed inset-0 z-[100] hidden flex justify-center items-center bg-gray-900 bg-opacity-50 p-4">
+    <div class="w-full max-w-md">
+        <div class="bg-white rounded-2xl shadow p-6 text-center">
+
+            <h3 id="tituloModal" class="mb-2 text-xl font-bold text-gray-900"></h3>
+
+            <p class="text-gray-500 mb-6 text-sm">
+                ¿Seguro que deseas realizar esta acción sobre 
+                <strong id="nombreProveedor"></strong>?
+            </p>
+
+            <form method="POST" id="formModal">
+                {{ form.hidden_tag() }}
+
+                <button type="submit" id="botonModal"
+                    class="w-full text-white font-medium rounded-lg text-sm px-5 py-3 transition mb-2">
+                </button>
+            </form>
+
+            <button onclick="cerrarModal()"
+                class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-sm px-5 py-3 transition">
+                Cancelar
+            </button>
+
+        </div>
+    </div>
+</div>
+{% endmacro %}

@@ -1,0 +1,154 @@
+{% extends "layout/layout_produccion.html" %}
+{% block container %}
+
+<div class="flex justify-between items-center mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800">Registrar Merma</h1>
+        <p class="text-gray-500 mt-1">Captura una nueva merma en el sistema</p>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow-sm border overflow-hidden max-w-3xl">
+
+    {% if error_stock %}
+    <div class="fixed inset-0 z-[100] flex justify-center items-center bg-gray-900 bg-opacity-50 p-4">
+
+        <div class="w-full max-w-md">
+
+            <div class="bg-white rounded-2xl shadow p-6 md:p-8 text-center">
+
+                <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-triangle-exclamation text-red-500 text-xl"></i>
+                </div>
+
+                <h3 class="mb-2 text-xl md:text-2xl font-bold text-gray-900">
+                    Error de Stock
+                </h3>
+
+                <p class="text-gray-500 mb-6 text-sm md:text-base">
+                    {{ error_stock }}
+                </p>
+
+                <button onclick="cerrarModal()" class="w-full text-white bg-red-500 hover:bg-red-600 
+                       font-medium rounded-lg text-sm px-5 py-3 transition">
+                    Entendido
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+    {% endif %}
+
+    <form method="POST" class="p-6 space-y-6">
+
+        {{ form.hidden_tag() }}
+
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-700">
+                Materia Prima
+            </label>
+
+            <select id="materia_id" name="materia_id"
+                class="w-full border border-gray-300 rounded-lg p-2.5 text-sm shadow-sm">
+
+                <option value="">Selecciona una materia</option>
+
+                {% for m in materias %}
+                    <option value="{{ m.id_materia }}" data-stock="{{ m.stock_actual }}" data-unidad="{{ m.unidad.abreviacion }}">
+                        {{ m.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            
+            <p id="stockInfo" class="text-sm text-gray-500 mt-2">
+                Stock disponible: -
+            </p>
+        </div>
+
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-700">
+                Cantidad
+            </label>
+            {{ form.cantidad(
+            class="w-full border border-gray-300 rounded-lg p-2.5 text-sm
+            focus:ring-blue-500 focus:border-blue-500 shadow-sm",
+            placeholder="Ej. 10"
+            ) }}
+        </div>
+
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-700">
+                Fecha
+            </label>
+            {{ form.fecha(
+            class="w-full border border-gray-300 rounded-lg p-2.5 text-sm
+            focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+            ) }}
+        </div>
+
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-700">
+                Motivo
+            </label>
+            {{ form.motivo(
+            class="w-full border border-gray-300 rounded-lg p-2.5 text-sm
+            focus:ring-blue-500 focus:border-blue-500 shadow-sm",
+            placeholder="Describe la razón de la merma..."
+            ) }}
+        </div>
+
+        <div class="flex justify-end gap-3 pt-4 border-t">
+
+            <a href="{{ url_for('merma.merma') }}" class="text-gray-700 bg-gray-200 hover:bg-gray-300 
+                      font-medium rounded-lg text-sm px-5 py-2.5 transition">
+                Cancelar
+            </a>
+
+            <button type="submit" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 
+                           font-medium rounded-lg text-sm px-5 py-2.5 transition">
+                Guardar Merma
+            </button>
+
+        </div>
+
+    </form>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+const selectMateria = document.getElementById("materia_id");
+const stockInfo = document.getElementById("stockInfo");
+const btnGuardar = document.getElementById("btnGuardar");
+
+selectMateria.addEventListener("change", function() {
+    const selectedOption = this.options[this.selectedIndex];
+    const stock = selectedOption.getAttribute("data-stock");
+    const unidad = selectedOption.getAttribute("data-unidad");
+
+    if (stock !== null) {
+        stockInfo.textContent = `Stock disponible: ${stock} ${unidad || ''}`
+
+        if (stock == 0) {
+            stockInfo.classList.remove("text-gray-500");
+            stockInfo.classList.add("text-red-500");
+            btnGuardar.disabled = true;
+        } else {
+            stockInfo.classList.remove("text-red-500");
+            stockInfo.classList.add("text-green-600");
+            btnGuardar.disabled = false;
+        }
+    }
+});
+
+function cerrarModal() {
+    document.querySelector('.fixed').style.display = 'none';
+}
+</script>
+{% endblock %}

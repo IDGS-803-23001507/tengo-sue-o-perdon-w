@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 from sqlalchemy import Enum
 from sqlalchemy.dialects.mysql import LONGTEXT
 from flask_sqlalchemy import SQLAlchemy
@@ -6,7 +6,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
 
- #Tablas Feacture/login 
+ #Tabla login 
 class Usuario(db.Model):
     __tablename__ = "usuarios"
 
@@ -22,8 +22,6 @@ class Usuario(db.Model):
     creadoEn = db.Column("creado_en", db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     def establecerContrasena(self, contrasena: str) -> None:
-        # Se usa hash irreversible para que la contraseña nunca quede expuesta en texto plano,
-        # incluso si la base de datos fuera comprometida.
         self.contrasenaHash = generate_password_hash(contrasena)
 
     def validarContrasena(self, contrasena: str) -> bool:
@@ -114,5 +112,32 @@ class Proveedores(db.Model):
     nombre = db.Column(          db.String(100), nullable=False)
     email = db.Column('correo', db.String(50),  nullable=True)
     telefono = db.Column(          db.String(15),  nullable=True)
-    direccion = db.Column(          db.Text,        nullable=True)
+    colonia = db.Column( db.String(25),  nullable=True)
+    calle = db.Column( db.String(25),  nullable=True)
+    num_exterior = db.Column( db.String(5),  nullable=True)
     estado = db.Column('estatus',db.Boolean,     default=True)
+
+# Tabla de merma 
+class Merma(db.Model):
+    id_merma = db.Column(db.Integer, primary_key=True)
+    cantidad = db.Column(db.Numeric(10, 2), nullable = False)
+    fecha = db.Column( db.Date , default=date.today, nullable = False)
+    motivo = db.Column(Enum(
+                            "Error en preparación",
+                            "Derrame o caída",
+                            "Insumo en mal estado",
+                            "Producto caducado",
+                            "Sobrante de producción diaria",
+                            "Falla de refrigeración/almacenaje",
+                            "Muestra o degustación",
+                            "Pérdida no identificada",
+                            "Devolución por cliente", 
+      name='merma_enum'  
+    ), nullable = False)
+    
+    materia_id = db.Column(db.Integer, db.ForeignKey('Materia_prima.id_materia'), nullable=False)
+    materia = db.relationship('MateriaPrima', backref='mermas')
+    
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
+    usuario = db.relationship('Usuario', backref='mermas_registradas')
+    

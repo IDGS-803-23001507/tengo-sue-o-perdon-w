@@ -1,15 +1,16 @@
 {% extends "layout/layout_produccion.html" %}
 {% block container %}
-{% import "_macros.html" as macros %}
 
 <div class="mb-8">
-    <h1 class="text-3xl font-bold text-gray-800">Nuevo Proveedor</h1>
-    <p class="text-gray-500 mt-1">Registra un nuevo proveedor en el sistema.</p>
+    <h1 class="text-3xl font-bold text-gray-800">Modificar Proveedor</h1>
+    <p class="text-gray-500 mt-1">Actualiza la información del proveedor.</p>
 </div>
 
-<form action="{{ url_for('proveedor.nuevo_proveedor') }}" method="POST"
-    class="bg-white rounded-lg shadow-sm border p-6 md:p-8 max-w-4xl mx-auto" novalidate>
-    
+<form action="{{ url_for('proveedor.modificar_proveedor', id=proveedor.id) }}" 
+      method="POST" 
+      class="bg-white rounded-lg shadow-sm border p-6 md:p-8 max-w-4xl mx-auto"
+      novalidate>
+
     {{ form.hidden_tag() }}
 
     <h2 class="text-xl font-semibold mb-6 text-gray-800 border-b pb-2">
@@ -23,28 +24,25 @@
                 Nombre / Razón Social *
             </label>
 
-            {{ form.nombre(class="bg-gray-50 border border-gray-300 text-sm rounded-lg
-            focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
-            placeholder="Ingrese el nombre o razón social") }}
+            {{ form.nombre(class="bg-gray-50 border border-gray-300 text-sm rounded-lg 
+            focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm") }}
 
             {% for error in form.nombre.errors %}
-            <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+                <p class="mt-1 text-sm text-red-600">{{ error }}</p>
             {% endfor %}
         </div>
 
+        <!-- RFC -->
         <div>
             <label class="block mb-2 text-sm font-medium text-gray-900">
                 RFC *
             </label>
 
-            {{ form.rfc(class="bg-gray-50 border border-gray-300 text-sm rounded-lg
-            focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm uppercase",
-            placeholder="Ej: DGC950824KF1") }}
-
-            <p class="text-xs text-gray-500 mt-1">13 caracteres (RFC con homoclave)</p>
+            {{ form.rfc(class="bg-gray-50 border border-gray-300 text-sm rounded-lg 
+            focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm uppercase") }}
 
             {% for error in form.rfc.errors %}
-            <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+                <p class="mt-1 text-sm text-red-600">{{ error }}</p>
             {% endfor %}
         </div>
 
@@ -53,12 +51,11 @@
                 Teléfono
             </label>
 
-            {{ form.telefono(class="bg-gray-50 border border-gray-300 text-sm rounded-lg
-            focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
-            placeholder="Ej: 477-123-4567") }}
+            {{ form.telefono(class="bg-gray-50 border border-gray-300 text-sm rounded-lg 
+            focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm") }}
 
             {% for error in form.telefono.errors %}
-            <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+                <p class="mt-1 text-sm text-red-600">{{ error }}</p>
             {% endfor %}
         </div>
 
@@ -67,12 +64,11 @@
                 Correo Electrónico
             </label>
 
-            {{ form.email(class="bg-gray-50 border border-gray-300 text-sm rounded-lg
-            focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
-            placeholder="ejemplo@correo.com") }}
+            {{ form.email(class="bg-gray-50 border border-gray-300 text-sm rounded-lg 
+            focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm") }}
 
             {% for error in form.email.errors %}
-            <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+                <p class="mt-1 text-sm text-red-600">{{ error }}</p>
             {% endfor %}
         </div>
 
@@ -122,14 +118,16 @@
 
     <div class="flex flex-col md:flex-row justify-end gap-3 pt-4 border-t mt-4">
 
-        <a href="{{ url_for('proveedor.proveedores') }}" class="w-full md:w-auto text-center text-gray-700 bg-white border border-gray-300 
+        <a href="{{ url_for('proveedor.proveedores') }}"
+           class="w-full md:w-auto text-center text-gray-700 bg-white border border-gray-300 
                   hover:bg-gray-50 font-medium rounded-lg text-sm px-5 py-2.5 transition">
             Cancelar
         </a>
 
-        <button type="submit" class="w-full md:w-auto text-white bg-blue-600 hover:bg-blue-700 
+        <button type="submit"
+                class="w-full md:w-auto text-white bg-blue-600 hover:bg-blue-700 
                        font-medium rounded-lg text-sm px-5 py-2.5 transition">
-            Guardar Proveedor
+            Guardar Cambios
         </button>
 
     </div>

@@ -1,0 +1,121 @@
+{% extends "layout/layout_produccion.html" %}
+{% block container %}
+
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-800">Detalle del Proveedor</h1>
+    <p class="text-gray-500 mt-1">Información completa del proveedor.</p>
+</div>
+
+<div class="bg-white rounded-lg shadow-sm border max-w-4xl mx-auto overflow-hidden">
+    
+    <div class="bg-blue-600 px-6 py-8 flex flex-col items-center">
+        <div class="w-20 h-20 rounded-full bg-white flex items-center justify-center mb-3">
+            <span class="text-3xl font-bold text-blue-600">
+                {{ proveedor.nombre[0] | upper }}
+            </span>
+        </div>
+
+        <h3 class="text-xl font-semibold text-white">
+            {{ proveedor.nombre }}
+        </h3>
+
+        <p class="text-white text-sm opacity-90">
+            RFC: {{ proveedor.rfc }}
+        </p>
+
+        <div class="mt-2">
+            {% if proveedor.estado %}
+                <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                    Activo
+                </span>
+            {% else %}
+                <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                    Inactivo
+                </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="px-6 py-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <div>
+                <p class="text-sm text-gray-500">RFC</p>
+                <p class="text-sm text-gray-900 font-mono">
+                    {{ proveedor.rfc }}
+                </p>
+            </div>
+
+            <div>
+                <p class="text-sm text-gray-500">Teléfono</p>
+                <p class="text-sm text-gray-900">
+                    {{ proveedor.telefono or 'No registrado' }}
+                </p>
+            </div>
+
+            <div>
+                <p class="text-sm text-gray-500">Correo Electrónico</p>
+                <p class="text-sm text-gray-900">
+                    {{ proveedor.email or 'No registrado' }}
+                </p>
+            </div>
+
+            <div>
+                <p class="text-sm text-gray-500">Numero Exterior</p>
+                <p class="text-sm text-gray-900">
+                    {{ proveedor.num_exterior or 'No registrada' }}
+                </p>
+            </div>
+            
+            <div>
+                <p class="text-sm text-gray-500">Colonia</p>
+                <p class="text-sm text-gray-900">
+                    {{ proveedor.colonia or 'No registrada' }}
+                </p>
+            </div>
+
+
+            <div class="md:col-span-2">
+                <p class="text-sm text-gray-500">Calle</p>
+                <p class="text-sm text-gray-900">
+                    {{ proveedor.calle or 'No registrada' }}
+                </p>
+            </div>
+
+
+        </div>
+    </div>
+
+</div>
+
+<div class="max-w-4xl mx-auto mt-6 flex flex-col md:flex-row gap-3">
+
+    <a href="{{ url_for('proveedor.proveedores') }}"
+       class="w-full md:w-auto text-center text-gray-700 bg-white border border-gray-300 
+              hover:bg-gray-50 font-medium rounded-lg text-sm px-5 py-2.5 transition">
+        Regresar
+    </a>
+
+    <a href="{{ url_for('proveedor.modificar_proveedor', id=proveedor.id) }}" 
+       class="w-full md:w-auto text-center text-white bg-blue-600 hover:bg-blue-700 
+              font-medium rounded-lg text-sm px-5 py-2.5 transition">
+        Editar
+    </a>
+
+    {% if proveedor.estado %}
+    <a href="{{ url_for('proveedor.eliminar_proveedor', id=proveedor.id) }}" 
+       class="w-full md:w-auto text-center text-white bg-red-600 hover:bg-red-700 
+              font-medium rounded-lg text-sm px-5 py-2.5 transition">
+        Desactivar
+    </a>
+    {% else %}
+    <a href="{{ url_for('proveedor.reactivar_proveedor', id=proveedor.id) }}" 
+       class="w-full md:w-auto text-center text-white bg-green-600 hover:bg-green-700 
+              font-medium rounded-lg text-sm px-5 py-2.5 transition">
+        Reactivar
+    </a>
+    {% endif %}
+
+</div>
+
+{% endblock %}
