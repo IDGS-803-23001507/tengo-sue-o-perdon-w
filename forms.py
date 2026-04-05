@@ -384,3 +384,68 @@ class EmpleadoActualizarForm(FlaskForm):
     )
 
     submit = SubmitField("Registrar Empleado")
+
+
+class AgregarDetalleSolicitudForm(FlaskForm):
+    id_producto = SelectField(
+        "Producto",
+        coerce=int,
+        validators=[DataRequired(message="Selecciona un producto")],
+    )
+
+    cantidad = IntegerField(
+        "Cantidad",
+        default=1,
+        validators=[
+            DataRequired(message="La cantidad es obligatoria"),
+            NumberRange(min=1, message="La cantidad debe ser mayor a 0"),
+        ],
+    )
+
+    submit = SubmitField("Agregar a la solicitud")
+
+    def set_productos(self, productos):
+        self.id_producto.choices = [(p.id_producto, p.nombre) for p in productos]
+
+
+class ProductoTerminadoForm(FlaskForm):
+    nombre = StringField(
+        "Nombre del Producto",
+        validators=[
+            DataRequired(message="El nombre es obligatorio"),
+            Length(max=50, message="El nombre no puede exceder 50 caracteres"),
+        ],
+    )
+
+    categoria = SelectField(
+        "Categoría",
+        choices=[
+            ("bebidas", "Bebidas"),
+            ("alimentos", "Alimentos"),
+        ],
+        validators=[DataRequired(message="Selecciona una categoría")],
+    )
+
+    precio_venta = DecimalField(
+        "Precio de Venta",
+        validators=[
+            DataRequired(message="El precio es obligatorio"),
+            NumberRange(min=0.01, message="El precio debe ser mayor a 0"),
+        ],
+        places=2,
+    )
+
+    submit = SubmitField("Guardar Producto")
+
+
+class ProductoTerminadoEditarForm(ProductoTerminadoForm):
+    estatus = SelectField(
+        "Estatus",
+        choices=[
+            ("1", "Activo (Visible en el menú)"),
+            ("0", "Inactivo (Fuera de temporada/No disponible)"),
+        ],
+        validators=[DataRequired(message="Selecciona un estatus")],
+    )
+
+    submit = SubmitField("Actualizar Producto")

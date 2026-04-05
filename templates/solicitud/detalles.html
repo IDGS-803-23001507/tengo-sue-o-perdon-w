@@ -1,0 +1,61 @@
+{% extends "layout/layout_produccion.html" %}
+
+{% block container %}
+<div class="mb-6 flex items-center justify-between">
+    <div>
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Detalle de Solicitud #{{ solicitud.id_solicitud }}</h1>
+        <p class="text-gray-500 mt-1">Agrega productos para preparar esta orden de producción.</p>
+    </div>
+    <a href="{{ url_for('solicitud.index') }}" class="text-sm text-gray-600 hover:text-gray-900 hover:underline">Volver al listado</a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-1 bg-white rounded-lg border shadow-sm p-4">
+        <h2 class="font-semibold text-gray-800 mb-4">Agregar producto</h2>
+
+        <form method="POST" class="space-y-4">
+            {{ form.hidden_tag() }}
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">Producto</label>
+                {{ form.id_producto(class="w-full border border-gray-300 rounded-lg p-2.5 text-sm", required=true) }}
+            </div>
+
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">Cantidad</label>
+                {{ form.cantidad(min="1", class="w-full border border-gray-300 rounded-lg p-2.5 text-sm", required=true) }}
+            </div>
+
+            {{ form.submit(class="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 transition") }}
+        </form>
+    </div>
+
+    <div class="lg:col-span-2 bg-white rounded-lg border shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b bg-gray-50">
+            <h2 class="font-semibold text-gray-800">Productos en la solicitud</h2>
+        </div>
+
+        <table class="w-full text-sm text-left text-gray-600">
+            <thead class="text-xs uppercase bg-gray-50 text-gray-700 border-b">
+                <tr>
+                    <th class="px-4 py-3">Producto</th>
+                    <th class="px-4 py-3 text-center">Cantidad</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detalle in solicitud.detalles %}
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-4 py-3">{{ detalle.producto.nombre if detalle.producto else 'Producto eliminado' }}</td>
+                    <td class="px-4 py-3 text-center font-semibold">{{ detalle.cantidad }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="2" class="px-4 py-8 text-center text-gray-500">
+                        Esta solicitud aún no tiene productos.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -88,7 +88,7 @@
           <span>Productos</span>
         </a>
 
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        <a href="{{ url_for('solicitud.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
         {% if active_page == 'solicitudes' %}
             bg-gray-100 text-gray-900
         {% else %}

@@ -301,3 +301,35 @@ class Pedido(db.Model):
 
     estado = db.Column(db.String(20), default="pendiente")
     id_venta = db.Column(db.Integer, db.ForeignKey("ventas.id_venta"), nullable=True)
+
+
+class SolicitudProduccion(db.Model):
+    __tablename__ = "Solicitud_produccion"
+
+    id_solicitud = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id_usuario = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
+    fecha = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    estado = db.Column(
+        Enum("pendiente", "en_proceso", "finalizado", "cancelado", name="estado_solicitud_enum"),
+        nullable=False,
+        default="pendiente",
+    )
+
+    usuario = db.relationship("Usuario", backref=db.backref("solicitudes_produccion", lazy=True))
+    detalles = db.relationship(
+        "DetalleProduccion",
+        backref="solicitud",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
+
+
+class DetalleProduccion(db.Model):
+    __tablename__ = "Detalle_produccion"
+
+    id_detalle = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id_solicitud = db.Column(db.Integer, db.ForeignKey("Solicitud_produccion.id_solicitud"), nullable=False, index=True)
+    id_producto = db.Column(db.Integer, db.ForeignKey("Producto.id_producto"), nullable=False, index=True)
+    cantidad = db.Column(db.Integer, nullable=False)
+
+    producto = db.relationship("Producto", backref=db.backref("detalles_produccion", lazy=True))
