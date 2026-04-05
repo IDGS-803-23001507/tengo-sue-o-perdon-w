@@ -8,9 +8,10 @@ proveedor_bp = Blueprint('proveedor', __name__)
 @proveedor_bp.route('/proveedores')
 def proveedores():
     busqueda = request.args.get('busqueda', '')
-    estado = request.args.get('estado', 'todos')
+    estado = request.args.get('estado', 'activos')
 
     query = Proveedores.query
+
     if busqueda:
         query = query.filter(
             db.or_(
@@ -18,12 +19,13 @@ def proveedores():
                 Proveedores.rfc.ilike(f'%{busqueda}%')
             )
         )
-    if estado == 'activos':
-        query = query.filter(Proveedores.estado == True)
-    elif estado == 'inactivos':
-        query = query.filter(Proveedores.estado == False)
 
-    proveedores_list = query.order_by(Proveedores.nombre).all()
+    if estado == 'todos':
+        proveedores_list = query.order_by(Proveedores.nombre).all()
+    elif estado == 'inactivos':
+        proveedores_list = query.filter(Proveedores.estado == False).order_by(Proveedores.nombre).all()
+    else: 
+        proveedores_list = query.filter(Proveedores.estado == True).order_by(Proveedores.nombre).all()
 
     form = DesactivarForm()
 
@@ -32,7 +34,7 @@ def proveedores():
         proveedores=proveedores_list,
         busqueda=busqueda,
         estado=estado,
-        form=form  
+        form=form
     )
 
 @proveedor_bp.route('/proveedores/nuevo', methods=['GET', 'POST'])

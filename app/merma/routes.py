@@ -29,7 +29,7 @@ def merma():
 
     mermas = query.order_by(Merma.fecha.desc()).all()
 
-    return render_template('merma/merma.html', mermas=mermas)
+    return render_template('merma/merma.html', active_page = 'merma', mermas=mermas)
 
 
 @merma_bp.route('/nueva_merma', methods=['GET', 'POST'])

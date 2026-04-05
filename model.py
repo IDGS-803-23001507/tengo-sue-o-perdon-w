@@ -18,10 +18,6 @@ class Usuario(db.Model):
     __tablename__ = "usuarios"
 
     id = db.Column(db.Integer, primary_key=True)
-    
-    id_cliente = db.Column("id_cliente", db.Integer,db.ForeignKey("clientes.id_cliente"), unique=True, nullable=True)
-     
-    usuario = db.Column(db.String(60), unique=True, nullable=True, index=True)
     correo = db.Column(db.String(120), unique=True, nullable=False, index=True)
     contrasenaHash = db.Column("password_hash", db.String(255), nullable=False)
     rolId = db.Column("rol_id", db.Integer, db.ForeignKey("roles.id"), nullable=False, index=True)
@@ -30,12 +26,8 @@ class Usuario(db.Model):
     cuentaBloqueada = db.Column("cuenta_bloqueada", db.Boolean, nullable=False, default=False)
     bloqueoHasta = db.Column("bloqueo_hasta", db.DateTime(timezone=True), nullable=True)
     creadoEn = db.Column("creado_en", db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
-    
-    rolRef = db.relationship("Rol", backref=db.backref("usuarios", lazy=True))
 
-    cliente = db.relationship(
-        "Cliente", backref=db.backref("usuario", uselist=False), lazy="joined"
-    )
+    rolRef = db.relationship("Rol", backref=db.backref("usuarios", lazy=True))
 
     @property
     def rol(self) -> str:
@@ -222,34 +214,38 @@ class DetalleCompra(db.Model):
 
 class Cliente(db.Model):
     __tablename__ = "clientes"
-    
-    id = db.Column("id_cliente", db.Integer, primary_key=True)
 
+    id = db.Column(db.Integer, primary_key=True)
+    usuarioId = db.Column(db.Integer, db.ForeignKey("usuarios.id"), unique=True, nullable=False)
+    
     nombre = db.Column(db.String(120), nullable=False)
-    apellidoPaterno = db.Column("apellidoPaterno", db.String(50), nullable=False)
-    apellidoMaterno = db.Column("apellidoMaterno", db.String(50), nullable=True)
+    apellidoPaterno = db.Column(db.String(50), nullable=False)
+    apellidoMaterno = db.Column(db.String(50), nullable=True)
     telefono = db.Column(db.String(15), nullable=True)
     alias = db.Column(db.String(50), nullable=True)
-    estado = db.Column(db.Boolean, default=True)
+    estado = db.Column(db.Boolean, default=True)  # Usa Boolean si solo almacenas activo/inactivo
+    creadoEn = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
-    creadoEn = db.Column(
-        "creado_en",
-        db.DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(timezone.utc)
-    )
-
-    @property
-    def nombreCompleto(self):
-        return f"{self.nombre} {self.apellidoPaterno} {self.apellidoMaterno or ''}".strip()
+    usuario = db.relationship("Usuario", backref=db.backref("cliente", uselist=False), lazy="joined")
     
-'''Tabla Ventas'''
+class Empleado(db.Model):
+    __tablename__ = "empleados"
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuarioId = db.Column(db.Integer, db.ForeignKey("usuarios.id"), unique=True, nullable=False)
+    username = db.Column(db.String(60), unique=True, nullable=False)
+
+    nombre = db.Column(db.String(60), nullable=False)
+    fechaIngreso = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    estado = db.Column(db.Boolean, default=True)
+    usuario = db.relationship("Usuario", backref=db.backref("empleado", uselist=False), lazy="joined")
+
 class Venta(db.Model):
     __tablename__ = "ventas"
 
     id_venta = db.Column(db.Integer, primary_key=True)
     id_usuario = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
-    id_cliente = db.Column(db.Integer, db.ForeignKey("clientes.id_cliente"), nullable=True)
+    id_cliente = db.Column(db.Integer, db.ForeignKey("clientes.id"), nullable=True)
     
     total = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     utilidadBruta = db.Column("utilidad_bruta", db.Numeric(10, 2), nullable=False, default=0)

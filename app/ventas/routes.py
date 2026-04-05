@@ -59,8 +59,8 @@ def comprarProducto():
 	db.session.flush()
 
 	detalle = DetalleVenta(
-		ventaId=venta.id,
-		productoId=producto.id,
+		ventaId=venta.id_venta,
+		productoId=producto.id_producto,
 		cantidad=cantidad,
 		precioUnitario=precioUnitario,
 		costoUnitario=costoUnitario,

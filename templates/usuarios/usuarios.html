@@ -1,94 +1,151 @@
 {% extends "layout/layout_produccion.html" %}
-
+{% import '_macros.html' as modals%}
 {% block container %}
-<div class="space-y-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 class="text-2xl font-bold text-gray-900">Directorio de Usuarios</h1>
-        <a href="{{ url_for('usuarios.nuevo') }}" class="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
-            <i class="fa-solid fa-plus"></i>
-            Nuevo Usuario
-        </a>
+<div class="flex justify-between items-center mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800">Registro de Empleados</h1>
+        <p class="text-gray-500 mt-1">Filtra y consulta los Empleados registrados</p>
+    </div>
+    <a href="{{ url_for('usuarios.nuevo') }}"
+        class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 flex items-center gap-2 transition w-fit">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        Añadir Empleado
+    </a>
+</div>
+
+<section class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="border-b border-gray-200 p-4">
+        <form method="GET" action="{{ url_for('usuarios.index') }}" class="flex w-full items-center gap-2 sm:max-w-md">
+            <div class="relative w-full">
+                <i
+                    class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" name="q" value="{{ terminoBusqueda or '' }}" placeholder="Buscar usuario..."
+                    autocomplete="off"
+                    class="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-sm focus:border-slate-500 focus:ring-slate-500">
+            </div>
+
+            <select id="filtroEstado" name="estado" class="bg-white border border-gray-300 text-sm rounded-lg 
+               focus:ring-blue-500 focus:border-blue-500 p-2.5 shadow-sm">
+                <option value="todos" {% if estado=='todos' %}selected{% endif %}>Todos</option>
+                <option value="activos" {% if estado=='activos' %}selected{% endif %}>Activos</option>
+                <option value="inactivos" {% if estado=='inactivos' %}selected{% endif %}>Inactivos</option>
+            </select>
+
+            <button type="submit"
+                class="rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800">Buscar</button>
+        </form>
     </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="space-y-3">
-                {% for category, message in messages %}
-                    {% if category == 'danger' %}
-                        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ message }}</div>
-                    {% elif category == 'success' %}
-                        <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ message }}</div>
-                    {% else %}
-                        <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">{{ message }}</div>
-                    {% endif %}
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                    <th class="px-6 py-4">Nombre / Usuario</th>
+                    <th class="px-6 py-4">Correo</th>
+                    <th class="px-6 py-4">Rol</th>
+                    <th class="px-6 py-4">Estado</th>
+                    <th class="px-6 py-4 text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for usuario in usuarios %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        <p class="font-semibold text-gray-900">{{ usuario.empleado.nombre }}</p>
+                        <p class="text-xs text-gray-500">@{{ usuario.empleado.username or 'sin-usuario' }}</p>
+                    </td>
+                    <td class="px-6 py-4 text-gray-600">{{ usuario.correo }}</td>
+                    <td class="px-6 py-4 text-gray-700">{{ usuario.rol }}</td>
+                    <td class="px-6 py-4">
+                        {% if usuario.estado == 'Activo' %}
+                        <span
+                            class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">Activo</span>
+                        {% else %}
+                        <span
+                            class="rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center justify-end gap-4">
+                            {% if usuario.estado == 'Activo' %}
+
+                            <a href="{{ url_for('usuarios.editar', idUsuario=usuario.id) }}"
+                                class="text-blue-600 hover:underline">Editar</a>
+
+                            <button onclick="abrirModalAccion(
+                                    'Desactivar usuario',
+                                    '¿Seguro que deseas desactivar a este usuario?',
+                                    '{{ url_for("usuarios.desactivar", idUsuario=usuario.id) }}', 'bg-red-600 hover:bg-red-700' , 'Desactivar' )"
+                                    class="text-red-600 hover:underline">
+                                Desactivar
+                            </button>
+
+                            {% else %}
+
+                            <button onclick="abrirModalAccion(
+                            'Reactivar usuario',
+                            '¿Seguro que deseas reactivar a este usuario?',
+                            '{{ url_for("usuarios.reactivar", idUsuario=usuario.id) }}',
+                            'bg-green-600 hover:bg-green-700',
+                            'Reactivar')"
+                            class="text-green-600 hover:underline">
+                                Reactivar
+                            </button>
+
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="px-6 py-12 text-center text-sm text-gray-500">
+                        {% if terminoBusqueda %}
+                        No hay coincidencias para “{{ terminoBusqueda }}”.
+                        {% else %}
+                        No hay usuarios registrados.
+                        {% endif %}
+                    </td>
+                </tr>
                 {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
-
-    <section class="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div class="border-b border-gray-200 p-4">
-            <form method="GET" action="{{ url_for('usuarios.index') }}" class="flex w-full items-center gap-2 sm:max-w-md">
-                <div class="relative w-full">
-                    <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                    <input type="text" name="q" value="{{ terminoBusqueda or '' }}" placeholder="Buscar usuario..." autocomplete="off" class="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-sm focus:border-slate-500 focus:ring-slate-500">
-                </div>
-                <button type="submit" class="rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800">Buscar</button>
-            </form>
-        </div>
-
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
-                    <tr>
-                        <th class="px-6 py-4">Nombre / Usuario</th>
-                        <th class="px-6 py-4">Correo</th>
-                        <th class="px-6 py-4">Rol</th>
-                        <th class="px-6 py-4">Estado</th>
-                        <th class="px-6 py-4 text-right">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    {% for usuario in usuarios %}
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4">
-                                <p class="font-semibold text-gray-900">{{ usuario.nombre }}</p>
-                                <p class="text-xs text-gray-500">@{{ usuario.usuario or 'sin-usuario' }}</p>
-                            </td>
-                            <td class="px-6 py-4 text-gray-600">{{ usuario.correo }}</td>
-                            <td class="px-6 py-4 text-gray-700">{{ usuario.rol }}</td>
-                            <td class="px-6 py-4">
-                                {% if usuario.estado == 'Activo' %}
-                                    <span class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">Activo</span>
-                                {% else %}
-                                    <span class="rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">Inactivo</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="flex items-center justify-end gap-4">
-                                    <a href="{{ url_for('usuarios.editar', idUsuario=usuario.id) }}" class="text-sm font-medium text-slate-700 hover:text-slate-900">Editar</a>
-                                    {% if usuario.estado == 'Activo' %}
-                                        <form method="POST" action="{{ url_for('usuarios.desactivar', idUsuario=usuario.id) }}" onsubmit="return confirm('¿Seguro que deseas desactivar este usuario?');">
-                                            <button type="submit" class="text-sm font-medium text-red-600 hover:text-red-800">Suspender</button>
-                                        </form>
-                                    {% endif %}
-                                </div>
-                            </td>
-                        </tr>
-                    {% else %}
-                        <tr>
-                            <td colspan="5" class="px-6 py-12 text-center text-sm text-gray-500">
-                                {% if terminoBusqueda %}
-                                    No hay coincidencias para “{{ terminoBusqueda }}”.
-                                {% else %}
-                                    No hay usuarios registrados.
-                                {% endif %}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </section>
+            </tbody>
+        </table>
+    </div>
+</section>
 </div>
+
+{{ modals.alerta_proveedor(form) }}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const filtro = document.getElementById('filtroEstado');
+    if (filtro) {
+        filtro.addEventListener('change', function () {
+            this.closest('form').submit();
+        });
+    }
+
+    function abrirModalAccion(titulo, mensaje, actionUrl, claseBoton, textoBoton) {
+        const modal = document.getElementById("modalAccion");
+    
+        document.getElementById("tituloModal").innerText = titulo;
+        document.getElementById("formModal").action = actionUrl;
+    
+        const boton = document.getElementById("botonModal");
+        boton.innerText = textoBoton;
+    
+        boton.className = "w-full text-white font-medium rounded-lg text-sm px-5 py-3 transition mb-2 " + claseBoton;
+    
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+    }
+    
+    function cerrarModal() {
+        document.getElementById("modalAccion").classList.add("hidden");
+    }
+    </script>
+
 {% endblock %}

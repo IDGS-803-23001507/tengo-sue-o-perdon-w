@@ -9,7 +9,7 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from forms import LoginForm, RecuperarContrasenaForm, ClienteForm, ResetearContrasenaForm
-from model import RegistroSesion, Rol, Usuario, Cliente, db
+from model import RegistroSesion, Rol, Usuario, Cliente, Empleado, db
 
 authBp = Blueprint("auth", __name__)
 
@@ -84,8 +84,9 @@ def iniciarSesion():
         contrasena = form.contrasena.data
 
         errorGenerico = "Usuario o contraseña incorrectos"
-        usuario = Usuario.query.filter(
-            (Usuario.correo == identificador) | (Usuario.usuario == identificador)
+        
+        usuario = Usuario.query.outerjoin(Empleado).filter(
+        (Usuario.correo == identificador) | (Empleado.username == identificador)
         ).first()
 
         if not usuario:
@@ -130,10 +131,16 @@ def iniciarSesion():
         session.permanent = True
         session["inicioSesion"] = True
         session["usuarioId"] = usuario.id
-        session["usuarioNombre"] = usuario.cliente.nombre
+
+        if usuario.rolRef.nombre == "Cliente":
+            session["usuarioNombre"] = usuario.cliente.nombre
+            session["usuarioLogin"] = usuario.correo
+        else:
+            session["usuarioNombre"] = usuario.empleado.nombre
+            session["usuarioLogin"] = usuario.empleado.username
+
         session["usuarioCorreo"] = usuario.correo
-        session["usuarioLogin"] = usuario.usuario
-        session["usuarioRol"] = usuario.rol
+        session["usuarioRol"] = usuario.rolRef.nombre
         session["registroSesionId"] = registroSesion.id
         session["tokenSesion"] = tokenSesion
 
@@ -150,11 +157,12 @@ def iniciarSesion():
 
 @authBp.route("/register", methods=["GET", "POST"], endpoint="registrarUsuario")
 def registrarUsuario():
+    
     form = ClienteForm()
 
     if form.validate_on_submit():
+   
         try:
-        
             nombre = form.nombre.data.strip()
             apellidoPaterno = form.apellidoPaterno.data.strip()
             apellidoMaterno = (form.apellidoMaterno.data or "").strip()
@@ -164,39 +172,17 @@ def registrarUsuario():
             correo = form.correo.data.strip().lower()
             contrasena = form.contrasena.data
 
-            existe = Usuario.query.filter_by(correo=correo).first()
-            if existe:
+            if Usuario.query.filter_by(correo=correo).first():
                 flash("El correo ya está registrado.", "danger")
                 return render_template("login/registrar_cliente.html", form=form)
 
-            usuarioSugerido = correo.split("@")[0]
-            consecutivo = 0
-            usuarioGenerado = usuarioSugerido
-
-            while Usuario.query.filter_by(usuario=usuarioGenerado).first():
-                consecutivo += 1
-                usuarioGenerado = f"{usuarioSugerido}{consecutivo}"
-
             rolCliente = Rol.query.filter_by(nombre="Cliente").first()
             if not rolCliente:
-                flash("No existe el rol Cliente. Contacta al administrador.", "danger")
+                flash("No existe el rol Cliente.", "danger")
                 return render_template("login/registrar_cliente.html", form=form)
 
-            cliente = Cliente(
-                nombre=nombre,
-                apellidoPaterno=apellidoPaterno,
-                apellidoMaterno=apellidoMaterno,
-                telefono=telefono,
-                alias=alias,
-            )
-
-            db.session.add(cliente)
-            db.session.flush() 
-
             usuario = Usuario(
-                usuario=usuarioGenerado,
                 correo=correo,
-                id_cliente=cliente.id, 
                 rolId=rolCliente.id,
                 estado="Activo"
             )
@@ -205,6 +191,18 @@ def registrarUsuario():
             usuario.resetearSeguridad()
 
             db.session.add(usuario)
+            db.session.flush()  
+
+            cliente = Cliente(
+                usuarioId=usuario.id,
+                nombre=nombre,
+                apellidoPaterno=apellidoPaterno,
+                apellidoMaterno=apellidoMaterno,
+                telefono=telefono,
+                alias=alias,
+            )
+
+            db.session.add(cliente)
             db.session.commit()
 
             flash("Registro completado. Ahora puedes iniciar sesión.", "success")
@@ -213,7 +211,7 @@ def registrarUsuario():
         except Exception as e:
             db.session.rollback()
             flash("Ocurrió un error al registrar el usuario.", "danger")
-            print(e)  
+            print(e)
 
     if request.method == "POST":
         for erroresCampo in form.errors.values():

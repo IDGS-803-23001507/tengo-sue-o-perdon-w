@@ -1,7 +1,7 @@
 from flask import current_app
 from sqlalchemy import inspect, text
 
-from model import Rol, Usuario, Cliente, db
+from model import Rol, Usuario, Cliente, Empleado, db
 
 
 def asegurar_esquema_usuarios() -> None:
@@ -103,7 +103,7 @@ def _generar_usuario_unico(correo_base: str) -> str:
     usuario_generado = usuario_base
     consecutivo = 0
 
-    while Usuario.query.filter_by(usuario=usuario_generado).first():
+    while Empleado.query.filter_by(username=usuario_generado).first():
         consecutivo += 1
         usuario_generado = f"{usuario_base}{consecutivo}"
 
@@ -144,10 +144,11 @@ def seed_db() -> None:
         Usuario.rolId == rol_gerente.id,
         Usuario.estado == "Activo",
     ).first()
+
     if gerente_existente:
         return
-
-    nombre = str(current_app.config.get("USUARIO_GERENTE_NOMBRE", "Administrador Urban Coffee")).strip()
+    
+    nombre = str(current_app.config.get("USUARIO_GERENTE_NOMBRE", "Administrador")).strip()
     correo_base = str(current_app.config.get("USUARIO_GERENTE_CORREO", "admin@urbancoffee.com")).strip().lower()
     contrasena = str(current_app.config.get("USUARIO_GERENTE_PASSWORD", "PasswordSegura123!"))
 
@@ -158,30 +159,25 @@ def seed_db() -> None:
     usuario_base = correo_base.split("@")[0] or "gerente"
     correo_final = _generar_correo_unico(correo_base, usuario_base)
 
-    cliente_admin = Cliente(
-        nombre=nombre or "Administrador Urban Coffee",
-        apellidoPaterno="Admin",
-        apellidoMaterno="",
-        telefono="",
-        alias="Administrador"
-    )
-
-    db.session.add(cliente_admin)
-    db.session.flush() 
-
     admin = Usuario(
-        usuario=usuario_generado,
         correo=correo_final,
         rolId=rol_gerente.id,
-        estado="Activo",
-        id_cliente=cliente_admin.id 
+        estado="Activo"
     )
     admin.establecerContrasena(contrasena)
     admin.resetearSeguridad()
 
     db.session.add(admin)
-    db.session.commit()
+    db.session.flush() 
 
+    empleado_admin = Empleado(
+        usuarioId=admin.id,
+        username=usuario_generado,
+        nombre=nombre
+    )
+
+    db.session.add(empleado_admin)
+    db.session.commit()
 
 def inicializar_db() -> None:
     db.create_all()

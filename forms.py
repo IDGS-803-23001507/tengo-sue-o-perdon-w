@@ -31,31 +31,6 @@ class LoginForm(FlaskForm):
         ],
     )
 
-class RegistroUsuarioForm(FlaskForm):
-    nombre = StringField(
-        "Nombre",
-        validators=[
-            DataRequired(message="El nombre es obligatorio"),
-            Length(min=3, max=120, message="El nombre debe tener entre 3 y 120 caracteres"),
-        ],
-    )
-    correo = StringField(
-        "Correo Electrónico",
-        validators=[
-            DataRequired(message="El correo es obligatorio"),
-            Email(message="Ingrese un correo válido"),
-            Length(max=120, message="El correo no puede exceder 120 caracteres"),
-        ],
-    )
-    contrasena = PasswordField(
-        "Contraseña",
-        validators=[
-            DataRequired(message="La contraseña es obligatoria"),
-            Length(min=6, max=128, message="La contraseña debe tener entre 6 y 128 caracteres"),
-        ],
-    )
-
-
 class RecuperarContrasenaForm(FlaskForm):
     correo = StringField(
         "Correo Electrónico",
@@ -81,90 +56,6 @@ class ResetearContrasenaForm(FlaskForm):
             DataRequired(message="Debes confirmar la contraseña"),
             EqualTo("contrasena", message="Las contraseñas no coinciden"),
         ],
-    )
-
-
-class UsuarioCrearForm(FlaskForm):
-    nombre = StringField(
-        "Nombre",
-        validators=[
-            DataRequired(message="El nombre es obligatorio"),
-            Length(min=3, max=120, message="El nombre debe tener entre 3 y 120 caracteres"),
-        ],
-    )
-    usuario = StringField(
-        "Usuario",
-        validators=[
-            DataRequired(message="El usuario es obligatorio"),
-            Length(min=3, max=60, message="El usuario debe tener entre 3 y 60 caracteres"),
-        ],
-    )
-    correo = StringField(
-        "Correo Electrónico",
-        validators=[
-            DataRequired(message="El correo es obligatorio"),
-            Email(message="Ingrese un correo válido"),
-            Length(max=120, message="El correo no puede exceder 120 caracteres"),
-        ],
-    )
-    rol = SelectField(
-        "Rol",
-        choices=ROLES_USUARIO,
-        validators=[DataRequired(message="El rol es obligatorio")],
-    )
-    contrasenaTemporal = PasswordField(
-        "Contraseña Temporal",
-        validators=[
-            DataRequired(message="La contraseña temporal es obligatoria"),
-            Length(min=6, max=128, message="La contraseña debe tener entre 6 y 128 caracteres"),
-        ],
-    )
-    estado = SelectField(
-        "Estado",
-        choices=ESTADOS_USUARIO,
-        validators=[DataRequired(message="El estado es obligatorio")],
-    )
-
-
-class UsuarioActualizarForm(FlaskForm):
-    nombre = StringField(
-        "Nombre",
-        validators=[
-            DataRequired(message="El nombre es obligatorio"),
-            Length(min=3, max=120, message="El nombre debe tener entre 3 y 120 caracteres"),
-        ],
-    )
-    usuario = StringField(
-        "Usuario",
-        validators=[
-            DataRequired(message="El usuario es obligatorio"),
-            Length(min=3, max=60, message="El usuario debe tener entre 3 y 60 caracteres"),
-        ],
-    )
-    correo = StringField(
-        "Correo Electrónico",
-        validators=[
-            DataRequired(message="El correo es obligatorio"),
-            Email(message="Ingrese un correo válido"),
-            Length(max=120, message="El correo no puede exceder 120 caracteres"),
-        ],
-    )
-    rol = SelectField(
-        "Rol",
-        choices=ROLES_USUARIO,
-        validators=[DataRequired(message="El rol es obligatorio")],
-    )
-    contrasenaTemporal = PasswordField(
-        "Contraseña Temporal",
-        validators=[
-            Optional(),
-            Length(min=6, max=128, message="La contraseña debe tener entre 6 y 128 caracteres"),
-        ],
-    )
-    estado = SelectField(
-        "Estado",
-        choices=ESTADOS_USUARIO,
-        validators=[DataRequired(message="El estado es obligatorio")],
     )
 
 class ProveedorForm(FlaskForm):
@@ -407,3 +298,89 @@ class ClienteForm(FlaskForm):
     )
     
     submit = SubmitField("Registrar")
+    
+class CrearEmpleadoForm(FlaskForm):
+
+    correo = StringField(
+        "Correo Electrónico",
+        validators=[
+            DataRequired(message="El correo es obligatorio"),
+            Email(message="Ingrese un correo válido"),
+            Length(max=120),
+        ],
+    )
+
+    username = StringField(
+        "Usuario",
+        validators=[
+            DataRequired(message="El usuario es obligatorio"),
+            Length(min=3, max=60),
+        ],
+    )
+
+    nombre = StringField(
+        "Nombre",
+        validators=[
+            DataRequired(message="El nombre es obligatorio"),
+            Length(max=60),
+        ],
+    )
+
+    rol = SelectField(
+        "Rol",
+        choices=ROLES_USUARIO,
+        validators=[DataRequired("Rol requerido")],
+    )
+
+    contrasenaTemporal = PasswordField(
+        "Contraseña",
+        validators=[
+            DataRequired("Contraseña requerida"),
+            Length(min=6, max=128),
+        ],
+    )
+
+    submit = SubmitField("Registrar Empleado")
+    
+class EmpleadoActualizarForm(FlaskForm):
+
+    correo = StringField(
+        "Correo Electrónico",
+        validators=[
+            DataRequired(message="El correo es obligatorio"),
+            Email(message="Ingrese un correo válido"),
+            Length(max=120),
+        ],
+    )
+
+    username = StringField(
+        "Usuario",
+        validators=[
+            DataRequired(message="El usuario es obligatorio"),
+            Length(min=3, max=60),
+        ],
+    )
+
+    nombre = StringField(
+        "Nombre",
+        validators=[
+            DataRequired(message="El nombre es obligatorio"),
+            Length(max=60),
+        ],
+    )
+
+    rol = SelectField(
+        "Rol",
+        choices=ROLES_USUARIO,
+        validators=[DataRequired()],
+    )
+
+    contrasenaTemporal = PasswordField(
+        "Contraseña",
+        validators=[
+            Optional(),
+            Length(min=6, max=128),
+        ],
+    )
+
+    submit = SubmitField("Registrar Empleado")

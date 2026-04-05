@@ -83,7 +83,7 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
             Venta.fecha < finHoy,
         ).scalar() or Decimal("0.00")
 
-        numeroTicketsDia = db.session.query(func.count(Venta.id)).filter(
+        numeroTicketsDia = db.session.query(func.count(Venta.id_venta)).filter(
             Venta.confirmada.is_(True),
             Venta.fecha >= inicioHoy,
             Venta.fecha < finHoy,
@@ -116,7 +116,7 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
     ).join(
         DetalleVenta, DetalleVenta.id_producto == Producto.id_producto
     ).join(
-        Venta, Venta.id == DetalleVenta.id_venta
+        Venta, Venta.id_venta == DetalleVenta.id_venta
     ).filter(
         Venta.confirmada.is_(True),
         func.date(Venta.fecha) >= inicioPeriodo,

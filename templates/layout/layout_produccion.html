@@ -169,7 +169,7 @@
         </a>
         {% endif %}
 
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        <a href="{{ url_for('merma.merma') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
         {% if active_page == 'merma' %}
             bg-gray-100 text-gray-900
         {% else %}
@@ -193,6 +193,23 @@
     </aside>
 
     <main class="flex-1 overflow-y-auto p-6">
+      
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+          <div class="space-y-3">
+              {% for category, message in messages %}
+                  {% if category == 'danger' %}
+                      <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ message }}</div>
+                  {% elif category == 'success' %}
+                      <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ message }}</div>
+                  {% else %}
+                      <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">{{ message }}</div>
+                  {% endif %}
+              {% endfor %}
+          </div>
+      {% endif %}
+  {% endwith %}
+
       {% block container %}
       {% endblock %}
     </main>
