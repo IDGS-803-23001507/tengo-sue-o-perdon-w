@@ -384,3 +384,25 @@ class EmpleadoActualizarForm(FlaskForm):
     )
 
     submit = SubmitField("Registrar Empleado")
+
+
+class AgregarDetalleSolicitudForm(FlaskForm):
+    id_producto = SelectField(
+        "Producto",
+        coerce=int,
+        validators=[DataRequired(message="Selecciona un producto")],
+    )
+
+    cantidad = IntegerField(
+        "Cantidad",
+        default=1,
+        validators=[
+            DataRequired(message="La cantidad es obligatoria"),
+            NumberRange(min=1, message="La cantidad debe ser mayor a 0"),
+        ],
+    )
+
+    submit = SubmitField("Agregar a la solicitud")
+
+    def set_productos(self, productos):
+        self.id_producto.choices = [(p.id_producto, p.nombre) for p in productos]

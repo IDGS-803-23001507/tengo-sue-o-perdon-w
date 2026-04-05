@@ -1,5 +1,6 @@
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
+from forms import AgregarDetalleSolicitudForm
 from model import DetalleProduccion, Producto, SolicitudProduccion, db
 
 solicitud_bp = Blueprint("solicitud", __name__, url_prefix="/solicitud")
@@ -13,7 +14,6 @@ def index():
 
 @solicitud_bp.route("/crear", endpoint="crear_solicitud")
 def crear_solicitud():
-    # Integrado con sesión. Si no hay sesión, usa un usuario temporal.
     id_usuario = session.get("usuarioId") or 1
 
     nueva_solicitud = SolicitudProduccion(id_usuario=id_usuario)
@@ -27,14 +27,12 @@ def crear_solicitud():
 def detalles_solicitud(id: int):
     solicitud = SolicitudProduccion.query.get_or_404(id)
     productos_disponibles = Producto.query.filter_by(estatus=True).order_by(Producto.nombre.asc()).all()
+    form = AgregarDetalleSolicitudForm()
+    form.set_productos(productos_disponibles)
 
-    if request.method == "POST":
-        id_producto = request.form.get("id_producto", type=int)
-        cantidad = request.form.get("cantidad", type=int)
-
-        if not id_producto or not cantidad or cantidad <= 0:
-            flash("Selecciona un producto y una cantidad válida.", "danger")
-            return redirect(url_for("solicitud.detalles_solicitud", id=solicitud.id_solicitud))
+    if form.validate_on_submit():
+        id_producto = form.id_producto.data
+        cantidad = form.cantidad.data
 
         nuevo_detalle = DetalleProduccion(
             id_solicitud=solicitud.id_solicitud,
@@ -47,9 +45,15 @@ def detalles_solicitud(id: int):
         flash("Producto agregado a la solicitud.", "success")
         return redirect(url_for("solicitud.detalles_solicitud", id=solicitud.id_solicitud))
 
+    if request.method == "POST":
+        for erroresCampo in form.errors.values():
+            if erroresCampo:
+                flash(erroresCampo[0], "danger")
+                break
+
     return render_template(
         "solicitud/detalles.html",
         solicitud=solicitud,
-        productos=productos_disponibles,
+        form=form,
         active_page="solicitudes",
     )

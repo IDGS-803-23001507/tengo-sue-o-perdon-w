@@ -14,24 +14,18 @@
         <h2 class="font-semibold text-gray-800 mb-4">Agregar producto</h2>
 
         <form method="POST" class="space-y-4">
+            {{ form.hidden_tag() }}
             <div>
                 <label class="block text-sm text-gray-600 mb-1">Producto</label>
-                <select name="id_producto" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm" required>
-                    <option value="">Selecciona...</option>
-                    {% for producto in productos %}
-                        <option value="{{ producto.id_producto }}">{{ producto.nombre }}</option>
-                    {% endfor %}
-                </select>
+                {{ form.id_producto(class="w-full border border-gray-300 rounded-lg p-2.5 text-sm", required=true) }}
             </div>
 
             <div>
                 <label class="block text-sm text-gray-600 mb-1">Cantidad</label>
-                <input type="number" name="cantidad" min="1" value="1" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm" required>
+                {{ form.cantidad(min="1", class="w-full border border-gray-300 rounded-lg p-2.5 text-sm", required=true) }}
             </div>
 
-            <button type="submit" class="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 transition">
-                Agregar a la solicitud
-            </button>
+            {{ form.submit(class="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 transition") }}
         </form>
     </div>
 
