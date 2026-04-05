@@ -1,0 +1,75 @@
+{% extends "layout/layout_produccion.html" %}
+
+{% block container %}
+<div class="flex justify-between items-center mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800">Catálogo de Productos</h1>
+        <p class="text-gray-500 mt-1">Gestión de productos listos para la venta al cliente.</p>
+    </div>
+    <a href="{{ url_for('producto_terminado.nuevo_producto') }}" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 flex items-center gap-2 transition w-fit">
+        <i class="fa-solid fa-plus"></i>
+        Añadir Producto
+    </a>
+</div>
+
+<div class="bg-white rounded-lg shadow-sm border overflow-hidden">
+    <div class="p-4 border-b flex justify-between items-center bg-gray-50">
+        <form method="GET" action="{{ url_for('producto_terminado.index') }}" class="relative w-full md:w-1/2 flex gap-2">
+            <div class="relative w-full">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <i class="fa-solid fa-magnifying-glass w-4 h-4 text-gray-500"></i>
+                </div>
+                <input type="text" name="q" value="{{ busqueda or '' }}" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5 shadow-sm" placeholder="Buscar por nombre...">
+            </div>
+            <button type="submit" class="text-white bg-gray-800 hover:bg-gray-900 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-4 py-2 transition shadow-sm">Buscar</button>
+            {% if busqueda %}
+            <a href="{{ url_for('producto_terminado.index') }}" class="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:outline-none focus:ring-gray-100 font-medium rounded-lg text-sm px-4 py-2 transition shadow-sm">Limpiar</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <table class="w-full text-sm text-left text-gray-500">
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+            <tr>
+                <th scope="col" class="px-6 py-4">Producto</th>
+                <th scope="col" class="px-6 py-4">Categoría</th>
+                <th scope="col" class="px-6 py-4 text-center">Precio de Venta</th>
+                <th scope="col" class="px-6 py-4 text-center">Stock</th>
+                <th scope="col" class="px-6 py-4 text-center">Estatus</th>
+                <th scope="col" class="px-6 py-4 text-center">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for producto in productos %}
+                <tr class="bg-white hover:bg-gray-50 border-b transition">
+                    <td class="px-6 py-4 font-medium text-gray-900">{{ producto.nombre }}</td>
+                    <td class="px-6 py-4">{{ producto.categoria|capitalize }}</td>
+                    <td class="px-6 py-4 text-center font-semibold text-green-600">${{ producto.precio_venta }}</td>
+
+                    <td class="px-6 py-4 text-center font-bold {% if producto.stock <= 0 %}text-red-600{% else %}text-gray-800{% endif %}">
+                        {{ producto.stock }} un.
+                    </td>
+
+                    <td class="px-6 py-4 text-center">
+                        {% if producto.estatus %}
+                            <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded border border-green-400">Activo</span>
+                        {% else %}
+                            <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded border border-red-400">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <a href="{{ url_for('producto_terminado.editar_producto', id=producto.id_producto) }}" class="text-blue-600 hover:underline">Editar</a>
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                        <p class="text-lg mb-2">Aún no hay productos terminados registrados.</p>
+                        <p class="text-sm">Haz clic en "Añadir Producto" para comenzar.</p>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

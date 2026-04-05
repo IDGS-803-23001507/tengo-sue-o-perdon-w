@@ -88,6 +88,17 @@
           <span>Productos</span>
         </a>
 
+        <a href="{{ url_for('producto_terminado.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+            {% if active_page == 'producto_terminado' %}
+                bg-gray-100 text-gray-900
+            {% else %}
+                text-gray-600 hover:bg-gray-100
+            {% endif %}">
+
+          <i class="fa-solid fa-cubes-stacked w-5"></i>
+          <span>Producto Terminado</span>
+        </a>
+
         <a href="{{ url_for('solicitud.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
         {% if active_page == 'solicitudes' %}
             bg-gray-100 text-gray-900

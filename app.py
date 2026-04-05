@@ -14,6 +14,7 @@ from app.login.routes import authBp, endpointDashboardRol, usuarioAutenticado
 from app.usuarios.routes import usuariosBp
 from app.inventario.routes import inventario_bp
 from app.producto.routes import producto_bp
+from app.producto_terminado.routes import producto_bp as producto_terminado_bp
 from app.proveedores.routes import proveedor_bp
 from app.merma.routes import merma_bp
 from app.compras.routes import compras_bp
@@ -33,6 +34,7 @@ app.register_blueprint(authBp)
 app.register_blueprint(usuariosBp)
 app.register_blueprint(inventario_bp)
 app.register_blueprint(producto_bp)
+app.register_blueprint(producto_terminado_bp)
 app.register_blueprint(proveedor_bp)
 app.register_blueprint(merma_bp)
 app.register_blueprint(compras_bp)
