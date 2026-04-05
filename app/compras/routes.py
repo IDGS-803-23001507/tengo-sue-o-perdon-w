@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from model import db, Compra, DetalleCompra, Proveedores, MateriaPrima, UnidadMedida
+from model import db, Compra, convertir, DetalleCompra, Proveedores, MateriaPrima, UnidadMedida
 from sqlalchemy import func
 from datetime import datetime
 from decimal import Decimal
@@ -58,11 +58,6 @@ def nueva_compra():
             cantidades   = request.form.getlist('cantidad[]')
             costos       = request.form.getlist('costo_unitario[]')
             unidades_ids = request.form.getlist('unidad_id[]')
-            
-            print("materias:", materias_ids)
-            print("cantidades:", cantidades)
-            print("costos:", costos)
-            print("unidades:", unidades_ids)
 
             if not any(m for m in materias_ids if m):
                 raise ValueError('Debe agregar al menos un insumo a la compra')
@@ -76,6 +71,25 @@ def nueva_compra():
                     costo_unitario = Decimal(costos[i])
                     unidad_id      = int(unidades_ids[i]) if unidades_ids[i] else None
 
+
+                    materia = MateriaPrima.query.get(materia_id)
+                    if not materia:
+                        raise ValueError("Materia prima no encontrada")
+
+                    unidad_compra = UnidadMedida.query.get(unidad_id)
+                    if not unidad_compra:
+                        raise ValueError("Unidad de medida no válida")
+                    
+                    try:
+                        cantidad_convertida = convertir(
+                            cantidad,
+                            unidad_compra,
+                            materia.unidad
+                        )
+                        
+                    except ValueError as e:
+                        raise ValueError(f"Error en unidades: {str(e)}")
+                    
                     detalle = DetalleCompra(
                         id_compra=compra.id_compra,
                         id_materia=materia_id,
@@ -89,7 +103,7 @@ def nueva_compra():
                     if not materia:
                         raise ValueError("Materia prima no encontrada")
 
-                    materia.actualizar_stock(cantidad, costo_unitario)
+                    materia.stock_actual += cantidad_convertida
 
             db.session.commit()
 

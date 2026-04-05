@@ -7,6 +7,16 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
 
+def convertir(cantidad, unidad_origen, unidad_destino):
+
+    if unidad_origen.tipo.strip().lower() != unidad_destino.tipo.strip().lower():
+        raise ValueError("Unidades incompatibles")
+
+    cantidad = Decimal(cantidad)
+
+    cantidad_base = cantidad * unidad_origen.factor
+    return cantidad_base / unidad_destino.factor
+
 class Rol(db.Model):
     __tablename__ = "roles"
 
@@ -87,7 +97,10 @@ class UnidadMedida(db.Model):
     id_unidad = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nombre = db.Column(db.String(10), nullable=False)
     abreviacion = db.Column(db.String(4), unique=True)
+    tipo = db.Column(Enum("liquido", "solido", name="tipo_unidad"), nullable=False)
+    factor = db.Column(db.Numeric(10, 4), nullable=False)
 
+    
 class MateriaPrima(db.Model):
     __tablename__ = 'Materia_prima' 
 

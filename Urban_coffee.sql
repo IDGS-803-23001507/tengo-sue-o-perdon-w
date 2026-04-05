@@ -3,6 +3,12 @@ Drop Database if Exists Urban_Coffee;
 Create Database Urban_Coffee;
 use Urban_Coffee;
 
+insert into unidad_medida(nombre, abreviacion, tipo, factor) values("Gramos","g", "solido", 1);
+insert into unidad_medida(nombre, abreviacion, tipo, factor) values("KiloGramos","kl", "solido", 1000);
+insert into unidad_medida(nombre, abreviacion, tipo, factor) values("Onza","Oz", "solido", 28.35);
+
+select * from usuarios;
+
 -- esta era la base de datos que tenia, es lo mismo solo modifique algunas cosas
 -- perooo igual todos modificaron su parte, recuerda que la base de datos chida es la que
 -- se esta haciendo en el models, esta solo es una base :D
