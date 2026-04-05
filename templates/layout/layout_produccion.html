@@ -124,7 +124,7 @@
         <p class="text-xs text-gray-400 font-semibold px-2 mt-4 mb-2 uppercase">Administración</p>
         
         {% if session.usuarioRol == "Gerente" %}
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        <a href="{{ url_for('compras.listar_compras') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
         {% if active_page == 'compras' %}
             bg-gray-100 text-gray-900
         {% else %}
@@ -193,7 +193,7 @@
     </aside>
 
     <main class="flex-1 overflow-y-auto p-6">
-      
+
       {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
           <div class="space-y-3">

@@ -34,6 +34,7 @@ def proveedores():
         proveedores=proveedores_list,
         busqueda=busqueda,
         estado=estado,
+        active_page = 'proveedores',
         form=form
     )
 

@@ -164,6 +164,7 @@ def editar(idUsuario: int):
 def actualizar(idUsuario: int):
     
     usuario = Usuario.query.get_or_404(idUsuario)
+    
     form = EmpleadoActualizarForm()
 
     if not form.validate_on_submit():

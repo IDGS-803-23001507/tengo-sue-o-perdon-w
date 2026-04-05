@@ -33,7 +33,7 @@ def listar_compras():
 
     compras_list = query.order_by(Compra.fecha.desc()).all()
 
-    return render_template( 'compras/compras.html', compras=compras_list, filtro_form=filtro_form)
+    return render_template( 'compras/compras.html', active_page = 'compras',compras=compras_list, filtro_form=filtro_form)
 
 
 @compras_bp.route('/compras/nueva', methods=['GET', 'POST'])
@@ -104,7 +104,7 @@ def nueva_compra():
     materias_primas = MateriaPrima.query.all()
     unidades        = UnidadMedida.query.all()
 
-    return render_template('compras/nueva_compra.html', form=form, proveedores=proveedores, materias_primas=materias_primas, unidades=unidades, datetime=datetime)
+    return render_template('compras/nueva_compra.html', active_page = 'compras', form=form, proveedores=proveedores, materias_primas=materias_primas, unidades=unidades, datetime=datetime)
 
 
 @compras_bp.route('/compras/detalle/<int:id>')
