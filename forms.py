@@ -1,7 +1,7 @@
-from datetime import date
+from datetime import date, datetime
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, PasswordField, DecimalField, DateField, SelectField, HiddenField, SubmitField
-from wtforms.validators import DataRequired, NumberRange, EqualTo, Length, Email, Optional
+from wtforms import StringField, DateTimeLocalField, IntegerField, RadioField, TextAreaField, PasswordField, DecimalField, DateField, SelectField, HiddenField, SubmitField
+from wtforms.validators import DataRequired, ValidationError, NumberRange, EqualTo, Length, Email, Optional
 
 ROLES_USUARIO = [
     ("Gerente", "Gerente"),
@@ -280,3 +280,130 @@ class FiltroComprasForm(FlaskForm):
                 return False
 
         return True
+    
+class PedidoForm(FlaskForm):
+    
+    nombre = StringField('Nombre', 
+                validators=[DataRequired(), Length(max=120)])
+    
+    telefono = StringField('Teléfono', 
+                validators=[Length(max=15)])
+
+    hora_recogida = DateTimeLocalField('Hora de recogida',
+        format='%Y-%m-%dT%H:%M',
+        validators=[DataRequired()]
+    )
+
+    notas = TextAreaField('Notas', 
+        validators=[Length(max=200)])
+
+    submit = SubmitField('Crear Pedido')
+
+    def validate_hora_recogida(self, field):
+        ahora = datetime.now()
+        diferencia = (field.data - ahora).total_seconds() / 60
+
+        if field.data.date() != ahora.date():
+            raise ValidationError("El pedido debe ser para hoy.")
+
+        if diferencia < 10:
+            raise ValidationError("Debe pedir con al menos 10 minutos de anticipación.")
+
+        if diferencia > 60:
+            raise ValidationError("No puedes pedir con más de 1 hora de anticipación.")
+
+class VentaForm(FlaskForm):
+ 
+    producto = SelectField("Producto", 
+                coerce=int, validators=[Optional()])
+
+    cantidad = IntegerField("Cantidad", 
+                default=1, validators=[DataRequired()])
+
+    tipo_venta = RadioField("Tipo", choices=[
+        ("fisica", "Física"),
+        ("en_linea", "En línea")
+    ], validators=[Optional()])
+
+
+    metodo_pago = SelectField("Método de pago", choices=[
+        ("efectivo", "Efectivo"),
+        ("tarjeta", "Tarjeta"),
+        ("transferencia", "Transferencia")
+    ], validators=[Optional()])
+
+  
+    hora_recogida = DateTimeLocalField(
+        "Hora recogida",
+        format='%Y-%m-%dT%H:%M',
+        validators=[Optional()]
+    )
+
+    notas = StringField("Notas", validators=[Optional()])
+
+    agregar = SubmitField("Agregar producto")
+    terminar = SubmitField("Finalizar venta")
+
+
+class PagoForm(FlaskForm):
+    
+    metodo_pago = SelectField("Método de Pago", choices=[
+        ('efectivo', 'Efectivo'),
+        ('tarjeta', 'Tarjeta'),
+        ('transferencia', 'Transferencia')
+    ], validators=[DataRequired()])
+    
+    submit = SubmitField("Registrar Pago")
+    
+class ClienteForm(FlaskForm):
+    
+    nombre = StringField(
+        "Nombre",
+        validators=[DataRequired(), Length(max=120)]
+    )
+
+    apellidoPaterno = StringField(
+        "Apellido Paterno",
+        validators=[DataRequired(), Length(max=50)]
+    )
+
+    apellidoMaterno = StringField(
+        "Apellido Materno",
+        validators=[Optional(), Length(max=50)]
+    )
+
+    telefono = StringField(
+        "Teléfono",
+        validators=[Optional(), Length(max=15)]
+    )
+
+    alias = StringField(
+        "Alias",
+        validators=[Optional(), Length(max=50)]
+    )
+
+    correo = StringField(
+        "Correo Electrónico",
+        validators=[
+            DataRequired(),
+            Email(),
+            Length(max=120)
+        ]
+    )
+
+    usuario = StringField(
+        "Usuario",
+        validators=[ Optional(), 
+            Length(max=60)
+        ]
+    )
+
+    contrasena = PasswordField(
+        "Contraseña",
+        validators=[
+            DataRequired(),
+            Length(min=6, max=128)
+        ]
+    )
+    
+    submit = SubmitField("Registrar")

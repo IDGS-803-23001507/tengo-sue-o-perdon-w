@@ -1,7 +1,7 @@
 from flask import current_app
 from sqlalchemy import inspect, text
 
-from model import Rol, Usuario, db
+from model import Rol, Usuario, Cliente, db
 
 
 def asegurar_esquema_usuarios() -> None:
@@ -158,12 +158,23 @@ def seed_db() -> None:
     usuario_base = correo_base.split("@")[0] or "gerente"
     correo_final = _generar_correo_unico(correo_base, usuario_base)
 
-    admin = Usuario(
+    cliente_admin = Cliente(
         nombre=nombre or "Administrador Urban Coffee",
+        apellidoPaterno="Admin",
+        apellidoMaterno="",
+        telefono="",
+        alias="Administrador"
+    )
+
+    db.session.add(cliente_admin)
+    db.session.flush() 
+
+    admin = Usuario(
         usuario=usuario_generado,
         correo=correo_final,
         rolId=rol_gerente.id,
         estado="Activo",
+        id_cliente=cliente_admin.id 
     )
     admin.establecerContrasena(contrasena)
     admin.resetearSeguridad()

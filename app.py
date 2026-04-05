@@ -18,6 +18,7 @@ from app.proveedores.routes import proveedor_bp
 from app.merma.routes import merma_bp
 from app.compras.routes import compras_bp
 from app.ventas.routes import ventasBp
+from app.cliente.routes import clientesBp
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -35,6 +36,7 @@ app.register_blueprint(proveedor_bp)
 app.register_blueprint(merma_bp)
 app.register_blueprint(compras_bp)
 app.register_blueprint(ventasBp)
+app.register_blueprint(clientesBp)
 
 try:
     with app.app_context():
@@ -71,31 +73,31 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
     if puedeVerFinanzas:
         totalVentasDia = db.session.query(func.coalesce(func.sum(Venta.total), 0)).filter(
             Venta.confirmada.is_(True),
-            Venta.creadoEn >= inicioHoy,
-            Venta.creadoEn < finHoy,
+            Venta.fecha >= inicioHoy,
+            Venta.fecha < finHoy,
         ).scalar() or Decimal("0.00")
 
         utilidadBrutaDia = db.session.query(func.coalesce(func.sum(Venta.utilidadBruta), 0)).filter(
             Venta.confirmada.is_(True),
-            Venta.creadoEn >= inicioHoy,
-            Venta.creadoEn < finHoy,
+            Venta.fecha >= inicioHoy,
+            Venta.fecha < finHoy,
         ).scalar() or Decimal("0.00")
 
         numeroTicketsDia = db.session.query(func.count(Venta.id)).filter(
             Venta.confirmada.is_(True),
-            Venta.creadoEn >= inicioHoy,
-            Venta.creadoEn < finHoy,
+            Venta.fecha >= inicioHoy,
+            Venta.fecha < finHoy,
         ).scalar() or 0
 
     ventasPeriodo = db.session.query(
-        func.date(Venta.creadoEn).label("fecha"),
+        func.date(Venta.fecha).label("fecha"),
         func.coalesce(func.sum(Venta.total), 0).label("monto"),
     ).filter(
         Venta.confirmada.is_(True),
-        func.date(Venta.creadoEn) >= inicioPeriodo,
-        func.date(Venta.creadoEn) <= finPeriodo,
+        func.date(Venta.fecha) >= inicioPeriodo,
+        func.date(Venta.fecha) <= finPeriodo,
     ).group_by(
-        func.date(Venta.creadoEn)
+        func.date(Venta.fecha)
     ).all()
 
     mapaVentas = {str(fila.fecha): float(fila.monto or 0) for fila in ventasPeriodo}
@@ -112,13 +114,13 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
         Producto.nombre,
         func.coalesce(func.sum(DetalleVenta.cantidad), 0).label("cantidad"),
     ).join(
-        DetalleVenta, DetalleVenta.productoId == Producto.id_producto
+        DetalleVenta, DetalleVenta.id_producto == Producto.id_producto
     ).join(
-        Venta, Venta.id == DetalleVenta.ventaId
+        Venta, Venta.id == DetalleVenta.id_venta
     ).filter(
         Venta.confirmada.is_(True),
-        func.date(Venta.creadoEn) >= inicioPeriodo,
-        func.date(Venta.creadoEn) <= finPeriodo,
+        func.date(Venta.fecha) >= inicioPeriodo,
+        func.date(Venta.fecha) <= finPeriodo,
     ).group_by(
         Producto.id_producto,
         Producto.nombre,
@@ -126,7 +128,7 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
         func.sum(DetalleVenta.cantidad).desc()
     ).limit(5).all()
 
-    ultimasOperaciones = Venta.query.filter_by(confirmada=True).order_by(Venta.creadoEn.desc()).limit(7).all()
+    ultimasOperaciones = Venta.query.filter_by(confirmada=True).order_by(Venta.fecha.desc()).limit(7).all()
     alertasInsumos = MateriaPrima.query.filter(
         MateriaPrima.estatus.is_(True),
         MateriaPrima.stock_actual <= MateriaPrima.stock_minimo,
@@ -154,6 +156,7 @@ def requerirLogin():
         "auth.recuperarContrasena",
         "auth.resetearContrasena",
         "producto.producto_venta",
+        "clientes.detalle_cliente",
         "index",
         "static",
     }
@@ -169,6 +172,9 @@ def requerirLogin():
             "ventas.tienda_cliente",
             "ventas.comprar_producto",
             "auth.cerrarSesion",
+            "clientes.detalle_cliente",
+            "clientes.editar_cliente",
+            "clientes.desactivar_cliente",
             "index",
             "static",
         }

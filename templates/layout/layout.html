@@ -71,6 +71,12 @@
 
           <ul class="p-1.5 text-sm" aria-labelledby="user-menu-button">
             <li>
+              <a href="{{url_for('clientes.detalle_cliente')}}"
+                class="flex items-center w-full px-3 py-2 text-gray-700 hover:bg-green-50  rounded-md transition-colors duration-200 group">
+                <span class="font-medium">Cuenta</span>
+              </a>
+            </li>
+            <li>
               <a href="{{ url_for('auth.cerrarSesion') }}"
                 class="flex items-center w-full px-3 py-2 text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors duration-200 group">
                 <svg class="w-4 h-4 mr-3 text-gray-400 group-hover:text-red-500" fill="none" stroke="currentColor"
@@ -156,15 +162,6 @@
 
   <div class="{% block content_class %}pt-[92px]{% endblock %}">
 
-    {%with messages=get_flashed_messages()%}
-    {%if messages%}
-    {%for message in messages%}
-    <div class="alert alert-success">
-      {{message}}
-    </div>
-    {%endfor%}
-    {%endif%}
-    {%endwith%}
 
     {% block container %}
 

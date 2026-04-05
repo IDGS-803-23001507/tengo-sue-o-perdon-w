@@ -41,55 +41,71 @@
                     {% endif %}
                 {% endwith %}
 
-                <form method="POST" action="" class="space-y-5">
                 <form method="POST" action="{{ url_for('auth.registrarUsuario') }}" class="space-y-5">
                     {{ form.hidden_tag() }}
+                
+                    <!-- NOMBRE -->
                     <div>
-                        <label for="nombre" class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500">Nombre</label>
-                        <input
-                            id="nombre"
-                            name="nombre"
-                            type="text"
-                            required
-                            class="block w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 focus:border-amber-500 focus:ring-amber-500"
-                            placeholder="Tu nombre"
-                        />
+                        <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500">
+                            Nombre
+                        </label>
+                        {{ form.nombre(class="block w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm focus:border-amber-500 focus:ring-amber-500", placeholder="Tu nombre") }}
                     </div>
-
+            
                     <div>
-                        <label for="correo" class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500">Correo electrónico</label>
-                        <input
-                            id="correo"
-                            name="correo"
-                            type="email"
-                            required
-                            class="block w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 focus:border-amber-500 focus:ring-amber-500"
-                            placeholder="nombre@urbancoffee.com"
-                        />
+                        <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500">
+                            Apellido Paterno
+                        </label>
+                        {{ form.apellidoPaterno(class="block w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm focus:border-amber-500 focus:ring-amber-500", placeholder="Tu apellido paterno") }}
                     </div>
-
+                
                     <div>
-                        <label for="contrasena" class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500">Contraseña</label>
-                        <input
-                            id="contrasena"
-                            name="contrasena"
-                            type="password"
-                            required
-                            class="block w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 focus:border-amber-500 focus:ring-amber-500"
-                            placeholder="••••••••"
-                        />
+                        <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500">
+                            Apellido Materno
+                        </label>
+                        {{ form.apellidoMaterno(class="block w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm focus:border-amber-500 focus:ring-amber-500", placeholder="Tu apellido materno") }}
                     </div>
-
+                
+                    <div>
+                        <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500">
+                            Teléfono
+                        </label>
+                        {{ form.telefono(class="block w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm focus:border-amber-500 focus:ring-amber-500", placeholder="477-123-1234") }}
+                    </div>
+                
+                    <div>
+                        <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500">
+                            Alias
+                        </label>
+                        {{ form.alias(class="block w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm focus:border-amber-500 focus:ring-amber-500", placeholder="Tu alias") }}
+                    </div>
+                
+                    <div>
+                        <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500">
+                            Correo electrónico
+                        </label>
+                        {{ form.correo(class="block w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm focus:border-amber-500 focus:ring-amber-500", placeholder="nombre@urbancoffee.com") }}
+                    </div>
+                
+                    <div>
+                        <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500">
+                            Contraseña
+                        </label>
+                        {{ form.contrasena(class="block w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm focus:border-amber-500 focus:ring-amber-500", placeholder="••••••••") }}
+                    </div>
+                
                     <button
                         type="submit"
                         class="w-full rounded-full bg-amber-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-900 focus:outline-none focus:ring-4 focus:ring-amber-300"
                     >
                         Registrar
                     </button>
-
+                
                     <p class="text-center text-sm text-gray-600">
                         ¿Ya tienes cuenta?
-                        <a href="{{ url_for('auth.iniciarSesion') }}" class="font-semibold text-amber-700 hover:text-amber-800">Iniciar sesión</a>
+                        <a href="{{ url_for('auth.iniciarSesion') }}" class="font-semibold text-amber-700 hover:text-amber-800">
+                            Iniciar sesión
+                        </a>
                     </p>
                 </form>
             </div>

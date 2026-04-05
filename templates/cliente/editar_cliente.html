@@ -1,0 +1,136 @@
+{% extends "layout/layout.html" %}
+
+{% block container %}
+<div class="max-w-3xl mx-auto my-12 p-8 bg-white border border-gray-100 shadow-xl rounded-2xl"
+    style="font-family: 'Montserrat', sans-serif;">
+
+    <div class="flex items-center gap-6 pb-8 border-b border-gray-100 mb-8">
+        <div
+            class="w-20 h-20 bg-amber-100 text-amber-800 rounded-full flex items-center justify-center text-3xl font-bold border-2 border-amber-200">
+            {{ cliente.nombre[0] }}{{ cliente.apellidoPaterno[0] }}
+        </div>
+        <div>
+            <h2 class="text-3xl font-bold text-gray-800">Editar Perfil</h2>
+            <p class="text-amber-700 font-medium"> Urban Coffee</p>
+        </div>
+    </div>
+
+    <form method="POST" action="#" class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="flex flex-col gap-1.5">
+                <label class="text-[11px] uppercase tracking-wider text-gray-400 font-bold ml-1">Nombre(s)</label>
+                <input type="text" name="nombre" value="{{ cliente.nombre }}"
+                    class="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-amber-100 focus:border-[#8B5E3C] focus:bg-white outline-none transition-all text-gray-700 font-medium">
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+                <label class="text-[11px] uppercase tracking-wider text-gray-400 font-bold ml-1">Apellido
+                    Paterno</label>
+                <input type="text" name="apellidoPaterno" value="{{ cliente.apellidoPaterno }}"
+                    class="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-amber-100 focus:border-[#8B5E3C] focus:bg-white outline-none transition-all text-gray-700 font-medium">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="flex flex-col gap-1.5">
+                <label class="text-[11px] uppercase tracking-wider text-gray-400 font-bold ml-1">Apellido
+                    Materno</label>
+                <input type="text" name="apellidoMaterno" value="{{ cliente.apellidoMaterno }}"
+                    class="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-amber-100 focus:border-[#8B5E3C] focus:bg-white outline-none transition-all text-gray-700 font-medium">
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+                <label class="text-[11px] uppercase tracking-wider text-gray-400 font-bold ml-1">Alias /
+                    Nickname</label>
+                <input type="text" name="alias" value="{{ cliente.alias or '' }}" placeholder="pancho"
+                    class="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-amber-100 focus:border-[#8B5E3C] focus:bg-white outline-none transition-all text-gray-700 font-medium italic">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="flex flex-col gap-1.5">
+                <label class="text-[11px] uppercase tracking-wider text-gray-400 font-bold ml-1">Teléfono de
+                    Contacto</label>
+                <input type="tel" name="telefono" value="{{ cliente.telefono or '' }}" placeholder="477-123-1234"
+                    class="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-amber-100 focus:border-[#8B5E3C] focus:bg-white outline-none transition-all text-gray-700 font-medium">
+            </div>
+
+            <div class="flex flex-col gap-1.5 opacity-70">
+                <label class="text-[11px] uppercase tracking-wider text-gray-400 font-bold ml-1">Correo
+                    Electrónico</label>
+                <div
+                    class="px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 font-medium cursor-not-allowed">
+                    {{ usuario.correo }}
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row justify-end gap-3 pt-4 border-t border-gray-200 mt-4">
+
+            <a href="{{ url_for('clientes.detalle_cliente') }}" class="text-gray-700 bg-gray-200 hover:bg-gray-300 
+        font-medium rounded-lg text-sm px-5 py-2.5 transition">
+                Cancelar
+            </a>
+
+            <button type="button" onclick="abrirModalConfirmacion()" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 
+        font-medium rounded-lg text-sm px-5 py-2.5 transition">
+                Guardar cambios
+            </button>
+
+        </div>
+    </form>
+</div>
+
+<div id="modalConfirmacion"
+    class="hidden fixed inset-0 z-[100] flex justify-center items-center bg-black/30 backdrop-blur-sm p-4">
+
+    <div class="w-full max-w-md">
+        <div class="bg-white rounded-2xl shadow p-6 md:p-8 text-center">
+
+            <h3 class="mb-2 text-xl md:text-2xl font-bold text-gray-900">
+                Actualizar cuenta
+            </h3>
+
+            <p class="text-gray-500 mb-6 text-sm md:text-base">
+                ¿Estás seguro de que deseas Actualizar tu cuenta?
+            </p>
+
+            <div class="flex flex-col gap-3">
+
+                <button onclick="confirmarEnvio()"
+                    class="text-white bg-green-600 hover:bg-green-700 font-medium rounded-lg text-sm px-5 py-3 transition">
+                    Sí, actualizar
+                </button>
+
+                <button onclick="cerrarModalConfirmacion()"
+                    class="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 font-medium rounded-lg text-sm px-5 py-3 transition">
+                    Cancelar
+                </button>
+
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+
+<script>
+    const form = document.querySelector("form");
+    const modal = document.getElementById("modalConfirmacion");
+
+    function abrirModalConfirmacion() {
+        modal.classList.remove("hidden");
+    }
+
+    function cerrarModalConfirmacion() {
+        modal.classList.add("hidden");
+    }
+
+    function confirmarEnvio() {
+        form.submit();
+    }
+</script>
+
+
+{% endblock %}

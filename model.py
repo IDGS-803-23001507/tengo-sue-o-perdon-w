@@ -18,7 +18,9 @@ class Usuario(db.Model):
     __tablename__ = "usuarios"
 
     id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(120), nullable=False)
+    
+    id_cliente = db.Column("id_cliente", db.Integer,db.ForeignKey("clientes.id_cliente"), unique=True, nullable=True)
+     
     usuario = db.Column(db.String(60), unique=True, nullable=True, index=True)
     correo = db.Column(db.String(120), unique=True, nullable=False, index=True)
     contrasenaHash = db.Column("password_hash", db.String(255), nullable=False)
@@ -28,8 +30,12 @@ class Usuario(db.Model):
     cuentaBloqueada = db.Column("cuenta_bloqueada", db.Boolean, nullable=False, default=False)
     bloqueoHasta = db.Column("bloqueo_hasta", db.DateTime(timezone=True), nullable=True)
     creadoEn = db.Column("creado_en", db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
-
+    
     rolRef = db.relationship("Rol", backref=db.backref("usuarios", lazy=True))
+
+    cliente = db.relationship(
+        "Cliente", backref=db.backref("usuario", uselist=False), lazy="joined"
+    )
 
     @property
     def rol(self) -> str:
@@ -83,7 +89,6 @@ class RegistroSesion(db.Model):
     fechaFin = db.Column(db.DateTime(timezone=True), nullable=True)
     activa = db.Column(db.Boolean, nullable=False, default=True)
     
-#Tablas Feacture/Productos 
 
 class UnidadMedida(db.Model):
     __tablename__ = 'Unidad_medida'
@@ -156,7 +161,6 @@ class Proveedores(db.Model):
     compras = db.relationship('Compra', backref='proveedor', lazy=True)
 
 
-# Tabla de merma 
 class Merma(db.Model):
     id_merma = db.Column(db.Integer, primary_key=True)
     cantidad = db.Column(db.Numeric(10, 2), nullable = False)
@@ -215,24 +219,76 @@ class DetalleCompra(db.Model):
     def subtotal(self):    
         return self.cantidad * self.costo_unitario
     
+
+class Cliente(db.Model):
+    __tablename__ = "clientes"
+    
+    id = db.Column("id_cliente", db.Integer, primary_key=True)
+
+    nombre = db.Column(db.String(120), nullable=False)
+    apellidoPaterno = db.Column("apellidoPaterno", db.String(50), nullable=False)
+    apellidoMaterno = db.Column("apellidoMaterno", db.String(50), nullable=True)
+    telefono = db.Column(db.String(15), nullable=True)
+    alias = db.Column(db.String(50), nullable=True)
+    estado = db.Column(db.Boolean, default=True)
+
+    creadoEn = db.Column(
+        "creado_en",
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc)
+    )
+
+    @property
+    def nombreCompleto(self):
+        return f"{self.nombre} {self.apellidoPaterno} {self.apellidoMaterno or ''}".strip()
+    
+'''Tabla Ventas'''
 class Venta(db.Model):
     __tablename__ = "ventas"
 
-    id = db.Column(db.Integer, primary_key=True)
-    usuarioId = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
+    id_venta = db.Column(db.Integer, primary_key=True)
+    id_usuario = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
+    id_cliente = db.Column(db.Integer, db.ForeignKey("clientes.id_cliente"), nullable=True)
+    
     total = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     utilidadBruta = db.Column("utilidad_bruta", db.Numeric(10, 2), nullable=False, default=0)
-    confirmada = db.Column(db.Boolean, nullable=False, default=True)
+    confirmada = db.Column(db.Boolean, nullable=False, default=False)
     origen = db.Column(db.String(20), nullable=False, default="POS")
-    creadoEn = db.Column("creado_en", db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+   
+    fecha = db.Column("creado_en", db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    tipo_venta = db.Column(db.String(20), nullable=False)  
+    metodo_pago = db.Column(db.String(20), nullable=False)
+    
+    cliente = db.relationship("Cliente", backref="ventas")
+    usuario = db.relationship("Usuario", backref="ventas_realizadas")
 
+
+'''Tabla Detalles de Venta'''
 class DetalleVenta(db.Model):
-    __tablename__ = "detalles_venta"
+    __tablename__ = "detalle_venta"
 
-    id = db.Column(db.Integer, primary_key=True)
-    ventaId = db.Column(db.Integer, db.ForeignKey("ventas.id"), nullable=False, index=True)
-    productoId = db.Column(db.Integer, db.ForeignKey("productos_terminados.id"), nullable=False, index=True)
+    id_detalle = db.Column(db.Integer, primary_key=True)
+    id_venta = db.Column(db.Integer, db.ForeignKey("ventas.id_venta"), nullable=False, index=True)
+    id_producto = db.Column(db.Integer, db.ForeignKey("Producto.id_producto"), nullable=False, index=True)
+    
     cantidad = db.Column(db.Integer, nullable=False, default=1)
-    precioUnitario = db.Column("precio_unitario", db.Numeric(10, 2), nullable=False, default=0)
-    costoUnitario = db.Column("costo_unitario", db.Numeric(10, 2), nullable=False, default=0)
-    subtotal = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    precio_unitario = db.Column(db.Numeric(10, 2), nullable=False, default = 0)
+    descuento = db.Column(db.Numeric(10, 2), default=0.00)
+
+    venta = db.relationship("Venta", backref="detalles")
+    producto = db.relationship("Producto")
+
+'''Tabla Pedidos'''
+class Pedido(db.Model):
+    __tablename__ = "pedidos"
+
+    id_pedido = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.DateTime, default=datetime.utcnow)
+    nombre = db.Column(db.String(120), nullable=False)
+    telefono = db.Column(db.String(15))
+    hora_recogida = db.Column(db.DateTime, nullable=False)
+    notas = db.Column(db.String(200))
+
+    estado = db.Column(db.String(20), default="pendiente")
+    id_venta = db.Column(db.Integer, db.ForeignKey("ventas.id_venta"), nullable=True)

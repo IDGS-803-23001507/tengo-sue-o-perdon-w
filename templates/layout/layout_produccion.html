@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <title>Urban Coffee</title>
@@ -12,114 +13,195 @@
 
 <body class="bg-gray-100 font-[Inter]">
 
-<div class="flex h-screen overflow-hidden">
-  <aside class="w-64 bg-white border-r flex flex-col">
+  <div class="flex h-screen overflow-hidden">
+    <aside class="w-64 bg-white border-r flex flex-col">
 
-    <div class="flex items-center gap-3 px-6 py-5 border-b">
-      <img src="{{url_for('static',filename='src/imagenes/otros/logo.png')}}" class="h-10 w-10" alt="Logo">
-      <h1 class="text-sm font-semibold uppercase tracking-wide text-[#4B3621]">
-        Urban Coffee
-      </h1>
-    </div>
-
-    <div class="flex items-center gap-3 px-6 py-4 border-b">
-      <div class="w-10 h-10 flex items-center justify-center rounded-full bg-blue-500 text-white font-bold">
-        AD
+      <div class="flex items-center gap-3 px-6 py-5 border-b">
+        <img src="{{url_for('static',filename='src/imagenes/otros/logo.png')}}" class="h-10 w-10" alt="Logo">
+        <span class="text-[21px] font-bold text-gray-800 tracking-tighter">
+          Urban Coffee
+        </span>
       </div>
-      <div>
-        <p class="text-sm font-semibold text-gray-700">Admin</p>
-        <p class="text-xs text-gray-400">Administrador</p>
+
+      <div class="flex bg-gray-50 items-center gap-3 px-6 py-4 border-b">
+        <div class="w-10 h-10 flex items-center justify-center rounded-full bg-blue-500 text-white font-bold">
+          {{ (session.get('usuarioNombre', 'AD')[:2]).upper() }}
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-gray-700">
+            {{ session.get('usuarioNombre', 'Admin') }}
+          </p>
+          <p class="text-xs text-gray-400">
+            {{ session.get('usuarioRol', 'Operador') }}
+          </p>
+        </div>
       </div>
-    </div>
 
-    <nav class="flex-1 overflow-y-auto px-4 py-4 text-sm space-y-1">
+      <nav class="flex-1 overflow-y-auto px-4 py-4 text-sm space-y-1">
 
-      <p class="text-xs text-gray-400 font-semibold px-2 mb-2 uppercase">Principal</p>
+        <p class="text-xs text-gray-400 font-semibold px-2 mb-2 uppercase">Principal</p>
 
-      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-100 text-gray-900">
-        <i class="fa-solid fa-chart-line w-5"></i>
-        <span>Dashboard</span>
-      </a>
+        {% if session.usuarioRol == "Gerente" %}
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'dashboard' %}
+            bg-gray-100 text-gray-900
+        {% else %}
+            text-gray-600 hover:bg-gray-100
+        {% endif %}">
+          <i class="fa-solid fa-chart-line w-5"></i>
+          <span>Dashboard</span>
+        </a>
+        {% endif %}
 
-      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
-        <i class="fa-solid fa-cash-register w-5"></i>
-        <span>Punto de Venta</span>
-      </a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'POS' %}
+            bg-gray-100 text-gray-900
+        {% else %}
+            text-gray-600 hover:bg-gray-100
+        {% endif %}">
 
-      <p class="text-xs text-gray-400 font-semibold px-2 mt-4 mb-2 uppercase">Operación</p>
+          <i class="fa-solid fa-cash-register w-5"></i>
+          <span>Punto de Venta</span>
+        </a>
 
-      <a href="{{ url_for('inventario.materias_primas') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
-        <i class="fa-solid fa-boxes-stacked w-5"></i>
-        <span>Materias Primas</span>
-      </a>
+        <p class="text-xs text-gray-400 font-semibold px-2 mt-4 mb-2 uppercase">Operación</p>
 
-      <a href="{{ url_for('producto.producto_index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
-        <i class="fa-solid fa-mug-hot w-5"></i>
-        <span>Productos</span>
-      </a>
+        <a href="{{ url_for('inventario.materias_primas') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'materias' %}
+            bg-gray-100 text-gray-900
+        {% else %}
+            text-gray-600 hover:bg-gray-100
+        {% endif %}">
 
-      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
-        <i class="fa-solid fa-file-lines w-5"></i>
-        <span>Solicitudes</span>
-      </a>
+          <i class="fa-solid fa-boxes-stacked w-5"></i>
+          <span>Materias Primas</span>
+        </a>
 
-      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
-        <i class="fa-solid fa-industry w-5"></i>
-        <span>Producción</span>
-      </a>
+        <a href="{{ url_for('producto.producto_index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+            {% if active_page == 'productos' %}
+                bg-gray-100 text-gray-900
+            {% else %}
+                text-gray-600 hover:bg-gray-100
+            {% endif %}">
 
-      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
-        <i class="fa-solid fa-book-open w-5"></i>
-        <span>Recetas</span>
-      </a>
+          <i class="fa-solid fa-mug-hot w-5"></i>
+          <span>Productos</span>
+        </a>
 
-      <p class="text-xs text-gray-400 font-semibold px-2 mt-4 mb-2 uppercase">Administración</p>
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'solicitudes' %}
+            bg-gray-100 text-gray-900
+        {% else %}
+            text-gray-600 hover:bg-gray-100
+        {% endif %}">
 
-      <a href="{{ url_for('compras.listar_compras') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
-        <i class="fa-solid fa-cart-shopping w-5"></i>
-        <span>Compras</span>
-      </a>
+          <i class="fa-solid fa-file-lines w-5"></i>
+          <span>Solicitudes</span>
+        </a>
 
-      <a href="{{ url_for('proveedor.proveedores') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
-        <i class="fa-solid fa-truck w-5"></i>
-        <span>Proveedores</span>
-      </a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'produccion' %}
+            bg-gray-100 text-gray-900
+        {% else %}
+            text-gray-600 hover:bg-gray-100
+        {% endif %}">
 
-      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
-        <i class="fa-solid fa-users w-5"></i>
-        <span>Usuarios</span>
-      </a>
+          <i class="fa-solid fa-industry w-5"></i>
+          <span>Producción</span>
+        </a>
 
-      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
-        <i class="fa-solid fa-chart-pie w-5"></i>
-        <span>Costos y Utilidad</span>
-      </a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+            {% if active_page == 'recetas' %}
+                bg-gray-100 text-gray-900
+            {% else %}
+                text-gray-600 hover:bg-gray-100
+            {% endif %}">
 
-      <a href="{{ url_for('merma.merma')}}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
-        <i class="fa-solid fa-trash-can w-5"></i>
-        <span>Merma</span>
-      </a>
+          <i class="fa-solid fa-book-open w-5"></i>
+          <span>Recetas</span>
+        </a>
 
-    </nav>
+        <p class="text-xs text-gray-400 font-semibold px-2 mt-4 mb-2 uppercase">Administración</p>
+        
+        {% if session.usuarioRol == "Gerente" %}
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'compras' %}
+            bg-gray-100 text-gray-900
+        {% else %}
+            text-gray-600 hover:bg-gray-100
+        {% endif %}">
 
-    <div class="px-4 py-4 border-t">
-      <a href="{{ url_for('auth.cerrarSesion')}}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50">
-        <i class="fa-solid fa-right-from-bracket w-5"></i>
-        <span>Cerrar Sesión</span>
-      </a>
-    </div>
+          <i class="fa-solid fa-cart-shopping w-5"></i>
+          <span>Compras</span>
+        </a>
 
-  </aside>
+        <a href="{{ url_for('proveedor.proveedores') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'proveedores' %}
+            bg-gray-100 text-gray-900
+        {% else %}
+            text-gray-600 hover:bg-gray-100
+        {% endif %}">
 
-  <main class="flex-1 overflow-y-auto p-6">
-    {% block container %}
-    {% endblock %}
-  </main>
+          <i class="fa-solid fa-truck w-5"></i>
+          <span>Proveedores</span>
+        </a>
 
-</div>
+        <a href="{{url_for('usuarios.index')}}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'usuarios' %}
+            bg-gray-100 text-gray-900
+        {% else %}
+            text-gray-600 hover:bg-gray-100
+        {% endif %}">
 
-<script src="https://unpkg.com/flowbite@latest/dist/flowbite.min.js"></script>
-{% block scripts %}
-{% endblock %}
+          <i class="fa-solid fa-users w-5"></i>
+          <span>Empleados</span>
+        </a>
+
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'costos_utilidades' %}
+            bg-gray-100 text-gray-900
+        {% else %}
+            text-gray-600 hover:bg-gray-100
+        {% endif %}">
+
+          <i class="fa-solid fa-chart-pie w-5"></i>
+          <span>Costos y Utilidad</span>
+        </a>
+        {% endif %}
+
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'merma' %}
+            bg-gray-100 text-gray-900
+        {% else %}
+            text-gray-600 hover:bg-gray-100
+        {% endif %}">
+
+          <i class="fa-solid fa-trash-can w-5"></i>
+          <span>Merma</span>
+        </a>
+
+      </nav>
+
+      <div class="px-4 py-4 border-t">
+        <a href="{{ url_for('auth.cerrarSesion')}}"
+          class="flex items-center gap-3 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50">
+          <i class="fa-solid fa-right-from-bracket w-5"></i>
+          <span>Cerrar Sesión</span>
+        </a>
+      </div>
+
+    </aside>
+
+    <main class="flex-1 overflow-y-auto p-6">
+      {% block container %}
+      {% endblock %}
+    </main>
+
+  </div>
+
+  <script src="https://unpkg.com/flowbite@latest/dist/flowbite.min.js"></script>
+  {% block scripts %}
+  {% endblock %}
 </body>
+
 </html>
