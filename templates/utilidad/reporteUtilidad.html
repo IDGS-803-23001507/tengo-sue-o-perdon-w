@@ -51,9 +51,9 @@
 
   {% if ventas %}
 
-  <!-- Botón PDF -->
+
   <form action="{{ url_for('utilidad.reporte_pdf') }}" method="POST" class="mb-6">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {{ form.hidden_tag() }}
     <input type="hidden" name="fecha_inicio" value="{{ form.fecha_inicio.data }}">
     <input type="hidden" name="fecha_fin" value="{{ form.fecha_fin.data }}">
 

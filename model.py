@@ -111,6 +111,8 @@ class MateriaPrima(db.Model):
     stock_minimo = db.Column(db.Numeric(10, 2), default=0.00)
     stock_actual = db.Column(db.Numeric(10, 2), default=0.00)
     estatus = db.Column(db.Boolean, default=True)
+    costo_promedio = db.Column(db.Numeric(10, 2), default=0)
+
     
     unidad = db.relationship('UnidadMedida', backref='materias_primas')
     detalles_compra = db.relationship('DetalleCompra', backref='materia_prima', lazy=True)
