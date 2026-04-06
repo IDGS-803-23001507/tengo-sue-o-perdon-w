@@ -131,18 +131,18 @@ def _generar_correo_unico(correo_base: str, usuario_base: str) -> str:
 def seed_db() -> None:
 
     unidades_base = [
-        ("Kilogramo", "kg"),
-        ("Gramo", "g"),
-        ("Litro", "l"),
-        ("Mililitro", "ml"),
-        ("Pieza", "pz"),
-        ("Unidad", "u"),
+        ("Kilogramo", "kg", "solido", 1000 ),
+        ("Gramo", "g", "solido", 1),
+        ("Litro", "L", "liquido", 1000),
+        ("Mililitro", "ml", "liquido", 1),
+        ("Pieza", "pz", "conteo", 1),
+        ("Unidad", "u", "conteo", 1),
     ]
 
-    for nombre_unidad, abreviacion in unidades_base:
+    for nombre, abreviacion, tipo, factor in unidades_base:
         existe_unidad = UnidadMedida.query.filter_by(abreviacion=abreviacion).first()
         if not existe_unidad:
-            db.session.add(UnidadMedida(nombre=nombre_unidad, abreviacion=abreviacion))
+            db.session.add(UnidadMedida(nombre=nombre, abreviacion=abreviacion, tipo=tipo, factor=factor))
 
     for nombre in ["Gerente", "Operador", "Cliente"]:
         if not Rol.query.filter_by(nombre=nombre).first():
