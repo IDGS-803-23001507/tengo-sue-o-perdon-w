@@ -74,6 +74,16 @@
           <span>Punto de Venta</span>
         </a>
 
+        <a href="{{ url_for('pedidos.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'pedidos' %}
+            bg-gray-100 text-gray-900
+        {% else %}
+            text-gray-600 hover:bg-gray-100
+        {% endif %}">
+          <i class="fa-solid fa-receipt w-5"></i>
+          <span>Pedidos Online</span>
+        </a>
+
         <p class="text-xs text-gray-400 font-semibold px-2 mt-4 mb-2 uppercase">Operación</p>
 
         <a href="{{ url_for('inventario.materias_primas') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 

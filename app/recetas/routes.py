@@ -66,6 +66,13 @@ def nueva_receta():
     form = RecetaLoteForm()
     materias = _cargar_formulario_receta_lote(form)
 
+    if request.method == "GET":
+        producto_preseleccionado = request.args.get("producto", type=int)
+        if producto_preseleccionado:
+            ids_validos = {pid for pid, _ in (form.id_producto.choices or [])}
+            if producto_preseleccionado in ids_validos:
+                form.id_producto.data = producto_preseleccionado
+
     if form.validate_on_submit():
         try:
             id_producto = form.id_producto.data

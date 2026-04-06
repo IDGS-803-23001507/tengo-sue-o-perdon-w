@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, render_template, request
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from sqlalchemy.exc import SQLAlchemyError
 
 from forms import ProductoTerminadoEditarForm, ProductoTerminadoForm
@@ -40,12 +40,8 @@ def nuevo_producto():
             db.session.add(nuevo)
             db.session.commit()
 
-            return render_template(
-                "producto_terminado/nuevo_producto.html",
-                form=form,
-                mostrar_modal=True,
-                active_page="producto_terminado",
-            )
+            flash("Producto registrado. Ahora captura su receta.", "success")
+            return redirect(url_for("recetas.nueva", producto=nuevo.id_producto))
         except SQLAlchemyError:
             db.session.rollback()
             flash("No se pudo guardar el producto. Verifica los datos e inténtalo de nuevo.", "danger")

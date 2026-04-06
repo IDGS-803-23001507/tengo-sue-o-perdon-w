@@ -7,15 +7,61 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
 
-def convertir(cantidad, unidad_origen, unidad_destino):
 
-    if unidad_origen.tipo.strip().lower() != unidad_destino.tipo.strip().lower():
+def _normalizar_unidad_texto(texto: str | None) -> str:
+    return (texto or "").strip().lower().replace(".", "").replace(" ", "")
+
+
+def _factor_y_tipo_unidad(unidad) -> tuple[Decimal, str]:
+    abbr = _normalizar_unidad_texto(getattr(unidad, "abreviacion", ""))
+    nombre = _normalizar_unidad_texto(getattr(unidad, "nombre", ""))
+    clave = abbr or nombre
+
+    mapa = {
+        "kg": (Decimal("1000"), "solido"),
+        "kgr": (Decimal("1000"), "solido"),
+        "kilogramo": (Decimal("1000"), "solido"),
+        "kilogramos": (Decimal("1000"), "solido"),
+        "g": (Decimal("1"), "solido"),
+        "gr": (Decimal("1"), "solido"),
+        "grs": (Decimal("1"), "solido"),
+        "gramo": (Decimal("1"), "solido"),
+        "gramos": (Decimal("1"), "solido"),
+        "oz": (Decimal("28.35"), "solido"),
+        "l": (Decimal("1000"), "liquido"),
+        "lt": (Decimal("1000"), "liquido"),
+        "litro": (Decimal("1000"), "liquido"),
+        "litros": (Decimal("1000"), "liquido"),
+        "ml": (Decimal("1"), "liquido"),
+        "mililitro": (Decimal("1"), "liquido"),
+        "mililitros": (Decimal("1"), "liquido"),
+        "pz": (Decimal("1"), "conteo"),
+        "pieza": (Decimal("1"), "conteo"),
+        "piezas": (Decimal("1"), "conteo"),
+        "u": (Decimal("1"), "conteo"),
+        "ud": (Decimal("1"), "conteo"),
+        "unidad": (Decimal("1"), "conteo"),
+        "unidades": (Decimal("1"), "conteo"),
+    }
+
+    if clave in mapa:
+        return mapa[clave]
+
+    factor_db = Decimal(str(getattr(unidad, "factor", 1) or 1))
+    tipo_db = str(getattr(unidad, "tipo", "")).strip().lower()
+    return factor_db, tipo_db
+
+def convertir(cantidad, unidad_origen, unidad_destino):
+    factor_origen, tipo_origen = _factor_y_tipo_unidad(unidad_origen)
+    factor_destino, tipo_destino = _factor_y_tipo_unidad(unidad_destino)
+
+    if tipo_origen != tipo_destino:
         raise ValueError("Unidades incompatibles")
 
-    cantidad = Decimal(cantidad)
+    cantidad = Decimal(str(cantidad))
 
-    cantidad_base = cantidad * unidad_origen.factor
-    return cantidad_base / unidad_destino.factor
+    cantidad_base = cantidad * factor_origen
+    return cantidad_base / factor_destino
 
 class Rol(db.Model):
     __tablename__ = "roles"

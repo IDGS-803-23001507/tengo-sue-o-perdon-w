@@ -1,6 +1,6 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response
-from model import db, Producto, Venta, DetalleVenta
+from model import Compra, DetalleCompra, db, Producto, Venta, DetalleVenta
 from sqlalchemy import func
 from datetime import datetime, timedelta
 import forms
@@ -25,27 +25,32 @@ def dashboard():
         inicio_mes = hoy.replace(day=1)
 
         ventas_hoy = Venta.query.filter(
+            Venta.estatus.is_(True),
             func.date(Venta.fecha) == hoy
         ).all()
         total_ventas_hoy = sum(float(v.total) for v in ventas_hoy) if ventas_hoy else 0
         
-        costo_ventas_hoy = 0.0
-        for venta in ventas_hoy:
-            for detalle in venta.detalles:
-                producto = Producto.query.get(detalle.id_producto)
-                if producto:
-                    costo_unitario = float(producto.costo_unitario())
-                    costo_ventas_hoy += costo_unitario * detalle.cantidad
+        costo_ventas_hoy = float(
+            db.session.query(
+                func.coalesce(func.sum(DetalleCompra.cantidad * DetalleCompra.costo_unitario), 0)
+            ).join(
+                Compra, Compra.id_compra == DetalleCompra.id_compra
+            ).filter(
+                func.date(Compra.fecha) == hoy
+            ).scalar() or 0
+        )
         
         utilidad_hoy = total_ventas_hoy - costo_ventas_hoy
         margen_hoy = (utilidad_hoy / total_ventas_hoy * 100) if total_ventas_hoy > 0 else 0
         
         ventas_semana = Venta.query.filter(
+            Venta.estatus.is_(True),
             func.date(Venta.fecha) >= inicio_semana
         ).all()
         total_ventas_semana = sum(float(v.total) for v in ventas_semana) if ventas_semana else 0
 
         ventas_mes = Venta.query.filter(
+            Venta.estatus.is_(True),
             func.date(Venta.fecha) >= inicio_mes
         ).all()
         total_ventas_mes = sum(float(v.total) for v in ventas_mes) if ventas_mes else 0
@@ -75,7 +80,8 @@ def dashboard():
                           total_ventas_semana=total_ventas_semana,
                           total_ventas_mes=total_ventas_mes,
                           top_rentables=top_rentables,
-                          menos_rentables=menos_rentables)
+                          menos_rentables=menos_rentables,
+                          active_page='costos_utilidades')
 
 
 @utilidad_bp.route('/utilidad/reporte', methods=['GET', 'POST'])
@@ -194,7 +200,7 @@ def producto_detalle(producto_id):
     datos = producto.to_dict_rentabilidad()
     ventas_detalle = DetalleVenta.query.filter_by(id_producto=producto_id).all()
     total_vendido = sum(d.cantidad for d in ventas_detalle)
-    total_ingresos = sum(float(d.subtotal) for d in ventas_detalle)
+    total_ingresos = sum((float(d.cantidad or 0) * float(d.precio_unitario or 0)) for d in ventas_detalle)
     
     total_costos = 0
     for detalle in ventas_detalle:

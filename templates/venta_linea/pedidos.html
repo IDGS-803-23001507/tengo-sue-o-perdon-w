@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+{% extends "layout/layout_produccion.html" %}
 
 {% block container %}
 
@@ -11,7 +11,7 @@
         </div>
 
         <div class="flex gap-4">
-            <a href="{{ url_for('ventas.index') }}"
+            <a href="{{ url_for('ventas.ventas') }}"
                 class="bg-white px-4 py-2 rounded-xl shadow-sm text-xs font-bold border border-gray-200 hover:bg-gray-50 transition-all">
                 Ver Ventas
             </a>
@@ -123,6 +123,7 @@
                     method="POST" class="col-span-2">
                     <button type="submit"
                         class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-900 text-white hover:bg-black transition-all">
+                        Entregar / Pasar a pago
                     </button>
                 </form>
 

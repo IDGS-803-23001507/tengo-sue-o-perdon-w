@@ -1,8 +1,7 @@
-from flask import Blueprint, render_template, session, redirect, url_for,flash
-from model import db
-from sqlalchemy import text 
-from functools import wraps 
-from flask import abort 
+from flask import Blueprint, flash, redirect, render_template, session, url_for
+from functools import wraps
+from sqlalchemy import text
+
 from model import db
 
 pedidosBp = Blueprint("pedidos", __name__, url_prefix="/pedidos")
@@ -51,8 +50,8 @@ def index():
             c.nombre AS nombre_cliente
         FROM pedidos p
         JOIN ventas v ON p.id_venta = v.id_venta
-        LEFT JOIN clientes c ON v.id_cliente = c.id_cliente
-        WHERE p.estado IN ('pendiente', 'Preparando', 'Listo')
+        LEFT JOIN clientes c ON v.id_cliente = c.id
+        WHERE LOWER(p.estado) IN ('pendiente', 'preparando', 'listo')
         ORDER BY p.hora_recogida ASC
     """)
     
@@ -70,7 +69,7 @@ def index():
   
         p['detalles'] = [dict(row._mapping) for row in detalles_result]
     
-    return render_template("venta_linea/pedidos.html", pedidos=pedidos)
+    return render_template("venta_linea/pedidos.html", pedidos=pedidos, active_page="pedidos")
 
 
 @pedidosBp.route("/<int:idPedido>/estado/<string:estado>", methods=["POST"])

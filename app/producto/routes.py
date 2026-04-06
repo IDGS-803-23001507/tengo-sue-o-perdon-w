@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, render_template, request
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from forms import ProductoTerminadoForm, ProductoTerminadoEditarForm
 from model import db, Producto
 
@@ -44,7 +44,8 @@ def nuevo_producto():
         db.session.add(nuevo_producto)
         db.session.commit()
 
-        return render_template('productos/nuevo_producto.html', mostrar_modal=True, form=ProductoTerminadoForm())
+        flash('Producto registrado. Ahora captura su receta.', 'success')
+        return redirect(url_for('recetas.nueva', producto=nuevo_producto.id_producto))
 
     if request.method == 'POST':
         for erroresCampo in form.errors.values():
