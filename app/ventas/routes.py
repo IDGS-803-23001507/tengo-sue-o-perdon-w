@@ -12,7 +12,7 @@ def tiendaCliente():
 	if not session.get("inicioSesion"):
 		return redirect(url_for("auth.iniciarSesion"))
 
-	if session.get("usuarioRol") != "Cliente":
+	if session.get("usuarioRol") not in {"Cliente", "Cajero"}:
 		return redirect(url_for("index"))
 
 	productos = Producto.query.filter_by(estatus=True).order_by(Producto.nombre.asc()).all()
@@ -24,7 +24,7 @@ def comprarProducto():
 	if not session.get("inicioSesion"):
 		return redirect(url_for("auth.iniciarSesion"))
 
-	if session.get("usuarioRol") != "Cliente":
+	if session.get("usuarioRol") not in {"Cliente", "Cajero"}:
 		return redirect(url_for("index"))
 
 	productoId = request.form.get("productoId", type=int)

@@ -42,7 +42,15 @@ def asegurar_esquema_usuarios() -> None:
             )
         )
 
-    for nombre_rol in ("Gerente", "Operador", "Cliente"):
+    for nombre_rol in (
+        "Admin General (TI)",
+        "Gerente de Tienda",
+        "Cajero",
+        "Barista",
+        "Cliente",
+        "Gerente",
+        "Operador",
+    ):
         db.session.execute(text("INSERT IGNORE INTO roles (nombre) VALUES (:nombre)"), {"nombre": nombre_rol})
 
     columnas = {columna["name"] for columna in inspector.get_columns("usuarios")}
@@ -426,13 +434,23 @@ def seed_db() -> None:
                 )
             )
 
-    for nombre in ["Gerente", "Operador", "Cliente"]:
+    for nombre in [
+        "Admin General (TI)",
+        "Gerente de Tienda",
+        "Cajero",
+        "Barista",
+        "Cliente",
+        "Gerente",
+        "Operador",
+    ]:
         if not Rol.query.filter_by(nombre=nombre).first():
             db.session.add(Rol(nombre=nombre))
 
     db.session.commit()
 
-    rol_gerente = Rol.query.filter_by(nombre="Gerente").first()
+    rol_gerente = Rol.query.filter(
+        Rol.nombre.in_(["Gerente de Tienda", "Gerente", "Admin General (TI)"])
+    ).first()
     if not rol_gerente:
         return
 

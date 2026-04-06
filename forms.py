@@ -4,8 +4,10 @@ from wtforms import StringField, DateTimeLocalField, IntegerField, RadioField, T
 from wtforms.validators import DataRequired, ValidationError, NumberRange, EqualTo, Length, Email, Optional
 
 ROLES_USUARIO = [
-    ("Gerente", "Gerente"),
-    ("Operador", "Operador"),
+    ("Admin General (TI)", "Admin General (TI)"),
+    ("Gerente de Tienda", "Gerente de Tienda"),
+    ("Cajero", "Cajero"),
+    ("Barista", "Barista"),
     ("Cliente", "Cliente"),
 ]
 

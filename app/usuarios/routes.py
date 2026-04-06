@@ -14,7 +14,7 @@ def hayOtroGerenteActivo(idUsuarioActual: int) -> bool:
         Usuario.query.join(Rol, Usuario.rolId == Rol.id)
         .filter(
             Usuario.id != idUsuarioActual,
-            Rol.nombre == "Gerente",
+            Rol.nombre.in_(["Gerente de Tienda", "Gerente", "Admin General (TI)", "Admin General"]),
             Usuario.estado == "Activo",
         )
         .first()
@@ -29,7 +29,14 @@ def requiereRol(rolRequerido: str):
             if not session.get("inicioSesion"):
                 return redirect(url_for("auth.iniciarSesion"))
 
-            if session.get("usuarioRol") != rolRequerido:
+            rolSesion = session.get("usuarioRol")
+            equivalencias = {
+                "Gerente": {"Gerente", "Gerente de Tienda", "Admin General (TI)", "Admin General"},
+                "Gerente de Tienda": {"Gerente", "Gerente de Tienda", "Admin General (TI)", "Admin General"},
+            }
+            rolesPermitidos = equivalencias.get(rolRequerido, {rolRequerido})
+
+            if rolSesion not in rolesPermitidos:
                 flash("No tienes permisos para acceder a este módulo.", "danger")
                 return redirect(url_for("dashboard_operador"))
 
@@ -51,7 +58,7 @@ def index():
     consultaUsuarios = Usuario.query.join(Rol, Usuario.rolId == Rol.id)\
                                  .join(Empleado, Usuario.id == Empleado.usuarioId)\
                                  .filter(
-    Rol.nombre.in_(["Operador", "Gerente"])
+    Rol.nombre.in_(["Admin General (TI)", "Gerente de Tienda", "Cajero", "Barista", "Gerente", "Operador"])
 )
     if terminoBusqueda:
         patronBusqueda = f"%{terminoBusqueda}%"
@@ -231,7 +238,7 @@ def desactivar(idUsuario: int):
         flash("No puedes desactivar tu propia cuenta.", "danger")
         return redirect(url_for("usuarios.index"))
 
-    if usuario.rol == "Gerente" and not hayOtroGerenteActivo(idUsuario):
+    if usuario.rol in {"Gerente", "Gerente de Tienda", "Admin General (TI)", "Admin General"} and not hayOtroGerenteActivo(idUsuario):
         flash("Debe existir al menos un Gerente activo en el sistema.", "danger")
         return redirect(url_for("usuarios.index"))
 

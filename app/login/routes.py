@@ -69,7 +69,12 @@ def usuarioAutenticado() -> bool:
 
 def endpointDashboardRol(rol: str) -> str:
     mapaRoles = {
+        "Admin General (TI)": "dashboard_gerente",
+        "Admin General": "dashboard_gerente",
+        "Gerente de Tienda": "dashboard_gerente",
         "Gerente": "dashboard_gerente",
+        "Cajero": "ventas.tienda_cliente",
+        "Barista": "dashboard_operador",
         "Operador": "dashboard_operador",
         "Cliente": "ventas.tienda_cliente",
     }
