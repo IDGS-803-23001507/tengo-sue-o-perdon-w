@@ -9,6 +9,7 @@ from werkzeug.routing import BuildError
 from config import Config
 from db_init import asegurar_base_de_datos, inicializar_db
 from model import Compra, DetalleCompra, DetalleVenta, MateriaPrima, Producto, RegistroSesion, Venta, db
+from app.auditoria import obtener_logs_auditoria
 
 from app.login.routes import authBp, endpointDashboardRol, usuarioAutenticado
 from app.usuarios.routes import usuariosBp
@@ -415,6 +416,15 @@ def dashboard_operador():
     contexto = construirContextoDashboard(periodoDias=periodoDias, puedeVerFinanzas=False)
     contexto["active_page"] = "dashboard"
     return render_template("dashboard/dashboard.html", **contexto)
+
+
+@app.route("/dashboard/auditoria")
+def dashboard_auditoria():
+    if session.get("usuarioRol") not in {"Admin General (TI)", "Admin General"}:
+        abort(403)
+
+    logs = obtener_logs_auditoria(limit=300)
+    return render_template("dashboard/auditoria.html", logs=logs, active_page="dashboard")
 
 if __name__ == "__main__":
     app.run(debug=True, port=8080)

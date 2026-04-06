@@ -1,0 +1,45 @@
+{% extends "layout/layout_produccion.html" %}
+
+{% block container %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Auditoría</h1>
+            <p class="text-gray-500 mt-1">Registros inmutables de eventos críticos del sistema.</p>
+        </div>
+    </div>
+
+    <div class="bg-white border rounded-xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-600">
+                <thead class="text-xs uppercase text-gray-500 bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3">Fecha UTC</th>
+                        <th class="px-4 py-3">Usuario ID</th>
+                        <th class="px-4 py-3">Acción</th>
+                        <th class="px-4 py-3">Módulo</th>
+                        <th class="px-4 py-3">IP</th>
+                        <th class="px-4 py-3">Detalles</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr class="border-t align-top">
+                        <td class="px-4 py-3 whitespace-nowrap">{{ log.fecha_hora_text or '-' }}</td>
+                        <td class="px-4 py-3">{{ log.usuario_id or 'Anónimo' }}</td>
+                        <td class="px-4 py-3 font-medium text-gray-800">{{ log.accion }}</td>
+                        <td class="px-4 py-3">{{ log.modulo }}</td>
+                        <td class="px-4 py-3">{{ log.ip_direccion or '-' }}</td>
+                        <td class="px-4 py-3 max-w-lg break-words">{{ log.detalles or '-' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-4 py-6 text-center text-gray-500">No hay eventos de auditoría registrados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -4,6 +4,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from sqlalchemy import or_
 
 from forms import  CrearEmpleadoForm, EmpleadoActualizarForm, DesactivarForm
+from app.auditoria import registrar_auditoria
 from model import Rol, Usuario, Empleado, db
 
 usuariosBp = Blueprint("usuarios", __name__, url_prefix="/usuarios")
@@ -245,6 +246,12 @@ def desactivar(idUsuario: int):
     if form.validate_on_submit():
         usuario.estado = "Inactivo"
         usuario.resetearSeguridad()
+        registrar_auditoria(
+            accion="Cambio de Estado de Usuario",
+            modulo="Usuarios",
+            detalles={"accion": "desactivar", "usuario_objetivo_id": usuario.id, "estado_nuevo": "Inactivo"},
+            commit=False,
+        )
         db.session.commit()
         flash("Usuario desactivado correctamente.", "success")
     
@@ -258,6 +265,12 @@ def reactivar(idUsuario: int):
 
     if form.validate_on_submit():
         usuario.estado = "Activo"
+        registrar_auditoria(
+            accion="Cambio de Estado de Usuario",
+            modulo="Usuarios",
+            detalles={"accion": "reactivar", "usuario_objetivo_id": usuario.id, "estado_nuevo": "Activo"},
+            commit=False,
+        )
         db.session.commit()
         flash("Usuario reactivado correctamente.", "success")
         

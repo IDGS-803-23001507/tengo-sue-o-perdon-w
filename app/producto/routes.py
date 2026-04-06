@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, request
+from flask import Blueprint, flash, render_template, request
+from forms import ProductoTerminadoForm, ProductoTerminadoEditarForm
 from model import db, Producto
 
 producto_bp = Blueprint('producto', __name__)
@@ -23,73 +24,62 @@ def producto_index():
 
 @producto_bp.route('/nuevo_producto', methods=['GET', 'POST'])
 def nuevo_producto():
+    form = ProductoTerminadoForm()
 
-    if request.method == 'POST':
-        nombre = request.form.get('nombre', '').strip()
-        categoria = request.form.get('categoria', '').strip()
-        precio_venta = request.form.get('precio_venta')
-        descripcion = request.form.get('descripcion')
-        imagen_base64 = request.form.get('imageBase64') or None
+    if form.validate_on_submit():
+        imagen_base64 = (form.imageBase64.data or '').strip() or None
 
-        if not nombre or not categoria or not precio_venta:
-            return render_template(
-                'productos/nuevo_producto.html',
-                mostrar_modal=False,
-                error="Todos los campos son obligatorios"
-            )
         if imagen_base64 and len(imagen_base64) > 2_000_000:
-            return render_template('productos/nuevo_producto.html',
-                                    mostrar_modal=False,
-                                    error="La imagen es demasiado grande"
-    )
-
-        try:
-            precio_venta = float(precio_venta)
-        except ValueError:
-            return render_template(
-                'productos/nuevo_producto.html',
-                mostrar_modal=False,
-                error="El precio debe ser un número válido"
-            )
+            flash('La imagen es demasiado grande', 'danger')
+            return render_template('productos/nuevo_producto.html', mostrar_modal=False, form=form)
 
         nuevo_producto = Producto(
-            nombre=nombre,
-            categoria=categoria.lower(), 
-            precio_venta=precio_venta,
+            nombre=form.nombre.data.strip(),
+            categoria=form.categoria.data.lower(),
+            precio_venta=float(form.precio_venta.data),
             imagen=imagen_base64,
-            descripcion = descripcion
+            descripcion=form.descripcion.data,
         )
 
         db.session.add(nuevo_producto)
         db.session.commit()
 
-        return render_template(
-            'productos/nuevo_producto.html',
-            mostrar_modal=True
-        )
+        return render_template('productos/nuevo_producto.html', mostrar_modal=True, form=ProductoTerminadoForm())
 
-    return render_template(
-        'productos/nuevo_producto.html',
-        mostrar_modal=False
-    )
+    if request.method == 'POST':
+        for erroresCampo in form.errors.values():
+            if erroresCampo:
+                flash(erroresCampo[0], 'danger')
+                break
+
+    return render_template('productos/nuevo_producto.html', mostrar_modal=False, form=form)
 
 
 @producto_bp.route('/editar_producto/<int:id>', methods=['GET', 'POST'])
 def editar_producto(id):
     producto = Producto.query.get_or_404(id)
+    form = ProductoTerminadoEditarForm(obj=producto)
 
-    if request.method == 'POST':
-        producto.nombre = request.form.get('nombre')
-        producto.categoria = request.form.get('categoria')
-        producto.precio_venta = request.form.get('precio_venta')
-        producto.descripcion = request.form.get('descripcion')
-        estatus_form = request.form.get('estatus')
-        producto.estatus = True if estatus_form == '1' else False
+    if request.method == 'GET':
+        form.estatus.data = '1' if producto.estatus else '0'
+
+    if form.validate_on_submit():
+        producto.nombre = form.nombre.data.strip()
+        producto.categoria = form.categoria.data
+        producto.precio_venta = float(form.precio_venta.data)
+        producto.descripcion = form.descripcion.data
+        producto.estatus = form.estatus.data == '1'
         db.session.commit()
         
-        return render_template('productos/editar_producto.html', mostrar_modal=True, producto=producto)
+        return render_template('productos/editar_producto.html', mostrar_modal=True, producto=producto, form=form)
+
+    if request.method == 'POST':
+        for erroresCampo in form.errors.values():
+            if erroresCampo:
+                flash(erroresCampo[0], 'danger')
+                break
     
-    return render_template('productos/editar_producto.html', mostrar_modal=False, producto=producto)
+    return render_template('productos/editar_producto.html', mostrar_modal=False, producto=producto, form=form)
 
 @producto_bp.route('/catalogo_venta')
 def producto_venta():
