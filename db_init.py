@@ -98,6 +98,60 @@ def asegurar_esquema_usuarios() -> None:
     db.session.commit()
 
 
+def asegurar_esquema_unidades() -> None:
+    inspector = inspect(db.engine)
+    tablas = set(inspector.get_table_names())
+
+    if "Unidad_medida" not in tablas:
+        return
+
+    columnas = {columna["name"] for columna in inspector.get_columns("Unidad_medida")}
+
+    if "tipo" not in columnas:
+        db.session.execute(
+            text(
+                """
+                ALTER TABLE `Unidad_medida`
+                ADD COLUMN `tipo` ENUM('liquido','solido') NOT NULL DEFAULT 'solido'
+                """
+            )
+        )
+
+    if "factor" not in columnas:
+        db.session.execute(
+            text(
+                """
+                ALTER TABLE `Unidad_medida`
+                ADD COLUMN `factor` DECIMAL(10,4) NOT NULL DEFAULT 1.0000
+                """
+            )
+        )
+
+    db.session.execute(
+        text(
+            """
+            UPDATE `Unidad_medida`
+            SET `tipo` = CASE
+                WHEN LOWER(`abreviacion`) IN ('l', 'ml') THEN 'liquido'
+                ELSE 'solido'
+            END,
+            `factor` = CASE
+                WHEN LOWER(`abreviacion`) = 'kg' THEN 1000.0000
+                WHEN LOWER(`abreviacion`) = 'kl' THEN 1000.0000
+                WHEN LOWER(`abreviacion`) = 'g' THEN 1.0000
+                WHEN LOWER(`abreviacion`) = 'oz' THEN 28.3500
+                WHEN LOWER(`abreviacion`) = 'l' THEN 1000.0000
+                WHEN LOWER(`abreviacion`) = 'ml' THEN 1.0000
+                WHEN LOWER(`abreviacion`) IN ('pz', 'u') THEN 1.0000
+                ELSE COALESCE(`factor`, 1.0000)
+            END
+            """
+        )
+    )
+
+    db.session.commit()
+
+
 def _generar_usuario_unico(correo_base: str) -> str:
     usuario_base = correo_base.split("@")[0] or "gerente"
     usuario_generado = usuario_base
@@ -196,4 +250,5 @@ def seed_db() -> None:
 def inicializar_db() -> None:
     db.create_all()
     asegurar_esquema_usuarios()
+    asegurar_esquema_unidades()
     seed_db()

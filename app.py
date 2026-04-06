@@ -8,7 +8,7 @@ from werkzeug.routing import BuildError
 
 from config import Config
 from db_init import inicializar_db
-from model import DetalleVenta, MateriaPrima, Producto, Venta, db
+from model import Compra, DetalleCompra, DetalleVenta, MateriaPrima, Producto, Venta, db
 
 from app.login.routes import authBp, endpointDashboardRol, usuarioAutenticado
 from app.usuarios.routes import usuariosBp
@@ -73,7 +73,11 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
     finPeriodo = inicioHoy.date()
 
     totalVentasDia = Decimal("0.00")
+    totalVentasPeriodo = Decimal("0.00")
+    totalGastosDia = Decimal("0.00")
+    totalGastosPeriodo = Decimal("0.00")
     utilidadBrutaDia = Decimal("0.00")
+    utilidadBrutaPeriodo = Decimal("0.00")
     numeroTicketsDia = 0
 
     if puedeVerFinanzas:
@@ -83,10 +87,22 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
             Venta.fecha < finHoy,
         ).scalar() or Decimal("0.00")
 
+        totalVentasPeriodo = db.session.query(func.coalesce(func.sum(Venta.total), 0)).filter(
+            Venta.confirmada.is_(True),
+            func.date(Venta.fecha) >= inicioPeriodo,
+            func.date(Venta.fecha) <= finPeriodo,
+        ).scalar() or Decimal("0.00")
+
         utilidadBrutaDia = db.session.query(func.coalesce(func.sum(Venta.utilidadBruta), 0)).filter(
             Venta.confirmada.is_(True),
             Venta.fecha >= inicioHoy,
             Venta.fecha < finHoy,
+        ).scalar() or Decimal("0.00")
+
+        utilidadBrutaPeriodo = db.session.query(func.coalesce(func.sum(Venta.utilidadBruta), 0)).filter(
+            Venta.confirmada.is_(True),
+            func.date(Venta.fecha) >= inicioPeriodo,
+            func.date(Venta.fecha) <= finPeriodo,
         ).scalar() or Decimal("0.00")
 
         numeroTicketsDia = db.session.query(func.count(Venta.id_venta)).filter(
@@ -94,6 +110,24 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
             Venta.fecha >= inicioHoy,
             Venta.fecha < finHoy,
         ).scalar() or 0
+
+        totalGastosDia = db.session.query(
+            func.coalesce(func.sum(DetalleCompra.cantidad * DetalleCompra.costo_unitario), 0)
+        ).join(
+            Compra, Compra.id_compra == DetalleCompra.id_compra
+        ).filter(
+            Compra.fecha >= inicioHoy,
+            Compra.fecha < finHoy,
+        ).scalar() or Decimal("0.00")
+
+        totalGastosPeriodo = db.session.query(
+            func.coalesce(func.sum(DetalleCompra.cantidad * DetalleCompra.costo_unitario), 0)
+        ).join(
+            Compra, Compra.id_compra == DetalleCompra.id_compra
+        ).filter(
+            func.date(Compra.fecha) >= inicioPeriodo,
+            func.date(Compra.fecha) <= finPeriodo,
+        ).scalar() or Decimal("0.00")
 
     ventasPeriodo = db.session.query(
         func.date(Venta.fecha).label("fecha"),
@@ -135,15 +169,41 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
     ).limit(5).all()
 
     ultimasOperaciones = Venta.query.filter_by(confirmada=True).order_by(Venta.fecha.desc()).limit(7).all()
-    alertasInsumos = MateriaPrima.query.filter(
+    materiasCriticas = MateriaPrima.query.filter(
         MateriaPrima.estatus.is_(True),
         MateriaPrima.stock_actual <= MateriaPrima.stock_minimo,
     ).order_by(MateriaPrima.stock_actual.asc()).all()
 
+    alertasInsumos = []
+    for materia in materiasCriticas:
+        stock_actual = Decimal(str(materia.stock_actual or 0))
+        stock_minimo = Decimal(str(materia.stock_minimo or 0))
+        faltante = max(stock_minimo - stock_actual, Decimal("0"))
+
+        alertasInsumos.append({
+            "id_materia": materia.id_materia,
+            "nombre": materia.nombre,
+            "unidad": materia.unidad.abreviacion if materia.unidad else "u",
+            "stock_actual": float(stock_actual),
+            "stock_minimo": float(stock_minimo),
+            "faltante": float(faltante),
+        })
+
+    ticketPromedioDia = (totalVentasDia / numeroTicketsDia) if numeroTicketsDia else Decimal("0.00")
+    utilidadNetaDia = totalVentasDia - totalGastosDia
+    utilidadNetaPeriodo = totalVentasPeriodo - totalGastosPeriodo
+
     return {
         "periodoSeleccionado": periodoDias,
         "totalVentasDia": float(totalVentasDia),
+        "totalVentasPeriodo": float(totalVentasPeriodo),
+        "totalGastosDia": float(totalGastosDia),
+        "totalGastosPeriodo": float(totalGastosPeriodo),
         "utilidadBrutaDia": float(utilidadBrutaDia),
+        "utilidadBrutaPeriodo": float(utilidadBrutaPeriodo),
+        "utilidadNetaDia": float(utilidadNetaDia),
+        "utilidadNetaPeriodo": float(utilidadNetaPeriodo),
+        "ticketPromedioDia": float(ticketPromedioDia),
         "numeroTicketsDia": int(numeroTicketsDia),
         "etiquetasGrafica": etiquetas,
         "puntosGrafica": puntos,
@@ -206,6 +266,7 @@ def dashboard_gerente():
     periodo = request.args.get("periodo", "7")
     periodoDias = int(periodo) if periodo in {"7", "15", "30"} else 7
     contexto = construirContextoDashboard(periodoDias=periodoDias, puedeVerFinanzas=True)
+    contexto["active_page"] = "dashboard"
     return render_template("dashboard/dashboard.html", **contexto)
 
 
@@ -216,6 +277,7 @@ def dashboard_operador():
     periodo = request.args.get("periodo", "7")
     periodoDias = int(periodo) if periodo in {"7", "15", "30"} else 7
     contexto = construirContextoDashboard(periodoDias=periodoDias, puedeVerFinanzas=False)
+    contexto["active_page"] = "dashboard"
     return render_template("dashboard/dashboard.html", **contexto)
 
 if __name__ == "__main__":

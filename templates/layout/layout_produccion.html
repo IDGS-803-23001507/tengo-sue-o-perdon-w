@@ -42,7 +42,7 @@
         <p class="text-xs text-gray-400 font-semibold px-2 mb-2 uppercase">Principal</p>
 
         {% if session.usuarioRol == "Gerente" %}
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        <a href="{{ url_for('dashboard_gerente') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
         {% if active_page == 'dashboard' %}
             bg-gray-100 text-gray-900
         {% else %}
