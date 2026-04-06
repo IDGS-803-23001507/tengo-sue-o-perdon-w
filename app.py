@@ -282,7 +282,7 @@ def requerirLogin():
             return "C"
         return "C"
 
-    def permitido(rolCanonico: str, modulo: str, accion: str) -> bool:
+    def accionesPermitidas(rolCanonico: str, modulo: str) -> set[str]:
         matriz = {
             "admin_ti": {
                 "autenticacion": {"C", "R", "U", "D"},
@@ -325,8 +325,10 @@ def requerirLogin():
                 "ventas": set(),
             },
         }
-        acciones = matriz.get(rolCanonico, {}).get(modulo, set())
-        return accion in acciones
+        return matriz.get(rolCanonico, {}).get(modulo, set())
+
+    def permitido(rolCanonico: str, modulo: str, accion: str) -> bool:
+        return accion in accionesPermitidas(rolCanonico, modulo)
 
     endpointsPublicos = {
         "auth.iniciarSesion",
@@ -373,7 +375,16 @@ def requerirLogin():
         accion = accionDesdeRequest(request.endpoint, request.method)
         rolCanonico = normalizarRol(session.get("usuarioRol", ""))
         if not permitido(rolCanonico, modulo, accion):
-            flash("Acceso denegado por política de privilegios.", "danger")
+            acciones = accionesPermitidas(rolCanonico, modulo)
+            nombres = {"R": "leer", "C": "crear", "U": "actualizar", "D": "eliminar"}
+
+            if not acciones:
+                flash("No tienes permisos para este módulo.", "danger")
+            elif acciones == {"R"}:
+                flash("Solo tienes permiso para leer en este módulo.", "warning")
+            else:
+                permitidas_txt = ", ".join(nombres[a] for a in ["R", "C", "U", "D"] if a in acciones)
+                flash(f"No tienes permiso para esta acción. Tus permisos aquí son: {permitidas_txt}.", "warning")
             return redirect(url_for("index"))
 
     if session.get("usuarioRol") == "Cliente":
