@@ -1,7 +1,7 @@
 
 from flask import Blueprint, flash, redirect, render_template, session, request, url_for
 from model import Cliente, Usuario, db
-from forms import ClienteForm 
+from forms import ClientePerfilForm 
 
 clientesBp = Blueprint("clientes", __name__)
 
@@ -42,29 +42,26 @@ def editar_cliente():
         return redirect(url_for("auth.iniciarSesion"))
 
     cliente = usuario.cliente
+    form = ClientePerfilForm(obj=cliente)
 
-    if request.method == "POST":
-        nombre = request.form.get("nombre", "").strip()
-        apellidoPaterno = request.form.get("apellidoPaterno", "").strip()
-        apellidoMaterno = request.form.get("apellidoMaterno", "").strip()
-        telefono = request.form.get("telefono", "").strip()
-        alias = request.form.get("alias", "").strip()
-
-        if not nombre or not apellidoPaterno:
-            flash("Nombre y apellido paterno son obligatorios.", "danger")
-            return redirect(url_for("clientes.cliente"))
-
-        cliente.nombre = nombre
-        cliente.apellidoPaterno = apellidoPaterno
-        cliente.apellidoMaterno = apellidoMaterno if apellidoMaterno else None
-        cliente.telefono = telefono if telefono else None
-        cliente.alias = alias if alias else None
+    if form.validate_on_submit():
+        cliente.nombre = form.nombre.data.strip()
+        cliente.apellidoPaterno = form.apellidoPaterno.data.strip()
+        cliente.apellidoMaterno = (form.apellidoMaterno.data or "").strip() or None
+        cliente.telefono = (form.telefono.data or "").strip() or None
+        cliente.alias = (form.alias.data or "").strip() or None
 
         db.session.commit()
         flash("Perfil actualizado correctamente.", "success")
         return redirect(url_for("clientes.detalle_cliente"))
+
+    if request.method == "POST":
+        for erroresCampo in form.errors.values():
+            if erroresCampo:
+                flash(erroresCampo[0], "danger")
+                break
     
-    return render_template("cliente/editar_cliente.html", cliente=cliente, usuario=usuario)
+    return render_template("cliente/editar_cliente.html", cliente=cliente, usuario=usuario, form=form)
 
 
 @clientesBp.route("/desactivar-cuenta", methods=["POST"])

@@ -16,6 +16,7 @@
 <form method="POST"
       action="{{ url_for('producto.editar_producto', id=producto.id_producto) }}"
       class="bg-white rounded-lg shadow-sm border p-4 md:p-8 w-full max-w-4xl">
+    {{ form.hidden_tag() }}
 
     <h2 class="text-lg md:text-xl font-semibold mb-4 text-gray-800 border-b pb-2">
         Datos del Producto
@@ -27,71 +28,51 @@
             <label class="block mb-2 text-sm font-medium text-gray-900">
                 Nombre del Producto *
             </label>
-
-            <input type="text" name="nombre" value="{{ producto.nombre }}"
-                   class="bg-gray-50 border border-gray-300 text-sm rounded-lg 
-                          focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                   required maxlength="50">
+            {{ form.nombre(
+                class="bg-gray-50 border border-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5",
+                required=true,
+                maxlength="50"
+            ) }}
         </div>
 
         <div>
             <label class="block mb-2 text-sm font-medium text-gray-900">
                 Categoría *
             </label>
-
-            <select name="categoria"
-                    class="bg-gray-50 border border-gray-300 text-sm rounded-lg 
-                           focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                    required>
-
-                <option value="bebidas" {% if producto.categoria == 'bebidas' %}selected{% endif %}>
-                    Bebidas
-                </option>
-
-                <option value="alimentos" {% if producto.categoria == 'alimentos' %}selected{% endif %}>
-                    Alimentos
-                </option>
-
-            </select>
+            {{ form.categoria(
+                class="bg-gray-50 border border-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5",
+                required=true
+            ) }}
         </div>
 
         <div>
             <label class="block mb-2 text-sm font-medium text-gray-900">
                 Precio de Venta ($) *
             </label>
-
-            <input type="number" step="0.01" name="precio_venta"
-                   value="{{ producto.precio_venta }}"
-                   class="bg-gray-50 border border-gray-300 text-sm rounded-lg 
-                          focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                   required>
+            {{ form.precio_venta(
+                class="bg-gray-50 border border-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5",
+                step="0.01",
+                required=true
+            ) }}
         </div>
 
         <div class="md:col-span-2">
             <label class="block mb-2 text-sm font-medium text-gray-900">
                 Estatus del Producto *
             </label>
-
-            <select name="estatus"
-                    class="bg-gray-50 border border-gray-300 text-sm rounded-lg 
-                           focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                    required>
-
-                <option value="1" {% if producto.estatus %}selected{% endif %}>
-                    Activo
-                </option>
-
-                <option value="0" {% if not producto.estatus %}selected{% endif %}>
-                    Inactivo
-                </option>
-
-            </select>
+            {{ form.estatus(
+                class="bg-gray-50 border border-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5",
+                required=true
+            ) }}
         </div>
 
         <div class="md:col-span-2">
             <label class="block mb-2 text-sm font-medium text-gray-900">Descripcion del producto *</label>
-            <textarea name="descripcion" placeholder="Añade alguna descripcion del producto..." class="bg-gray-50 border border-gray-300 text-sm rounded-lg 
-            focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>{{producto.descripcion}}</textarea>
+            {{ form.descripcion(
+                placeholder="Añade alguna descripcion del producto...",
+                class="bg-gray-50 border border-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5",
+                required=true
+            ) }}
         </div>
 
     </div>

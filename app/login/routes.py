@@ -9,6 +9,7 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from forms import LoginForm, RecuperarContrasenaForm, ClienteForm, ResetearContrasenaForm
+from app.auditoria import registrar_auditoria
 from model import RegistroSesion, Rol, Usuario, Cliente, Empleado, db
 
 authBp = Blueprint("auth", __name__)
@@ -96,21 +97,62 @@ def iniciarSesion():
 
         if not usuario:
             check_password_hash(hashContrasenaSimulada, contrasena)
+            registrar_auditoria(
+                accion="Login Fallido",
+                modulo="Autenticación",
+                detalles={"motivo": "usuario_no_encontrado", "identificador": identificador},
+                usuario_id=None,
+                commit=True,
+            )
             flash(errorGenerico, "danger")
             return render_template("login/login.html", form=form)
 
         if usuario.estado != "Activo":
             check_password_hash(hashContrasenaSimulada, contrasena)
+            registrar_auditoria(
+                accion="Login Fallido",
+                modulo="Autenticación",
+                detalles={"motivo": "usuario_inactivo"},
+                usuario_id=usuario.id,
+                commit=True,
+            )
             flash(errorGenerico, "danger")
             return render_template("login/login.html", form=form)
 
         if usuario.estaBloqueada():
+            registrar_auditoria(
+                accion="Login Fallido",
+                modulo="Autenticación",
+                detalles={"motivo": "cuenta_bloqueada"},
+                usuario_id=usuario.id,
+                commit=False,
+            )
             db.session.commit()
             flash("Cuenta bloqueada temporalmente.", "warning")
             return render_template("login/login.html", form=form)
 
         if not usuario.validarContrasena(contrasena):
             usuario.registrarIntentoFallido(maxIntentos=3, minutosBloqueo=15)
+
+            motivo = "credenciales_invalidas"
+            if usuario.cuentaBloqueada:
+                motivo = "cuenta_bloqueada_por_intentos"
+                registrar_auditoria(
+                    accion="Cuenta Bloqueada",
+                    modulo="Usuarios",
+                    detalles={"motivo": "intentos_fallidos", "intentos": usuario.intentosFallidos},
+                    usuario_id=usuario.id,
+                    commit=False,
+                )
+
+            registrar_auditoria(
+                accion="Login Fallido",
+                modulo="Autenticación",
+                detalles={"motivo": motivo, "intentos": usuario.intentosFallidos},
+                usuario_id=usuario.id,
+                commit=False,
+            )
+
             db.session.commit()
 
             if usuario.cuentaBloqueada:
@@ -130,6 +172,14 @@ def iniciarSesion():
             agenteUsuario=(request.user_agent.string or "")[:255],
         )
         db.session.add(registroSesion)
+
+        registrar_auditoria(
+            accion="Login Exitoso",
+            modulo="Autenticación",
+            detalles={"motivo": "credenciales_validas"},
+            usuario_id=usuario.id,
+            commit=False,
+        )
         db.session.commit()
 
         session.clear()
