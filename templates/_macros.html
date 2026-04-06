@@ -94,3 +94,38 @@
     <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded border border-red-400">Cancelado</span>
   {% endif %}
 {% endmacro %}
+
+{% macro badge(text, color='gray') %}
+  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+    {% if color == 'green' %}bg-green-100 text-green-700
+    {% elif color == 'red' %}bg-red-100 text-red-700
+    {% elif color == 'blue' %}bg-blue-100 text-blue-700
+    {% elif color == 'yellow' %}bg-yellow-100 text-yellow-700
+    {% else %}bg-gray-100 text-gray-700{% endif %}">
+    {{ text }}
+  </span>
+{% endmacro %}
+
+{% macro stat_card(label, value, color='gray') %}
+  <div class="bg-white dark:bg-gray-800 rounded-base shadow-xs border border-default p-4">
+    <p class="text-sm text-gray-500 dark:text-gray-400">{{ label }}</p>
+    <p class="text-2xl font-bold
+      {% if color == 'green' %}text-green-600
+      {% elif color == 'blue' %}text-blue-600
+      {% elif color == 'red' %}text-red-600
+      {% elif color == 'purple' %}text-purple-600
+      {% else %}text-gray-900 dark:text-white{% endif %}">
+      {{ value }}
+    </p>
+  </div>
+{% endmacro %}
+
+{% macro empty_state(message='No hay datos disponibles') %}
+  <div class="text-center py-12">
+    <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+    <p class="text-gray-400 text-sm">{{ message }}</p>
+  </div>
+{% endmacro %}

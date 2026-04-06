@@ -177,18 +177,16 @@ class FiltroComprasForm(FlaskForm):
 class PedidoForm(FlaskForm):
     
     nombre = StringField('Nombre', 
-                validators=[DataRequired(), Length(max=120)])
+            validators=[DataRequired(), Length(max=120)])
     
     telefono = StringField('Teléfono', 
-                validators=[Length(max=15)])
+            validators=[Length(max=15)])
 
-    hora_recogida = DateTimeLocalField('Hora de recogida',
-        format='%Y-%m-%dT%H:%M',
-        validators=[DataRequired()]
-    )
+    hora_recogida = DateTimeLocalField('Hora de recogida', format='%Y-%m-%dT%H:%M',
+            validators=[DataRequired()])
 
     notas = TextAreaField('Notas', 
-        validators=[Length(max=200)])
+            validators=[Length(max=200)])
 
     submit = SubmitField('Crear Pedido')
 
@@ -570,6 +568,7 @@ class RecetaLoteForm(FlaskForm):
 
 
 class MateriaPrimaForm(FlaskForm):
+    
     nombre_insumo = StringField(
         "Nombre de la materia prima",
         validators=[
@@ -598,13 +597,6 @@ class MateriaPrimaForm(FlaskForm):
         ],
     )
 
-    estatus = SelectField(
-        "Estatus",
-        choices=[("1", "Activo"), ("0", "Inactivo")],
-        validators=[Optional()],
-        default="1",
-    )
-
     submit = SubmitField("Guardar Insumo")
 
     def set_unidades(self, unidades):
@@ -612,3 +604,11 @@ class MateriaPrimaForm(FlaskForm):
             (u.id_unidad, f"{u.nombre} ({u.abreviacion})" if u.abreviacion else u.nombre)
             for u in unidades
         ]
+        
+class FechasReporteForm(FlaskForm):
+    fecha_inicio = DateField('Fecha Inicio', format='%Y-%m-%d', validators=[
+        DataRequired(message='La fecha de inicio es obligatoria')
+    ])
+    fecha_fin = DateField('Fecha Fin', format='%Y-%m-%d', validators=[
+        DataRequired(message='La fecha de fin es obligatoria')
+    ])

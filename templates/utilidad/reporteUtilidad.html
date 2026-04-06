@@ -1,0 +1,214 @@
+{% extends "layout/layout_produccion.html" %}
+{% block container %}
+{% import "_macros.html" as macros %}
+
+<div class="w-full max-w-7xl mx-auto">
+
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-800">
+        Reporte de Costos y Utilidad
+      </h2>
+      <p class="text-gray-500 mt-1">
+        Análisis detallado por período
+      </p>
+    </div>
+
+    <div class="flex gap-2 flex-wrap">
+
+      <a href="{{ url_for('utilidad.dashboard') }}" 
+         class="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8B5E3C] hover:bg-[#6F4A30] text-white text-sm font-medium rounded-lg transition">
+        <i class="fa-solid fa-chart-line"></i>
+        Dashboard
+      </a>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+    <form method="POST" action="{{ url_for('utilidad.reporte') }}" class="flex flex-wrap gap-4 items-end">
+        {{ form.hidden_tag() }}
+
+      <div class="flex-1 min-w-[200px]">
+        <label class="block mb-1 text-sm font-medium text-gray-700">
+          Fecha Inicio
+        </label>
+        {{ form.fecha_inicio(class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-[#8B5E3C] focus:border-[#8B5E3C]") }}
+      </div>
+
+      <div class="flex-1 min-w-[200px]">
+        <label class="block mb-1 text-sm font-medium text-gray-700">
+          Fecha Fin
+        </label>
+        {{ form.fecha_fin(class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-[#8B5E3C] focus:border-[#8B5E3C]") }}
+      </div>
+
+      <button type="submit"
+        class="px-5 py-2.5 bg-[#8B5E3C] hover:bg-[#6F4A30] text-white text-sm font-medium rounded-lg transition">
+        Generar Reporte
+      </button>
+    </form>
+  </div>
+
+  {% if ventas %}
+
+  <!-- Botón PDF -->
+  <form action="{{ url_for('utilidad.reporte_pdf') }}" method="POST" class="mb-6">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="fecha_inicio" value="{{ form.fecha_inicio.data }}">
+    <input type="hidden" name="fecha_fin" value="{{ form.fecha_fin.data }}">
+
+    <button type="submit"
+      class="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition">
+      <i class="fa-solid fa-file-pdf"></i>
+      Descargar PDF
+    </button>
+  </form>
+
+  <!-- Cards resumen -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+    <div class="bg-white rounded-xl shadow-sm border p-4">
+      <p class="text-sm text-gray-500">Total Ventas</p>
+      <p class="text-2xl font-bold text-gray-800">
+        ${{ "%.2f"|format(resumen.total_ventas) }}
+      </p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border p-4">
+      <p class="text-sm text-gray-500">Costo de Ventas</p>
+      <p class="text-2xl font-bold text-gray-800">
+        ${{ "%.2f"|format(resumen.total_costos) }}
+      </p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border p-4">
+      <p class="text-sm text-gray-500">Utilidad Bruta</p>
+      <p class="text-2xl font-bold text-blue-600">
+        ${{ "%.2f"|format(resumen.utilidad_bruta) }}
+      </p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border p-4">
+      <p class="text-sm text-gray-500">Margen Promedio</p>
+      <p class="text-2xl font-bold text-purple-600">
+        {{ "%.1f"|format(resumen.margen_promedio) }}%
+      </p>
+    </div>
+
+  </div>
+
+  <!-- Info + top productos -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+    <div class="bg-white rounded-xl shadow-sm border p-4">
+      <h3 class="font-semibold text-gray-800 mb-3">Estadísticas</h3>
+      <div class="space-y-2 text-sm text-gray-600">
+        <p>Período: {{ fecha_inicio }} - {{ fecha_fin }}</p>
+        <p>Transacciones: {{ resumen.num_transacciones }}</p>
+        <p>Productos vendidos: {{ "%.0f"|format(resumen.productos_vendidos) }}</p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border p-4">
+      <h3 class="font-semibold text-gray-800 mb-3">Top Rentabilidad</h3>
+      <div class="max-h-64 overflow-y-auto space-y-2">
+        {% for producto in productos_detalle[:5] %}
+        <div class="flex justify-between items-center border-b pb-1">
+          <span class="text-sm text-gray-700">
+            {{ producto.nombre }}
+          </span>
+          <span class="text-sm font-semibold text-green-600">
+            +${{ "%.2f"|format(producto.utilidad) }}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Tabla -->
+  <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+    <div class="px-6 py-4 bg-[#8B5E3C]">
+      <h3 class="text-lg font-semibold text-white">
+        Detalle de Ventas
+      </h3>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
+          <tr>
+            <th class="px-4 py-3 text-left">Fecha</th>
+            <th class="px-4 py-3">Total</th>
+            <th class="px-4 py-3">Costo</th>
+            <th class="px-4 py-3">Utilidad</th>
+            <th class="px-4 py-3">Método</th>
+            <th class="px-4 py-3">Productos</th>
+          </tr>
+        </thead>
+
+        <tbody class="divide-y">
+          {% for venta in ventas %}
+          <tr class="hover:bg-gray-50 transition">
+
+            <td class="px-4 py-3">
+              {{ venta.fecha }}
+            </td>
+
+            <td class="px-4 py-3 font-medium">
+              ${{ "%.2f"|format(venta.total) }}
+            </td>
+
+            <td class="px-4 py-3 text-orange-600">
+              ${{ "%.2f"|format(venta.costo) }}
+            </td>
+
+            <td class="px-4 py-3 text-green-600">
+              ${{ "%.2f"|format(venta.utilidad) }}
+            </td>
+
+            <td class="px-4 py-3">
+              <span class="px-2 py-1 text-xs rounded-full 
+                {% if venta.metodo_pago == 'efectivo' %}
+                  bg-green-100 text-green-700
+                {% else %}
+                  bg-blue-100 text-blue-700
+                {% endif %}">
+                {{ venta.metodo_pago }}
+              </span>
+            </td>
+
+            <td class="px-4 py-3 text-xs space-y-1">
+              {% for p in venta.productos[:2] %}
+                <div>{{ "%.0f"|format(p.cantidad) }}x {{ p.nombre }}</div>
+              {% endfor %}
+              {% if venta.productos|length > 2 %}
+                <div class="text-gray-400">
+                  +{{ venta.productos|length - 2 }} más
+                </div>
+              {% endif %}
+            </td>
+
+          </tr>
+          {% endfor %}
+        </tbody>
+
+      </table>
+    </div>
+  </div>
+
+  {% else %}
+
+  <div class="bg-white rounded-xl shadow-sm border p-12 text-center">
+    <i class="fa-solid fa-chart-column text-4xl text-gray-400 mb-4"></i>
+    <p class="text-gray-500">
+      Selecciona un rango de fechas para generar el reporte
+    </p>
+  </div>
+
+  {% endif %}
+
+</div>
+
+{% endblock %}

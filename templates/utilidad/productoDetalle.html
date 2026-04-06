@@ -1,0 +1,217 @@
+{% extends "layout/layout_produccion.html" %}
+{% block container %}
+
+<div class="w-full max-w-5xl mx-auto">
+
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-800">
+        Detalle de Rentabilidad
+      </h2>
+      <p class="text-gray-500 mt-1">
+        Análisis detallado del producto
+      </p>
+    </div>
+
+    <div class="flex gap-2 flex-wrap">
+
+      <a href="{{ url_for('utilidad.dashboard') }}"
+         class="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8B5E3C] hover:bg-[#6F4A30] text-white text-sm font-medium rounded-lg transition">
+        <i class="fa-solid fa-chart-line"></i>
+        Dashboard
+      </a>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+
+    <div class="bg-[#8B5E3C] px-6 py-8">
+      <h3 class="text-2xl font-bold text-white">
+        {{ producto.nombre }}
+      </h3>
+      <p class="text-white text-sm opacity-90 mt-1">
+        {{ producto.categoria or 'Sin categoría' }}
+      </p>
+    </div>
+
+    <div class="p-6">
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+
+        <div class="bg-gray-50 rounded-lg p-4 text-center">
+          <p class="text-sm text-gray-500">Precio de Venta</p>
+          <p class="text-2xl font-bold text-gray-800">
+            ${{ "%.2f"|format(producto.precio_venta) }}
+          </p>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-4 text-center">
+          <p class="text-sm text-gray-500">Costo de Producción</p>
+          <p class="text-2xl font-bold text-orange-600">
+            ${{ "%.2f"|format(costo) }}
+          </p>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-4 text-center">
+          <p class="text-sm text-gray-500">Margen de Ganancia</p>
+          <p class="text-2xl font-bold text-green-600">
+            ${{ "%.2f"|format(margen) }}
+            <span class="text-sm">
+              ({{ "%.1f"|format(porcentaje) }}%)
+            </span>
+          </p>
+        </div>
+
+      </div>
+
+      <div class="border-t pt-6 mb-8">
+        <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-book-open text-[#8B5E3C]"></i>
+          Receta — Desglose de Costos
+        </h4>
+
+        {% if producto.recetas %}
+        <div class="overflow-x-auto rounded-lg border">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
+              <tr>
+                <th class="px-4 py-3 text-left">Ingrediente</th>
+                <th class="px-4 py-3 text-right">Cantidad</th>
+                <th class="px-4 py-3 text-right">Unidad</th>
+                <th class="px-4 py-3 text-right">Costo/Unidad</th>
+                <th class="px-4 py-3 text-right">Subtotal</th>
+              </tr>
+            </thead>
+
+            <tbody class="divide-y">
+              {% for receta in producto.recetas %}
+              {% set mp = receta.materiaPrima %}
+              {% set costo_mp = mp.costo_promedio or 0 %}
+              {% set subtotal_ing = receta.cantidad * costo_mp %}
+
+              <tr class="hover:bg-gray-50 transition">
+                <td class="px-4 py-3 font-medium text-gray-800">
+                  {{ mp.nombre }}
+                  {% if mp.descripcion %}
+                  <span class="block text-xs text-gray-400">
+                    {{ mp.descripcion }}
+                  </span>
+                  {% endif %}
+                </td>
+
+                <td class="px-4 py-3 text-right">
+                  {{ "%.2f"|format(receta.cantidad) }}
+                </td>
+
+                <td class="px-4 py-3 text-right text-gray-500">
+                  {{ mp.unidad.abreviacion if mp.unidad else '—' }}
+                </td>
+
+                <td class="px-4 py-3 text-right">
+                  ${{ "%.4f"|format(costo_mp) }}
+                </td>
+
+                <td class="px-4 py-3 text-right font-semibold text-orange-600">
+                  ${{ "%.4f"|format(subtotal_ing) }}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+
+            <tfoot class="bg-gray-50">
+              <tr>
+                <td colspan="4" class="px-4 py-3 text-right font-bold text-gray-700">
+                  Costo Total de Producción
+                </td>
+                <td class="px-4 py-3 text-right font-bold text-orange-600 text-base">
+                  ${{ "%.2f"|format(costo) }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        {% else %}
+        <div class="text-center py-8 text-gray-400">
+          <i class="fa-solid fa-file-lines text-3xl mb-2"></i>
+          <p class="text-sm">
+            Este producto no tiene receta registrada.
+          </p>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="border-t pt-6">
+        <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-chart-line text-[#8B5E3C]"></i>
+          Estadísticas de Ventas
+        </h4>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          <div class="bg-blue-50 rounded-lg p-4">
+            <p class="text-sm text-blue-600">Unidades Vendidas</p>
+            <p class="text-2xl font-bold text-blue-700">
+              {{ "%.0f"|format(total_vendido) }}
+            </p>
+          </div>
+
+          <div class="bg-green-50 rounded-lg p-4">
+            <p class="text-sm text-green-600">Ingresos Totales</p>
+            <p class="text-2xl font-bold text-green-700">
+              ${{ "%.2f"|format(total_ingresos) }}
+            </p>
+          </div>
+
+          <div class="bg-orange-50 rounded-lg p-4">
+            <p class="text-sm text-orange-600">Costo Total</p>
+            <p class="text-2xl font-bold text-orange-700">
+              ${{ "%.2f"|format(total_costos) }}
+            </p>
+          </div>
+
+        </div>
+
+        {% set utilidad_neta = total_ingresos - total_costos %}
+
+        <div class="mt-4 p-4 rounded-lg border 
+          {% if utilidad_neta >= 0 %}
+            bg-green-50 border-green-200
+          {% else %}
+            bg-red-50 border-red-200
+          {% endif %}">
+
+          <div class="flex justify-between items-center">
+            <p class="font-semibold 
+              {% if utilidad_neta >= 0 %}text-green-700{% else %}text-red-700{% endif %}">
+              Utilidad Neta Acumulada
+            </p>
+
+            <p class="text-xl font-bold 
+              {% if utilidad_neta >= 0 %}text-green-700{% else %}text-red-700{% endif %}">
+              ${{ "%.2f"|format(utilidad_neta) }}
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Acciones -->
+      <div class="mt-6 flex justify-end gap-3">
+        <a href="{{ url_for('utilidad.dashboard') }}"
+           class="px-5 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+          Regresar
+        </a>
+
+        <a href="{{ url_for('utilidad.reporte') }}"
+           class="px-5 py-2 bg-[#8B5E3C] text-white rounded-lg hover:bg-[#6F4A30] transition">
+          Ver Reporte Completo
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

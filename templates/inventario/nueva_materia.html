@@ -17,7 +17,6 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 
-        <!-- Nombre -->
         <div class="md:col-span-2">
             <label class="block mb-2 text-sm font-medium text-gray-900">
                 Nombre de la materia prima *
@@ -31,7 +30,6 @@
                  ) }}
         </div>
 
-        <!-- Descripción -->
         <div class="md:col-span-2">
             <label class="block mb-2 text-sm font-medium text-gray-900">
                 Descripción
@@ -44,7 +42,6 @@
                  ) }}
         </div>
 
-        <!-- Unidad -->
         <div>
             <label class="block mb-2 text-sm font-medium text-gray-900">
                 Unidad de Medida *
@@ -56,10 +53,21 @@
                ) }}
         </div>
 
-        <!-- Stock mínimo -->
         <div>
-            <label class="block mb-2 text-sm font-medium text-gray-900">
+            <label class="flex items-center mb-2 text-sm font-medium text-gray-900">
                 Alerta de Stock Mínimo *
+                
+                <div class="relative ml-2 inline-block group">
+                    <i class="fa-solid fa-circle-question text-gray-400 hover:text-blue-500 cursor-help transition-colors"></i>
+        
+                    <div role="tooltip" 
+                         class="absolute z-10 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-300 inline-block px-3 py-2 text-xs font-normal text-white bg-gray-800 rounded-lg shadow-lg ml-2 left-full top-1/2 -translate-y-1/2 whitespace-nowrap">
+                        
+                         Stock mínimo = Consumo promedio diario × Días de reposición
+                        
+                        <div class="absolute right-full top-1/2 -translate-y-1/2 border-8 border-transparent border-r-gray-800"></div>
+                    </div>
+                </div>
             </label>
 
                  {{ form.stock_minimo(

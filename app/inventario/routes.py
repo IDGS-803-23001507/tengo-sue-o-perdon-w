@@ -1,13 +1,14 @@
-from flask import Blueprint, flash, render_template, request
+from flask import Blueprint, flash, render_template, request, url_for, redirect
 from sqlalchemy.exc import SQLAlchemyError
 
-from forms import MateriaPrimaForm
+from forms import MateriaPrimaForm, DesactivarForm
 from model import db, MateriaPrima, UnidadMedida 
 
 inventario_bp = Blueprint('inventario', __name__)
 
 @inventario_bp.route('/materias_primas')
 def materias_primas():
+    form = DesactivarForm()
     busqueda = request.args.get('q')
     
     if busqueda:
@@ -15,7 +16,7 @@ def materias_primas():
     else:
         insumos = MateriaPrima.query.all()
     
-    return render_template('inventario/materia_prima.html', insumos=insumos, busqueda=busqueda)
+    return render_template('inventario/materia_prima.html', form=form, insumos=insumos, busqueda=busqueda)
 
 @inventario_bp.route('/nueva-materia', methods=['GET', 'POST'])
 def nueva_materia():
@@ -51,13 +52,14 @@ def nueva_materia():
 
 @inventario_bp.route('/editar-materia/<int:id>', methods=['GET', 'POST'])
 def editar_materia(id):
+    
     insumo = MateriaPrima.query.get_or_404(id)
     unidades_db = UnidadMedida.query.all()
     form = MateriaPrimaForm(obj=insumo)
     form.set_unidades(unidades_db)
 
     if request.method == 'GET':
-        form.estatus.data = '1' if insumo.estatus else '0'
+        form.nombre_insumo.data = insumo.nombre
 
     if form.validate_on_submit():
         try:
@@ -65,7 +67,6 @@ def editar_materia(id):
             insumo.descripcion = (form.descripcion.data or '').strip() or None
             insumo.unidad_medida = form.unidad_medida.data
             insumo.stock_minimo = form.stock_minimo.data
-            insumo.estatus = True if form.estatus.data == '1' else False
             db.session.commit()
 
             return render_template('inventario/editar_materia.html', mostrar_modal=True, insumo=insumo, form=form)
@@ -80,3 +81,42 @@ def editar_materia(id):
                 break
 
     return render_template('inventario/editar_materia.html', mostrar_modal=False, insumo=insumo, form=form)
+
+
+@inventario_bp.route('/materia-prima/desactivar/<int:id>', methods=['POST'])
+def desactivar_materia(id):
+ 
+    insumo = MateriaPrima.query.get_or_404(id)
+    form = DesactivarForm()
+
+    if form.validate_on_submit():
+        try:
+            insumo.estatus = False  
+            db.session.commit()
+            flash(f'La materia prima "{insumo.nombre}" ha sido desactivada.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al desactivar la materia prima: {str(e)}', 'danger')
+    else:
+        flash('Solicitud de seguridad inválida.', 'danger')
+
+    return redirect(url_for('inventario.materias_primas'))
+
+
+@inventario_bp.route('/materia-prima/reactivar/<int:id>', methods=['POST'])
+def reactivar_materia(id):
+    insumo = MateriaPrima.query.get_or_404(id)
+    form = DesactivarForm()
+
+    if form.validate_on_submit():
+        try:
+            insumo.estatus = True  
+            db.session.commit()
+            flash(f'La materia prima "{insumo.nombre}" ha sido reactivada.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al reactivar la materia prima: {str(e)}', 'danger')
+    else:
+        flash('Solicitud de seguridad inválida.', 'danger')
+
+    return redirect(url_for('inventario.materias_primas'))

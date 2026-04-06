@@ -51,9 +51,19 @@
           <i class="fa-solid fa-chart-line w-5"></i>
           <span>Dashboard</span>
         </a>
+
+        <a href="{{ url_for('ventas.ventas') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'ventas' %}
+            bg-gray-100 text-gray-900
+        {% else %}
+            text-gray-600 hover:bg-gray-100
+        {% endif %}">
+        <i class="fa-solid fa-dollar-sign w-5"></i>
+          <span>Ventas</span>
+        </a>
         {% endif %}
 
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        <a href="{{ url_for('ventas.venta_fisica') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
         {% if active_page == 'POS' %}
             bg-gray-100 text-gray-900
         {% else %}
@@ -157,7 +167,7 @@
           <span>Empleados</span>
         </a>
 
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        <a href="{{ url_for('utilidad.index')}}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
         {% if active_page == 'costos_utilidades' %}
             bg-gray-100 text-gray-900
         {% else %}

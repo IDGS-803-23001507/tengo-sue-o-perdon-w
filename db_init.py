@@ -226,7 +226,7 @@ def asegurar_procedimientos_almacenados() -> None:
                 SET v_total = ROUND(v_precio * p_cantidad, 2);
                 SET v_utilidad = ROUND(v_total * 0.35, 2);
 
-                INSERT INTO ventas (id_usuario, total, utilidad_bruta, confirmada, origen, creado_en, tipo_venta, metodo_pago)
+                INSERT INTO ventas (id_usuario, total, utilidad_bruta, estatus, origen, creado_en, tipo_venta, metodo_pago)
                 VALUES (p_id_usuario, v_total, v_utilidad, 1, 'POS', NOW(), p_tipo_venta, p_metodo_pago);
 
                 SET v_id_venta = LAST_INSERT_ID();

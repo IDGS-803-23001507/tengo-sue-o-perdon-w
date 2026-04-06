@@ -1,0 +1,200 @@
+{% extends "layout/layout_produccion.html" %}
+{% block container %}
+
+<div class="w-full max-w-7xl mx-auto">
+
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-800">
+        Costos y Utilidad
+      </h2>
+      <p class="text-gray-500 mt-1">
+        Análisis de rentabilidad del negocio
+      </p>
+    </div>
+
+    <div class="flex gap-2 flex-wrap">
+
+      <a href="{{ url_for('utilidad.reporte') }}" 
+         class="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8B5E3C] hover:bg-[#6F4A30] text-white text-sm font-medium rounded-lg transition">
+        <i class="fa-solid fa-file-lines"></i>
+        Reporte Detallado
+      </a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+
+    <div class="bg-white rounded-xl shadow-sm border p-5">
+      <div class="flex justify-between items-center">
+        <div>
+          <p class="text-sm text-gray-500">Ventas del Día</p>
+          <p class="text-2xl font-bold text-gray-800">
+            ${{ "%.2f"|format(total_ventas_hoy) }}
+          </p>
+        </div>
+        <div class="p-3 bg-green-100 rounded-full">
+          <i class="fa-solid fa-dollar-sign text-green-600"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border p-5">
+      <div class="flex justify-between items-center">
+        <div>
+          <p class="text-sm text-gray-500">Costo de Ventas</p>
+          <p class="text-2xl font-bold text-gray-800">
+            ${{ "%.2f"|format(costo_ventas_hoy) }}
+          </p>
+        </div>
+        <div class="p-3 bg-orange-100 rounded-full">
+          <i class="fa-solid fa-box text-orange-600"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border p-5">
+      <div class="flex justify-between items-center">
+        <div>
+          <p class="text-sm text-gray-500">Utilidad Bruta</p>
+          <p class="text-2xl font-bold text-blue-600">
+            ${{ "%.2f"|format(utilidad_hoy) }}
+          </p>
+        </div>
+        <div class="p-3 bg-blue-100 rounded-full">
+          <i class="fa-solid fa-chart-line text-blue-600"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border p-5">
+      <div class="flex justify-between items-center">
+        <div>
+          <p class="text-sm text-gray-500">Margen de Ganancia</p>
+          <p class="text-2xl font-bold text-purple-600">
+            {{ "%.1f"|format(margen_hoy) }}%
+          </p>
+        </div>
+        <div class="p-3 bg-purple-100 rounded-full">
+          <i class="fa-solid fa-chart-pie text-purple-600"></i>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+
+    <div class="bg-white rounded-xl shadow-sm border p-5">
+      <h3 class="text-lg font-semibold text-gray-800 mb-2">
+        Ventas de la Semana
+      </h3>
+      <p class="text-3xl font-bold text-gray-900">
+        ${{ "%.2f"|format(total_ventas_semana) }}
+      </p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border p-5">
+      <h3 class="text-lg font-semibold text-gray-800 mb-2">
+        Ventas del Mes
+      </h3>
+      <p class="text-3xl font-bold text-gray-900">
+        ${{ "%.2f"|format(total_ventas_mes) }}
+      </p>
+    </div>
+
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div class="px-6 py-4 bg-green-600">
+        <h3 class="text-lg font-semibold text-white">
+          Productos Más Rentables
+        </h3>
+      </div>
+
+      <div class="p-4 space-y-3">
+        {% if top_rentables %}
+          {% for producto in top_rentables %}
+          <a href="{{ url_for('utilidad.producto_detalle', producto_id=producto.id) }}">
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+              
+              <div>
+                <p class="font-medium text-gray-800">
+                  {{ producto.nombre }}
+                </p>
+                <p class="text-sm text-gray-500">
+                  Precio: ${{ "%.2f"|format(producto.precio) }} |
+                  Costo: ${{ "%.2f"|format(producto.costo) }}
+                </p>
+              </div>
+
+              <div class="text-right">
+                <p class="text-lg font-bold text-green-600">
+                  +${{ "%.2f"|format(producto.margen) }}
+                </p>
+                <p class="text-sm text-green-500">
+                  {{ "%.1f"|format(producto.porcentaje) }}%
+                </p>
+              </div>
+
+            </div>
+          </a>
+          {% endfor %}
+        {% else %}
+          <p class="text-center text-gray-500 py-6">
+            No hay productos registrados
+          </p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div class="px-6 py-4 bg-red-500">
+        <h3 class="text-lg font-semibold text-white">
+          Productos Menos Rentables
+        </h3>
+      </div>
+
+      <div class="p-4 space-y-3">
+        {% if menos_rentables %}
+          {% for producto in menos_rentables %}
+          <a href="{{ url_for('utilidad.producto_detalle', producto_id=producto.id) }}">
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+              
+              <div>
+                <p class="font-medium text-gray-800">
+                  {{ producto.nombre }}
+                </p>
+                <p class="text-sm text-gray-500">
+                  Precio: ${{ "%.2f"|format(producto.precio) }} |
+                  Costo: ${{ "%.2f"|format(producto.costo) }}
+                </p>
+              </div>
+
+              <div class="text-right">
+                <p class="text-lg font-bold text-orange-600">
+                  +${{ "%.2f"|format(producto.margen) }}
+                </p>
+                <p class="text-sm text-orange-500">
+                  {{ "%.1f"|format(producto.porcentaje) }}%
+                </p>
+              </div>
+
+            </div>
+          </a>
+          {% endfor %}
+        {% else %}
+          <p class="text-center text-gray-500 py-6">
+            No hay productos registrados
+          </p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+{% endblock %}

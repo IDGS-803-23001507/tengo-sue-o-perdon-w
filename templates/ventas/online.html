@@ -1,0 +1,146 @@
+{% extends "layout/layout.html" %}
+
+{% block container %}
+<section class="bg-[#fdfcfb] min-h-screen">
+    <div class="w-full max-w-6xl mx-auto py-8 px-4">
+        
+        <div class="flex flex-col items-center mb-12">
+            <h2 class="text-center text-4xl font-light text-[#814c59] tracking-wide uppercase">
+                Pedido Online
+            </h2>
+            <div class="h-1 w-20 bg-[#C27C3A] mt-2"></div>
+            <p class="mt-4 text-gray-500 italic">Selecciona tus favoritos y recoge en sucursal</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+            <div class="lg:col-span-2">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                    {% for p in lista_productos %}
+                    <div class="flex flex-col items-center text-center group {{ 'opacity-50' if p.disponible_stock == 0 }}">
+                        <div class="overflow-hidden rounded-lg shadow-sm border border-gray-100 w-full relative">
+                            {% if p.disponible_stock == 0 %}
+                            <div class="absolute inset-0 z-10 flex items-center justify-center bg-black/10 backdrop-blur-[1px]">
+                                <span class="bg-[#814c59] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">Agotado</span>
+                            </div>
+                            {% endif %}
+                            <img 
+                                src="{{ p.imagen if p.imagen else url_for('static', filename='img/default.png') }}" 
+                                alt="{{ p.nombre }}"
+                                class="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-105">
+                        </div>
+
+                        <p class="mt-3 text-lg font-medium text-gray-800">
+                            {{ p.nombre }} - ${{ p.precio_venta }}
+                        </p>
+
+                        <p class="text-sm text-gray-500">
+                            {{ p.descripcion }}
+                        </p>
+
+                        <form method="POST" class="w-full flex flex-col gap-2">
+                            {{ form.hidden_tag() }}
+                            <input type="hidden" name="producto" value="{{ p.id_producto }}">
+                            <input type="hidden" name="nombre_prod" value="{{ p.nombre }}">
+                            
+                            <div class="flex mt-4 gap-2 justify-center">
+                                <input type="number" name="cantidad" value="1" min="1" 
+                                    class="w-16 border border-gray-200 rounded py-2 text-center text-sm focus:outline-none focus:border-[#C27C3A]"
+                                    {{ 'disabled' if p.disponible_stock == 0 }}>
+                                
+                                <button type="submit" name="agregar" 
+                                    class="bg-[#C27C3A] text-white px-6 py-2 rounded hover:bg-[#814c59] transition duration-300 uppercase text-xs font-bold tracking-widest"
+                                    {{ 'disabled' if p.disponible_stock == 0 }}>
+                                    Agregar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="lg:col-span-1">
+                <div class="bg-white p-8 rounded-lg shadow-sm border border-gray-50 sticky top-28">
+                    <h2 class="text-xl font-light text-[#814c59] uppercase tracking-widest mb-6 border-b pb-4">
+                        Tu Selección
+                    </h2>
+
+                    <div class="space-y-6 mb-8 max-h-96 overflow-y-auto pr-2">
+                        {% set carrito = session.get('carrito', []) %}
+                        {% if carrito %}
+                            {% for item in carrito %}
+                            <div class="flex justify-between items-start border-b border-gray-50 pb-4">
+                                <div>
+                                    <p class="text-sm font-bold text-gray-800 uppercase tracking-tighter">{{ item.nombre }}</p>
+                                    <p class="text-xs text-gray-400 italic">{{ item.cantidad }} x ${{ item.precio }}</p>
+                                </div>
+                                <div class="flex flex-col items-end gap-2">
+                                    <span class="text-[#814c59] font-medium text-sm">${{ "%.2f"|format(item.cantidad * item.precio) }}</span>
+                                    <form method="POST">
+                                        {{ form.hidden_tag() }}
+                                        <input type="hidden" name="item_index" value="{{ loop.index0 }}">
+                                        <button type="submit" name="quitar" class="text-gray-300 hover:text-red-400 transition-colors">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-10">
+                                <p class="text-gray-300 italic text-sm">Aún no has seleccionado nada.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <form method="POST" class="space-y-6">
+                        {{ form.hidden_tag() }}
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hora de recogida (Hoy +1h mín.)</label>
+                            <input type="datetime-local" id="fecha_entrega" name="hora_recogida" required 
+                                class="w-full border-gray-100 bg-gray-50 rounded p-3 text-sm focus:ring-1 focus:ring-[#C27C3A] outline-none">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Instrucciones</label>
+                            <textarea name="notas" rows="2" placeholder="Ej. Sin azúcar, bolsa de papel..." 
+                                class="w-full border-gray-100 bg-gray-50 rounded p-3 text-sm focus:ring-1 focus:ring-[#C27C3A] outline-none"></textarea>
+                        </div>
+                        
+                        <button type="submit" name="terminar" value="True" 
+                            {% if not carrito %}disabled{% endif %}
+                            class="w-full bg-[#814c59] text-white py-4 rounded font-bold uppercase tracking-widest text-xs hover:bg-[#C27C3A] transition-all duration-500 disabled:opacity-30 disabled:hover:bg-[#814c59]">
+                            Confirmar Orden
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+   <script> 
+   function configurarFechaMinima() {
+        const input = document.getElementById('fecha_entrega');
+        if (!input) return;
+
+        const ahora = new Date();
+        
+        const format = (date) => {
+            const anio = date.getFullYear();
+            const mes = String(date.getMonth() + 1).padStart(2, '0');
+            const dia = String(date.getDate()).padStart(2, '0');
+            const horas = String(date.getHours()).padStart(2, '0');
+            const minutos = String(date.getMinutes()).padStart(2, '0');
+            return `${anio}-${mes}-${dia}T${horas}:${minutos}`;
+        };
+
+        input.removeAttribute('min'); 
+        input.removeAttribute('max');
+        
+        input.value = format(ahora); 
+    }
+    document.addEventListener('DOMContentLoaded', configurarFechaMinima);
+</script>
+</section>
+{% endblock %}
