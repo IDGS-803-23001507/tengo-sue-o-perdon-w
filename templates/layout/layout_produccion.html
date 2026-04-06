@@ -169,6 +169,18 @@
         </a>
         {% endif %}
 
+        {% if session.usuarioRol in ["Admin General (TI)", "Admin General"] %}
+        <a href="{{ url_for('dashboard_auditoria') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'dashboard' %}
+            bg-gray-100 text-gray-900
+        {% else %}
+            text-gray-600 hover:bg-gray-100
+        {% endif %}">
+          <i class="fa-solid fa-shield-halved w-5"></i>
+          <span>Auditoría</span>
+        </a>
+        {% endif %}
+
         <a href="{{ url_for('merma.merma') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
         {% if active_page == 'merma' %}
             bg-gray-100 text-gray-900

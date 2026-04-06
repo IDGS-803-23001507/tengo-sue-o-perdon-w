@@ -1,7 +1,29 @@
+import pymysql
 from flask import current_app
 from sqlalchemy import inspect, text
 
+from config import Config
 from model import Rol, Usuario, Cliente, Empleado, UnidadMedida, db
+
+
+def asegurar_base_de_datos() -> None:
+    conexion = pymysql.connect(
+        host=Config.MYSQL_HOST,
+        port=Config.MYSQL_PORT,
+        user=Config.MYSQL_USER,
+        password=Config.MYSQL_PASSWORD,
+        autocommit=True,
+        charset="utf8mb4",
+    )
+
+    try:
+        with conexion.cursor() as cursor:
+            cursor.execute(
+                f"CREATE DATABASE IF NOT EXISTS `{Config.MYSQL_DATABASE}` "
+                "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+            )
+    finally:
+        conexion.close()
 
 
 def asegurar_esquema_usuarios() -> None:
@@ -20,7 +42,15 @@ def asegurar_esquema_usuarios() -> None:
             )
         )
 
-    for nombre_rol in ("Gerente", "Operador", "Cliente"):
+    for nombre_rol in (
+        "Admin General (TI)",
+        "Gerente de Tienda",
+        "Cajero",
+        "Barista",
+        "Cliente",
+        "Gerente",
+        "Operador",
+    ):
         db.session.execute(text("INSERT IGNORE INTO roles (nombre) VALUES (:nombre)"), {"nombre": nombre_rol})
 
     columnas = {columna["name"] for columna in inspector.get_columns("usuarios")}
@@ -152,6 +182,205 @@ def asegurar_esquema_unidades() -> None:
     db.session.commit()
 
 
+def asegurar_procedimientos_almacenados() -> None:
+    db.session.execute(text("DROP PROCEDURE IF EXISTS sp_registrar_venta"))
+    db.session.execute(
+        text(
+            """
+            CREATE PROCEDURE sp_registrar_venta(
+                IN p_id_usuario INT,
+                IN p_id_producto INT,
+                IN p_cantidad INT,
+                IN p_tipo_venta VARCHAR(20),
+                IN p_metodo_pago VARCHAR(20)
+            )
+            BEGIN
+                DECLARE v_precio DECIMAL(10,2);
+                DECLARE v_stock INT;
+                DECLARE v_total DECIMAL(10,2);
+                DECLARE v_utilidad DECIMAL(10,2);
+                DECLARE v_id_venta INT;
+
+                IF p_cantidad IS NULL OR p_cantidad <= 0 THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cantidad inválida para venta';
+                END IF;
+
+                START TRANSACTION;
+
+                SELECT precio_venta, stock
+                INTO v_precio, v_stock
+                FROM Producto
+                WHERE id_producto = p_id_producto AND estatus = 1
+                FOR UPDATE;
+
+                IF v_precio IS NULL THEN
+                    ROLLBACK;
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto no disponible';
+                END IF;
+
+                IF v_stock < p_cantidad THEN
+                    ROLLBACK;
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock insuficiente';
+                END IF;
+
+                SET v_total = ROUND(v_precio * p_cantidad, 2);
+                SET v_utilidad = ROUND(v_total * 0.35, 2);
+
+                INSERT INTO ventas (id_usuario, total, utilidad_bruta, confirmada, origen, creado_en, tipo_venta, metodo_pago)
+                VALUES (p_id_usuario, v_total, v_utilidad, 1, 'POS', NOW(), p_tipo_venta, p_metodo_pago);
+
+                SET v_id_venta = LAST_INSERT_ID();
+
+                INSERT INTO detalle_venta (id_venta, id_producto, cantidad, precio_unitario, descuento)
+                VALUES (v_id_venta, p_id_producto, p_cantidad, v_precio, 0);
+
+                UPDATE Producto
+                SET stock = stock - p_cantidad
+                WHERE id_producto = p_id_producto;
+
+                COMMIT;
+
+                SELECT v_id_venta AS id_venta, v_total AS total;
+            END
+            """
+        )
+    )
+
+    db.session.execute(text("DROP PROCEDURE IF EXISTS sp_finalizar_solicitud"))
+    db.session.execute(text("DROP PROCEDURE IF EXISTS sp_finalizar_solicitud_produccion"))
+    db.session.execute(
+        text(
+            """
+            CREATE PROCEDURE sp_finalizar_solicitud_produccion(
+                IN p_id_solicitud INT
+            )
+            BEGIN
+                DECLARE v_estado VARCHAR(20);
+                DECLARE v_detalles INT;
+                DECLARE v_sin_receta INT;
+                DECLARE v_faltantes INT;
+
+                DECLARE EXIT HANDLER FOR SQLEXCEPTION
+                BEGIN
+                    ROLLBACK;
+                    RESIGNAL;
+                END;
+
+                START TRANSACTION;
+
+                SELECT estado INTO v_estado
+                FROM Solicitud_produccion
+                WHERE id_solicitud = p_id_solicitud
+                FOR UPDATE;
+
+                IF v_estado IS NULL THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Solicitud no encontrada';
+                END IF;
+
+                IF v_estado = 'cancelado' THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se puede finalizar una solicitud cancelada';
+                END IF;
+
+                IF v_estado = 'finalizado' THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La solicitud ya está finalizada';
+                END IF;
+
+                SELECT COUNT(*) INTO v_detalles
+                FROM Detalle_produccion
+                WHERE id_solicitud = p_id_solicitud;
+
+                IF v_detalles = 0 THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La solicitud no tiene detalles';
+                END IF;
+
+                SELECT COUNT(*) INTO v_sin_receta
+                FROM (
+                    SELECT dp.id_producto
+                    FROM Detalle_produccion dp
+                    LEFT JOIN Recetas r
+                        ON r.id_producto = dp.id_producto
+                       AND r.estado = 1
+                    WHERE dp.id_solicitud = p_id_solicitud
+                    GROUP BY dp.id_producto
+                    HAVING COUNT(r.id_receta) = 0
+                ) t;
+
+                IF v_sin_receta > 0 THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Hay productos sin receta activa';
+                END IF;
+
+                DROP TEMPORARY TABLE IF EXISTS tmp_consumo_materia;
+                CREATE TEMPORARY TABLE tmp_consumo_materia (
+                    id_materia INT PRIMARY KEY,
+                    cantidad_requerida DECIMAL(12,4) NOT NULL
+                );
+
+                INSERT INTO tmp_consumo_materia (id_materia, cantidad_requerida)
+                SELECT
+                    r.id_materia,
+                    SUM(dp.cantidad * r.cantidad) AS cantidad_requerida
+                FROM Detalle_produccion dp
+                JOIN Recetas r
+                    ON r.id_producto = dp.id_producto
+                   AND r.estado = 1
+                WHERE dp.id_solicitud = p_id_solicitud
+                GROUP BY r.id_materia;
+
+                SELECT m.id_materia
+                FROM Materia_prima m
+                JOIN tmp_consumo_materia t ON t.id_materia = m.id_materia
+                FOR UPDATE;
+
+                SELECT COUNT(*) INTO v_faltantes
+                FROM Materia_prima m
+                JOIN tmp_consumo_materia t ON t.id_materia = m.id_materia
+                WHERE m.stock_actual < t.cantidad_requerida;
+
+                IF v_faltantes > 0 THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock insuficiente de materias primas';
+                END IF;
+
+                UPDATE Materia_prima m
+                JOIN tmp_consumo_materia t ON t.id_materia = m.id_materia
+                SET m.stock_actual = m.stock_actual - t.cantidad_requerida;
+
+                DROP TEMPORARY TABLE IF EXISTS tmp_produccion_producto;
+                CREATE TEMPORARY TABLE tmp_produccion_producto (
+                    id_producto INT PRIMARY KEY,
+                    cantidad_producida INT NOT NULL
+                );
+
+                INSERT INTO tmp_produccion_producto (id_producto, cantidad_producida)
+                SELECT dp.id_producto, SUM(dp.cantidad)
+                FROM Detalle_produccion dp
+                WHERE dp.id_solicitud = p_id_solicitud
+                GROUP BY dp.id_producto;
+
+                SELECT p.id_producto
+                FROM Producto p
+                JOIN tmp_produccion_producto t ON t.id_producto = p.id_producto
+                FOR UPDATE;
+
+                UPDATE Producto p
+                JOIN tmp_produccion_producto t ON t.id_producto = p.id_producto
+                SET p.stock = p.stock + t.cantidad_producida;
+
+                UPDATE Solicitud_produccion
+                SET estado = 'finalizado'
+                WHERE id_solicitud = p_id_solicitud;
+
+                DROP TEMPORARY TABLE IF EXISTS tmp_consumo_materia;
+                DROP TEMPORARY TABLE IF EXISTS tmp_produccion_producto;
+
+                COMMIT;
+            END
+            """
+        )
+    )
+
+    db.session.commit()
+
+
 def _generar_usuario_unico(correo_base: str) -> str:
     usuario_base = correo_base.split("@")[0] or "gerente"
     usuario_generado = usuario_base
@@ -198,13 +427,23 @@ def seed_db() -> None:
         if not existe_unidad:
             db.session.add(UnidadMedida(nombre=nombre, abreviacion=abreviacion, tipo=tipo, factor=factor))
 
-    for nombre in ["Gerente", "Operador", "Cliente"]:
+    for nombre in [
+        "Admin General (TI)",
+        "Gerente de Tienda",
+        "Cajero",
+        "Barista",
+        "Cliente",
+        "Gerente",
+        "Operador",
+    ]:
         if not Rol.query.filter_by(nombre=nombre).first():
             db.session.add(Rol(nombre=nombre))
 
     db.session.commit()
 
-    rol_gerente = Rol.query.filter_by(nombre="Gerente").first()
+    rol_gerente = Rol.query.filter(
+        Rol.nombre.in_(["Gerente de Tienda", "Gerente", "Admin General (TI)"])
+    ).first()
     if not rol_gerente:
         return
 
@@ -251,4 +490,5 @@ def inicializar_db() -> None:
     db.create_all()
     asegurar_esquema_usuarios()
     asegurar_esquema_unidades()
+    asegurar_procedimientos_almacenados()
     seed_db()

@@ -4,6 +4,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from sqlalchemy import or_
 
 from forms import  CrearEmpleadoForm, EmpleadoActualizarForm, DesactivarForm
+from app.auditoria import registrar_auditoria
 from model import Rol, Usuario, Empleado, db
 
 usuariosBp = Blueprint("usuarios", __name__, url_prefix="/usuarios")
@@ -14,7 +15,7 @@ def hayOtroGerenteActivo(idUsuarioActual: int) -> bool:
         Usuario.query.join(Rol, Usuario.rolId == Rol.id)
         .filter(
             Usuario.id != idUsuarioActual,
-            Rol.nombre == "Gerente",
+            Rol.nombre.in_(["Gerente de Tienda", "Gerente", "Admin General (TI)", "Admin General"]),
             Usuario.estado == "Activo",
         )
         .first()
@@ -29,7 +30,14 @@ def requiereRol(rolRequerido: str):
             if not session.get("inicioSesion"):
                 return redirect(url_for("auth.iniciarSesion"))
 
-            if session.get("usuarioRol") != rolRequerido:
+            rolSesion = session.get("usuarioRol")
+            equivalencias = {
+                "Gerente": {"Gerente", "Gerente de Tienda", "Admin General (TI)", "Admin General"},
+                "Gerente de Tienda": {"Gerente", "Gerente de Tienda", "Admin General (TI)", "Admin General"},
+            }
+            rolesPermitidos = equivalencias.get(rolRequerido, {rolRequerido})
+
+            if rolSesion not in rolesPermitidos:
                 flash("No tienes permisos para acceder a este módulo.", "danger")
                 return redirect(url_for("dashboard_operador"))
 
@@ -51,7 +59,7 @@ def index():
     consultaUsuarios = Usuario.query.join(Rol, Usuario.rolId == Rol.id)\
                                  .join(Empleado, Usuario.id == Empleado.usuarioId)\
                                  .filter(
-    Rol.nombre.in_(["Operador", "Gerente"])
+    Rol.nombre.in_(["Admin General (TI)", "Gerente de Tienda", "Cajero", "Barista", "Gerente", "Operador"])
 )
     if terminoBusqueda:
         patronBusqueda = f"%{terminoBusqueda}%"
@@ -231,13 +239,19 @@ def desactivar(idUsuario: int):
         flash("No puedes desactivar tu propia cuenta.", "danger")
         return redirect(url_for("usuarios.index"))
 
-    if usuario.rol == "Gerente" and not hayOtroGerenteActivo(idUsuario):
+    if usuario.rol in {"Gerente", "Gerente de Tienda", "Admin General (TI)", "Admin General"} and not hayOtroGerenteActivo(idUsuario):
         flash("Debe existir al menos un Gerente activo en el sistema.", "danger")
         return redirect(url_for("usuarios.index"))
 
     if form.validate_on_submit():
         usuario.estado = "Inactivo"
         usuario.resetearSeguridad()
+        registrar_auditoria(
+            accion="Cambio de Estado de Usuario",
+            modulo="Usuarios",
+            detalles={"accion": "desactivar", "usuario_objetivo_id": usuario.id, "estado_nuevo": "Inactivo"},
+            commit=False,
+        )
         db.session.commit()
         flash("Usuario desactivado correctamente.", "success")
     
@@ -251,6 +265,12 @@ def reactivar(idUsuario: int):
 
     if form.validate_on_submit():
         usuario.estado = "Activo"
+        registrar_auditoria(
+            accion="Cambio de Estado de Usuario",
+            modulo="Usuarios",
+            detalles={"accion": "reactivar", "usuario_objetivo_id": usuario.id, "estado_nuevo": "Activo"},
+            commit=False,
+        )
         db.session.commit()
         flash("Usuario reactivado correctamente.", "success")
         

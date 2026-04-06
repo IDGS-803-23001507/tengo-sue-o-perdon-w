@@ -1,10 +1,12 @@
 from decimal import Decimal
+import json
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.usuarios.routes import requiereRol
+from app.auditoria import registrar_auditoria
 from forms import RecetaForm, RecetaLoteForm
 from model import MateriaPrima, Producto, Receta, db
 
@@ -69,20 +71,19 @@ def nueva_receta():
             id_producto = form.id_producto.data
             estado = form.estado.data == "1"
 
-            ids_materia = request.form.getlist("id_materia[]")
-            cantidades = request.form.getlist("cantidad[]")
-
-            if not ids_materia:
-                raise ValueError("No se puede registrar una receta sin insumos.")
-
-            if len(ids_materia) != len(cantidades):
+            try:
+                insumos_raw = json.loads(form.insumos_json.data or "[]")
+            except json.JSONDecodeError:
                 raise ValueError("La captura de insumos es inválida.")
+
+            if not isinstance(insumos_raw, list) or not insumos_raw:
+                raise ValueError("No se puede registrar una receta sin insumos.")
 
             insumos_payload = []
             ids_vistos = set()
-            for idx, id_materia_raw in enumerate(ids_materia):
-                id_materia = int(id_materia_raw or 0)
-                cantidad = Decimal(str(cantidades[idx] or 0))
+            for item in insumos_raw:
+                id_materia = int((item or {}).get("id_materia") or 0)
+                cantidad = Decimal(str((item or {}).get("cantidad") or 0))
 
                 if id_materia <= 0:
                     raise ValueError("Selecciona un insumo válido en cada renglón.")
@@ -101,6 +102,17 @@ def nueva_receta():
             recetas_producto = Receta.query.filter_by(id_producto=id_producto).all()
             for receta in recetas_producto:
                 receta.estado = estado
+
+            registrar_auditoria(
+                accion="Creación/Actualización de Receta",
+                modulo="Recetas",
+                detalles={
+                    "id_producto": id_producto,
+                    "insumos": [{"id_materia": i["id_materia"], "cantidad": str(i["cantidad"])} for i in insumos_payload],
+                    "estado": "activa" if estado else "inactiva",
+                },
+                commit=False,
+            )
 
             db.session.commit()
             form_limpio = RecetaLoteForm()
@@ -176,6 +188,18 @@ def modificar_receta(id_receta: int):
             if receta_actualizada:
                 receta_actualizada.estado = estado
 
+            registrar_auditoria(
+                accion="Modificación de Ingredientes de Receta",
+                modulo="Recetas",
+                detalles={
+                    "id_producto": id_producto,
+                    "id_materia": id_materia,
+                    "cantidad_nueva": str(cantidad),
+                    "estado": "activa" if estado else "inactiva",
+                },
+                commit=False,
+            )
+
             db.session.commit()
             return render_template(
                 "recetas/editar_receta.html",
@@ -240,6 +264,12 @@ def crear_receta_api(id_producto: int):
 
     try:
         Receta.reemplazar_receta_producto(id_producto=id_producto, insumos=insumos)
+        registrar_auditoria(
+            accion="Creación/Actualización de Receta",
+            modulo="Recetas",
+            detalles={"id_producto": id_producto, "insumos": insumos},
+            commit=False,
+        )
         db.session.commit()
         return jsonify({"ok": True, "message": "Receta creada correctamente."}), 201
     except ValueError as exc:
@@ -258,6 +288,12 @@ def editar_receta_api(id_producto: int):
 
     try:
         Receta.reemplazar_receta_producto(id_producto=id_producto, insumos=insumos)
+        registrar_auditoria(
+            accion="Modificación de Ingredientes de Receta",
+            modulo="Recetas",
+            detalles={"id_producto": id_producto, "insumos": insumos},
+            commit=False,
+        )
         db.session.commit()
         return jsonify({"ok": True, "message": "Receta actualizada correctamente."})
     except ValueError as exc:

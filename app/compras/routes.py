@@ -1,6 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from app.auditoria import registrar_auditoria
 from model import db, Compra, convertir, DetalleCompra, Proveedores, MateriaPrima, UnidadMedida
 from sqlalchemy import func
+from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 from decimal import Decimal
 import forms
@@ -105,6 +107,19 @@ def nueva_compra():
 
                     materia.stock_actual += cantidad_convertida
 
+                    registrar_auditoria(
+                        accion="Cambio de Costo de Materia Prima",
+                        modulo="Inventario",
+                        detalles={
+                            "id_materia": materia_id,
+                            "id_compra": compra.id_compra,
+                            "costo_unitario": str(costo_unitario),
+                            "cantidad": str(cantidad),
+                            "unidad": unidad_compra.abreviacion if unidad_compra else None,
+                        },
+                        commit=False,
+                    )
+
             db.session.commit()
 
             flash('Compra registrada exitosamente', 'success')
@@ -125,6 +140,40 @@ def nueva_compra():
 def detalle_compra(id):
     compra = Compra.query.get_or_404(id)
     return render_template('compras/detalle_compra.html', compra=compra)
+
+
+@compras_bp.route('/compras/cancelar/<int:id>', methods=['POST'])
+def cancelar_compra(id):
+    compra = Compra.query.get_or_404(id)
+
+    try:
+        for detalle in compra.detalles:
+            materia = MateriaPrima.query.get(detalle.id_materia)
+            if not materia:
+                continue
+
+            unidad_detalle = detalle.unidad_medida
+            unidad_materia = materia.unidad
+            cantidad_revertir = convertir(Decimal(str(detalle.cantidad)), unidad_detalle, unidad_materia)
+
+            stock_actual = Decimal(str(materia.stock_actual or 0))
+            materia.stock_actual = max(stock_actual - Decimal(str(cantidad_revertir)), Decimal('0'))
+
+        registrar_auditoria(
+            accion='Cancelación de Compra',
+            modulo='Compras',
+            detalles={'id_compra': compra.id_compra, 'id_proveedor': compra.id_proveedor},
+            commit=False,
+        )
+
+        db.session.delete(compra)
+        db.session.commit()
+        flash('Compra cancelada correctamente.', 'success')
+    except (SQLAlchemyError, ValueError):
+        db.session.rollback()
+        flash('No se pudo cancelar la compra.', 'danger')
+
+    return redirect(url_for('compras.listar_compras'))
 
 
 @compras_bp.route('/compras/obtener_materia/<int:materia_id>')

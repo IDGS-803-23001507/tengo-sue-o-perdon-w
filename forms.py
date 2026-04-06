@@ -4,8 +4,10 @@ from wtforms import StringField, DateTimeLocalField, IntegerField, RadioField, T
 from wtforms.validators import DataRequired, ValidationError, NumberRange, EqualTo, Length, Email, Optional
 
 ROLES_USUARIO = [
-    ("Gerente", "Gerente"),
-    ("Operador", "Operador"),
+    ("Admin General (TI)", "Admin General (TI)"),
+    ("Gerente de Tienda", "Gerente de Tienda"),
+    ("Cajero", "Cajero"),
+    ("Barista", "Barista"),
     ("Cliente", "Cliente"),
 ]
 
@@ -298,6 +300,35 @@ class ClienteForm(FlaskForm):
     )
     
     submit = SubmitField("Registrar")
+
+
+class ClientePerfilForm(FlaskForm):
+    nombre = StringField(
+        "Nombre",
+        validators=[DataRequired(message="El nombre es obligatorio"), Length(max=120)],
+    )
+
+    apellidoPaterno = StringField(
+        "Apellido Paterno",
+        validators=[DataRequired(message="El apellido paterno es obligatorio"), Length(max=50)],
+    )
+
+    apellidoMaterno = StringField(
+        "Apellido Materno",
+        validators=[Optional(), Length(max=50)],
+    )
+
+    telefono = StringField(
+        "Teléfono",
+        validators=[Optional(), Length(max=15)],
+    )
+
+    alias = StringField(
+        "Alias",
+        validators=[Optional(), Length(max=50)],
+    )
+
+    submit = SubmitField("Guardar cambios")
     
 class CrearEmpleadoForm(FlaskForm):
 
@@ -438,6 +469,16 @@ class ProductoTerminadoForm(FlaskForm):
         places=2,
     )
 
+    descripcion = TextAreaField(
+        "Descripción",
+        validators=[Optional(), Length(max=500)],
+    )
+
+    imageBase64 = HiddenField(
+        "Imagen base64",
+        validators=[Optional(), Length(max=2000000)],
+    )
+
     submit = SubmitField("Guardar Producto")
 
 
@@ -511,6 +552,12 @@ class RecetaLoteForm(FlaskForm):
         "Estado",
         choices=[("1", "Activa"), ("0", "Inactiva")],
         validators=[DataRequired(message="Selecciona el estado")],
+    )
+
+    insumos_json = HiddenField(
+        "Insumos",
+        validators=[DataRequired(message="Agrega al menos un insumo a la receta")],
+        render_kw={"id": "insumos_json"},
     )
 
     submit = SubmitField("Guardar Receta")

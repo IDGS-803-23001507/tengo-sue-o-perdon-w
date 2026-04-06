@@ -1,5 +1,5 @@
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
-from sqlalchemy import String, cast, or_
+from sqlalchemy import String, cast, or_, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from forms import AgregarDetalleSolicitudForm
@@ -155,15 +155,16 @@ def detalles_solicitud(id: int):
 def finalizar_solicitud(id: int):
     solicitud = SolicitudProduccion.query.get_or_404(id)
 
-    if not solicitud.detalles:
-        flash("Agrega al menos un producto antes de finalizar la solicitud.", "danger")
-        return redirect(url_for("solicitud.detalles_solicitud", id=solicitud.id_solicitud))
-
     try:
-        solicitud.estado = "finalizado"
+        db.session.execute(
+            text("CALL sp_finalizar_solicitud_produccion(:id_solicitud)"),
+            {"id_solicitud": solicitud.id_solicitud},
+        )
         db.session.commit()
+        flash("Solicitud finalizada y stock actualizado correctamente.", "success")
         return redirect(url_for("solicitud.index"))
-    except SQLAlchemyError:
+    except SQLAlchemyError as exc:
         db.session.rollback()
-        flash("No se pudo finalizar la solicitud. Inténtalo nuevamente.", "danger")
+        mensaje = str(getattr(exc, "orig", exc))
+        flash(f"No se pudo finalizar la solicitud: {mensaje}", "danger")
         return redirect(url_for("solicitud.detalles_solicitud", id=solicitud.id_solicitud))
