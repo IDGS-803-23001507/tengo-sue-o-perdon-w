@@ -121,13 +121,15 @@ def reporte():
                     costo_detalle = costo_unitario * detalle.cantidad
                     costo_venta += costo_detalle
                     
+                    subtotal = float(detalle.cantidad) * float(producto.precio_venta or 0)
+                    
                     productos_vendidos.append({
                         'nombre': producto.nombre,
                         'cantidad': float(detalle.cantidad),
                         'precio': float(producto.precio_venta) if producto.precio_venta else 0,
-                        'subtotal': float(detalle.subtotal),
+                        'subtotal': subtotal,
                         'costo': costo_detalle,
-                        'utilidad': float(detalle.subtotal) - costo_detalle
+                        'utilidad': subtotal - costo_detalle
                     })
 
                     nombre_producto = producto.nombre
@@ -139,9 +141,9 @@ def reporte():
                             'utilidad': 0
                         }
                     productos_detalle[nombre_producto]['cantidad'] += float(detalle.cantidad)
-                    productos_detalle[nombre_producto]['ventas'] += float(detalle.subtotal)
+                    productos_detalle[nombre_producto]['ventas'] += subtotal
                     productos_detalle[nombre_producto]['costo'] += costo_detalle
-                    productos_detalle[nombre_producto]['utilidad'] += float(detalle.subtotal) - costo_detalle
+                    productos_detalle[nombre_producto]['utilidad'] += subtotal - costo_detalle
                     
                     resumen['productos_vendidos'] += float(detalle.cantidad)
             
@@ -212,7 +214,7 @@ def producto_detalle(producto_id):
 
 @utilidad_bp.route('/utilidad/reporte/pdf', methods=['POST'])
 def reporte_pdf():
-    """Genera y descarga el reporte de utilidad en PDF"""
+
     form = forms.FechasReporteForm(request.form)
 
     if not form.validate():
@@ -243,16 +245,21 @@ def reporte_pdf():
             if producto:
                 costo_unitario  = float(producto.costo_unitario())
                 costo_detalle   = costo_unitario * detalle.cantidad
+                
                 costo_venta    += costo_detalle
                 nombre_producto = producto.nombre
+                
+                subtotal = float(detalle.cantidad) * float(producto.precio_venta or 0)
+                
                 if nombre_producto not in productos_detalle:
                     productos_detalle[nombre_producto] = {
                         'cantidad': 0, 'ventas': 0, 'costo': 0, 'utilidad': 0
                     }
+                
                 productos_detalle[nombre_producto]['cantidad']  += float(detalle.cantidad)
-                productos_detalle[nombre_producto]['ventas']    += float(detalle.subtotal)
+                productos_detalle[nombre_producto]['ventas']    += subtotal
                 productos_detalle[nombre_producto]['costo']     += costo_detalle
-                productos_detalle[nombre_producto]['utilidad']  += float(detalle.subtotal) - costo_detalle
+                productos_detalle[nombre_producto]['utilidad']  += subtotal - costo_detalle
                 resumen['productos_vendidos'] += float(detalle.cantidad)
 
         ventas.append({
