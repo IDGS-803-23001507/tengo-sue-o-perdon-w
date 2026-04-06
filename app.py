@@ -7,7 +7,7 @@ from sqlalchemy.exc import OperationalError
 from werkzeug.routing import BuildError
 
 from config import Config
-from db_init import inicializar_db
+from db_init import asegurar_base_de_datos, inicializar_db
 from model import Compra, DetalleCompra, DetalleVenta, MateriaPrima, Producto, Venta, db
 
 from app.login.routes import authBp, endpointDashboardRol, usuarioAutenticado
@@ -29,6 +29,11 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
+
+try:
+    asegurar_base_de_datos()
+except Exception as exc:
+    raise RuntimeError(f"No fue posible crear/verificar la base de datos: {exc}") from exc
 
 db.init_app(app)
 app.register_blueprint(authBp)
