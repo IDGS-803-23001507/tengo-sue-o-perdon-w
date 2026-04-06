@@ -48,7 +48,7 @@ class Config:
 
     MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
     MONGO_DB = os.getenv("MONGO_DB", "urban_coffee")
-    MONGO_AUDIT_COLLECTION = os.getenv("MONGO_AUDIT_COLLECTION", "auditoria_logs")
+    MONGO_AUDIT_COLLECTION = os.getenv("MONGO_AUDIT_COLLECTION", "auditoria_logs")  
 
     USUARIO_GERENTE_NOMBRE = os.getenv("USUARIO_GERENTE_NOMBRE", "Administrador Urban Coffee")
     USUARIO_GERENTE_CORREO = os.getenv("USUARIO_GERENTE_CORREO", "admin@urbancoffee.com")

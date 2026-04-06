@@ -23,6 +23,7 @@ from app.ventas.routes import ventasBp
 from app.cliente.routes import clientesBp
 from app.solicitud.routes import solicitud_bp
 from app.recetas.routes import recetas_bp
+from app.produccion.routes import produccion_bp
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -49,6 +50,7 @@ app.register_blueprint(ventasBp)
 app.register_blueprint(clientesBp)
 app.register_blueprint(solicitud_bp)
 app.register_blueprint(recetas_bp)
+app.register_blueprint(produccion_bp)
 
 try:
     with app.app_context():
@@ -247,6 +249,7 @@ def requerirLogin():
             "usuarios": "usuarios",
             "recetas": "recetas",
             "solicitud": "produccion",
+            "produccion": "produccion",
             "proveedor": "proveedores",
             "compras": "compras",
             "ventas": "ventas",

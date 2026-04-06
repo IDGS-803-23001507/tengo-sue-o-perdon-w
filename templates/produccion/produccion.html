@@ -1,0 +1,194 @@
+{% extends "layout/layout_produccion.html" %}
+
+{% block container %}
+<div class="mb-8">
+    <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Módulo de Producción</h1>
+    <p class="text-gray-500 mt-1">Registra fabricación y actualiza inventario de forma automática.</p>
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div class="xl:col-span-1 bg-white rounded-lg shadow-sm border p-6">
+        <h2 class="text-lg font-semibold mb-4 text-gray-800 border-b pb-2">Nueva producción</h2>
+
+        <form method="POST" action="{{ url_for('produccion.index') }}" class="space-y-4" id="formProduccion">
+            {{ form.hidden_tag() }}
+
+            <div>
+                <label class="block mb-2 text-sm font-medium text-gray-900">Producto a producir *</label>
+                {{ form.id_producto(class="bg-gray-50 border border-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", required=true) }}
+            </div>
+
+            <div>
+                <label class="block mb-2 text-sm font-medium text-gray-900">Cantidad *</label>
+                {{ form.cantidad(class="bg-gray-50 border border-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", min="1", required=true) }}
+            </div>
+
+            <button type="submit"
+                    class="w-full text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-2.5">
+                Registrar Producción
+            </button>
+        </form>
+    </div>
+
+    <div class="xl:col-span-2 bg-white rounded-lg shadow-sm border overflow-hidden">
+        <div class="px-6 py-4 border-b bg-gray-50">
+            <h2 class="text-lg font-semibold text-gray-800">Visualizador de insumos</h2>
+            <p class="text-sm text-gray-500 mt-1">El cálculo usa la receta activa del producto seleccionado.</p>
+        </div>
+
+        <div class="p-6">
+            <div id="mensajeReceta" class="hidden rounded-lg border px-4 py-3 text-sm mb-4"></div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm text-left text-gray-600">
+                    <thead class="text-xs uppercase text-gray-700 bg-gray-50 border-b">
+                        <tr>
+                            <th class="px-4 py-3">Insumo</th>
+                            <th class="px-4 py-3 text-right">Requerido</th>
+                            <th class="px-4 py-3 text-right">Disponible</th>
+                            <th class="px-4 py-3 text-center">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaInsumosBody">
+                        <tr>
+                            <td colspan="4" class="px-4 py-6 text-center text-gray-500">
+                                Selecciona producto y cantidad para calcular insumos.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-8 bg-white rounded-lg shadow-sm border overflow-hidden">
+    <div class="px-6 py-4 border-b bg-gray-50">
+        <h2 class="text-lg font-semibold text-gray-800">Historial (últimas 24 horas)</h2>
+        <p class="text-sm text-gray-500 mt-1">Detalle de producción finalizada con operador y hora.</p>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm text-left text-gray-600">
+            <thead class="text-xs uppercase text-gray-700 bg-gray-50 border-b">
+                <tr>
+                    <th class="px-4 py-3">Ticket</th>
+                    <th class="px-4 py-3">Producto</th>
+                    <th class="px-4 py-3 text-center">Cantidad</th>
+                    <th class="px-4 py-3">Operador</th>
+                    <th class="px-4 py-3">Fecha y hora</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in historial %}
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-4 py-3 font-semibold text-gray-800">#{{ item.id_solicitud }}</td>
+                    <td class="px-4 py-3">{{ item.producto.nombre if item.producto else 'Producto eliminado' }}</td>
+                    <td class="px-4 py-3 text-center font-semibold">{{ item.cantidad }}</td>
+                    <td class="px-4 py-3">{{ nombre_operador(item.solicitud.usuario) }}</td>
+                    <td class="px-4 py-3">{{ item.solicitud.fecha.strftime('%d/%m/%Y %H:%M') if item.solicitud and item.solicitud.fecha else '-' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                        No hay producciones registradas en las últimas 24 horas.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const selectorProducto = document.getElementById('id_producto');
+const inputCantidad = document.getElementById('cantidad');
+const cuerpoTabla = document.getElementById('tablaInsumosBody');
+const mensaje = document.getElementById('mensajeReceta');
+
+function setMensaje(texto, tipo) {
+    mensaje.classList.remove('hidden', 'border-red-200', 'bg-red-50', 'text-red-700', 'border-emerald-200', 'bg-emerald-50', 'text-emerald-700', 'border-blue-200', 'bg-blue-50', 'text-blue-700');
+
+    if (tipo === 'error') {
+        mensaje.classList.add('border-red-200', 'bg-red-50', 'text-red-700');
+    } else if (tipo === 'ok') {
+        mensaje.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+    } else {
+        mensaje.classList.add('border-blue-200', 'bg-blue-50', 'text-blue-700');
+    }
+
+    mensaje.textContent = texto;
+}
+
+function renderTabla(insumos) {
+    if (!insumos.length) {
+        cuerpoTabla.innerHTML = `
+            <tr>
+                <td colspan="4" class="px-4 py-6 text-center text-gray-500">No hay insumos para mostrar.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    cuerpoTabla.innerHTML = insumos.map((insumo) => {
+        const unidad = insumo.unidad ? ` ${insumo.unidad}` : '';
+        const badge = insumo.suficiente
+            ? '<span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">OK</span>'
+            : '<span class="inline-flex rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">Faltante</span>';
+
+        return `
+            <tr class="border-b hover:bg-gray-50">
+                <td class="px-4 py-3">${insumo.materia}</td>
+                <td class="px-4 py-3 text-right font-semibold">${insumo.requerido.toFixed(2)}${unidad}</td>
+                <td class="px-4 py-3 text-right">${insumo.disponible.toFixed(2)}${unidad}</td>
+                <td class="px-4 py-3 text-center">${badge}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function actualizarVisualizador() {
+    const idProducto = Number(selectorProducto?.value || 0);
+    const cantidad = Number(inputCantidad?.value || 0);
+
+    if (!idProducto || !cantidad || cantidad < 1) {
+        cuerpoTabla.innerHTML = `
+            <tr>
+                <td colspan="4" class="px-4 py-6 text-center text-gray-500">Selecciona producto y cantidad para calcular insumos.</td>
+            </tr>
+        `;
+        mensaje.classList.add('hidden');
+        return;
+    }
+
+    try {
+        const response = await fetch(`{{ url_for('produccion.insumos') }}?id_producto=${idProducto}&cantidad=${cantidad}`);
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            renderTabla([]);
+            setMensaje(data.message || 'No se pudo calcular la receta.', 'error');
+            return;
+        }
+
+        renderTabla(data.insumos || []);
+
+        if (data.inventario_suficiente) {
+            setMensaje('Inventario suficiente para registrar la producción.', 'ok');
+        } else {
+            setMensaje('Inventario insuficiente en uno o más insumos.', 'error');
+        }
+    } catch (error) {
+        renderTabla([]);
+        setMensaje('Error al consultar los insumos requeridos.', 'error');
+    }
+}
+
+if (selectorProducto) selectorProducto.addEventListener('change', actualizarVisualizador);
+if (inputCantidad) inputCantidad.addEventListener('input', actualizarVisualizador);
+
+actualizarVisualizador();
+</script>
+{% endblock %}

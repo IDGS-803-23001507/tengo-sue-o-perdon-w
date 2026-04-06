@@ -442,6 +442,32 @@ class AgregarDetalleSolicitudForm(FlaskForm):
         ]
 
 
+class RegistroProduccionForm(FlaskForm):
+    id_producto = SelectField(
+        "Producto",
+        coerce=int,
+        validators=[DataRequired(message="Selecciona un producto")],
+    )
+
+    cantidad = IntegerField(
+        "Cantidad",
+        default=1,
+        validators=[
+            DataRequired(message="La cantidad es obligatoria"),
+            NumberRange(min=1, message="La cantidad debe ser mayor a 0"),
+        ],
+    )
+
+    submit = SubmitField("Registrar Producción")
+
+    def set_productos(self, productos):
+        self.id_producto.choices = [
+            (p.id_producto, p.nombre)
+            for p in productos
+            if p.estatus
+        ]
+
+
 class ProductoTerminadoForm(FlaskForm):
     nombre = StringField(
         "Nombre del Producto",
