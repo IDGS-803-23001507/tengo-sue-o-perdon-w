@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone, date
 from decimal import Decimal
-from sqlalchemy import Enum
+from sqlalchemy import CheckConstraint, Enum, UniqueConstraint
 from sqlalchemy.dialects.mysql import LONGTEXT
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -320,3 +320,127 @@ class DetalleProduccion(db.Model):
     cantidad = db.Column(db.Integer, nullable=False)
 
     producto = db.relationship("Producto", backref=db.backref("detalles_produccion", lazy=True))
+
+
+class Receta(db.Model):
+    __tablename__ = "Recetas"
+    __table_args__ = (
+        UniqueConstraint("id_producto", "id_materia", name="uq_receta_producto_materia"),
+        CheckConstraint("cantidad > 0", name="chk_receta_cantidad_mayor_cero"),
+    )
+
+    id_receta = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id_producto = db.Column(db.Integer, db.ForeignKey("Producto.id_producto"), nullable=False, index=True)
+    id_materia = db.Column(db.Integer, db.ForeignKey("Materia_prima.id_materia"), nullable=False, index=True)
+    cantidad = db.Column(db.Numeric(10, 2), nullable=False)
+    estado = db.Column(db.Boolean, nullable=False, default=True, index=True)
+
+    producto = db.relationship("Producto", backref=db.backref("recetas", lazy=True))
+    materiaPrima = db.relationship("MateriaPrima", backref=db.backref("recetas", lazy=True))
+
+    @property
+    def nombre_materia(self) -> str:
+        return self.materiaPrima.nombre if self.materiaPrima else ""
+
+    @property
+    def unidad_materia(self) -> str:
+        if not self.materiaPrima or not self.materiaPrima.unidad:
+            return ""
+        return self.materiaPrima.unidad.abreviacion or self.materiaPrima.unidad.nombre
+
+    @classmethod
+    def validar_insumos_no_vacios(cls, insumos: list[dict]) -> None:
+        if not insumos:
+            raise ValueError("No se puede registrar una receta sin insumos.")
+
+    @classmethod
+    def validar_insumos_en_inventario(cls, insumos: list[dict]) -> None:
+        ids_materia = [int(insumo.get("id_materia", 0)) for insumo in insumos]
+        if any(id_materia <= 0 for id_materia in ids_materia):
+            raise ValueError("Todos los insumos deben tener un id_materia válido.")
+
+        materias = MateriaPrima.query.filter(
+            MateriaPrima.id_materia.in_(ids_materia),
+            MateriaPrima.estatus.is_(True),
+        ).all()
+
+        ids_disponibles = {m.id_materia for m in materias}
+        ids_faltantes = [id_materia for id_materia in ids_materia if id_materia not in ids_disponibles]
+
+        if ids_faltantes:
+            raise ValueError("Hay insumos que no existen en inventario o están inactivos.")
+
+    @classmethod
+    def validar_activa_para_produccion(cls, id_producto: int) -> None:
+        existe_activa = cls.query.filter_by(id_producto=id_producto, estado=True).first()
+        if not existe_activa:
+            raise ValueError("La receta del producto está inactiva o no existe.")
+
+    @classmethod
+    def producto_tiene_produccion_finalizada(cls, id_producto: int) -> bool:
+        return (
+            db.session.query(DetalleProduccion.id_detalle)
+            .join(SolicitudProduccion, DetalleProduccion.id_solicitud == SolicitudProduccion.id_solicitud)
+            .filter(
+                DetalleProduccion.id_producto == id_producto,
+                SolicitudProduccion.estado == "finalizado",
+            )
+            .first()
+            is not None
+        )
+
+    @classmethod
+    def reemplazar_receta_producto(cls, id_producto: int, insumos: list[dict]) -> list["Receta"]:
+        cls.validar_insumos_no_vacios(insumos)
+        cls.validar_insumos_en_inventario(insumos)
+
+        producto = Producto.query.get(id_producto)
+        if not producto:
+            raise ValueError("El producto indicado no existe.")
+
+        recetas_activas = cls.query.filter_by(id_producto=id_producto, estado=True).all()
+        mapa_activas = {receta.id_materia: receta for receta in recetas_activas}
+
+        mapa_entrada: dict[int, Decimal] = {}
+        for insumo in insumos:
+            id_materia = int(insumo.get("id_materia", 0))
+            cantidad = Decimal(str(insumo.get("cantidad", 0)))
+
+            if cantidad <= 0:
+                raise ValueError("La cantidad de cada insumo debe ser mayor a cero.")
+
+            if id_materia in mapa_entrada:
+                raise ValueError("No se puede repetir el mismo insumo en la receta del producto.")
+
+            mapa_entrada[id_materia] = cantidad
+
+        if cls.producto_tiene_produccion_finalizada(id_producto):
+            snapshot_actual = {receta.id_materia: Decimal(str(receta.cantidad)) for receta in recetas_activas}
+            if snapshot_actual != mapa_entrada:
+                raise ValueError(
+                    "No se puede modificar la receta porque el producto ya tiene producciones finalizadas. "
+                    "Esto protege la persistencia histórica."
+                )
+
+        nuevas_recetas: list[Receta] = []
+        for id_materia, cantidad in mapa_entrada.items():
+            receta_existente = cls.query.filter_by(id_producto=id_producto, id_materia=id_materia).first()
+            if receta_existente:
+                receta_existente.cantidad = cantidad
+                receta_existente.estado = True
+                nuevas_recetas.append(receta_existente)
+            else:
+                nueva = cls(
+                    id_producto=id_producto,
+                    id_materia=id_materia,
+                    cantidad=cantidad,
+                    estado=True,
+                )
+                db.session.add(nueva)
+                nuevas_recetas.append(nueva)
+
+        for id_materia, receta_activa in mapa_activas.items():
+            if id_materia not in mapa_entrada:
+                receta_activa.estado = False
+
+        return nuevas_recetas

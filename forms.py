@@ -405,7 +405,10 @@ class AgregarDetalleSolicitudForm(FlaskForm):
     submit = SubmitField("Agregar a la solicitud")
 
     def set_productos(self, productos):
-        self.id_producto.choices = [(p.id_producto, p.nombre) for p in productos]
+        self.id_producto.choices = [
+            (p.id_producto, f"{p.nombre} {'(Inactivo)' if not p.estatus else ''}".strip())
+            for p in productos
+        ]
 
 
 class ProductoTerminadoForm(FlaskForm):
@@ -449,3 +452,116 @@ class ProductoTerminadoEditarForm(ProductoTerminadoForm):
     )
 
     submit = SubmitField("Actualizar Producto")
+
+
+class RecetaForm(FlaskForm):
+    id_producto = SelectField(
+        "Producto",
+        coerce=int,
+        validators=[DataRequired(message="Selecciona un producto")],
+    )
+
+    id_materia = SelectField(
+        "Insumo",
+        coerce=int,
+        validators=[DataRequired(message="Selecciona un insumo")],
+    )
+
+    cantidad = DecimalField(
+        "Cantidad",
+        places=2,
+        validators=[
+            DataRequired(message="La cantidad es obligatoria"),
+            NumberRange(min=0.01, message="La cantidad debe ser mayor a 0"),
+        ],
+    )
+
+    estado = SelectField(
+        "Estado",
+        choices=[("1", "Activa"), ("0", "Inactiva")],
+        validators=[DataRequired(message="Selecciona el estado")],
+    )
+
+    submit = SubmitField("Guardar Receta")
+
+    def set_productos(self, productos):
+        self.id_producto.choices = [(p.id_producto, p.nombre) for p in productos]
+
+    def set_materias(self, materias):
+        opciones = []
+        for materia in materias:
+            unidad = ""
+            if getattr(materia, "unidad", None):
+                unidad = materia.unidad.abreviacion or materia.unidad.nombre or ""
+
+            etiqueta = f"{materia.nombre} ({unidad})" if unidad else materia.nombre
+            opciones.append((materia.id_materia, etiqueta))
+
+        self.id_materia.choices = opciones
+
+
+class RecetaLoteForm(FlaskForm):
+    id_producto = SelectField(
+        "Producto",
+        coerce=int,
+        validators=[DataRequired(message="Selecciona un producto")],
+    )
+
+    estado = SelectField(
+        "Estado",
+        choices=[("1", "Activa"), ("0", "Inactiva")],
+        validators=[DataRequired(message="Selecciona el estado")],
+    )
+
+    submit = SubmitField("Guardar Receta")
+
+    def set_productos(self, productos):
+        self.id_producto.choices = [
+            (p.id_producto, f"{p.nombre} {'(Inactivo)' if not p.estatus else ''}".strip())
+            for p in productos
+        ]
+
+
+class MateriaPrimaForm(FlaskForm):
+    nombre_insumo = StringField(
+        "Nombre de la materia prima",
+        validators=[
+            DataRequired(message="El nombre es obligatorio"),
+            Length(max=50, message="El nombre no puede exceder 50 caracteres"),
+        ],
+    )
+
+    descripcion = TextAreaField(
+        "Descripción",
+        validators=[Optional(), Length(max=500, message="La descripción no puede exceder 500 caracteres")],
+    )
+
+    unidad_medida = SelectField(
+        "Unidad de Medida",
+        coerce=int,
+        validators=[DataRequired(message="Selecciona una unidad de medida")],
+    )
+
+    stock_minimo = DecimalField(
+        "Alerta de Stock Mínimo",
+        places=2,
+        validators=[
+            DataRequired(message="El stock mínimo es obligatorio"),
+            NumberRange(min=0, message="El stock mínimo no puede ser negativo"),
+        ],
+    )
+
+    estatus = SelectField(
+        "Estatus",
+        choices=[("1", "Activo"), ("0", "Inactivo")],
+        validators=[Optional()],
+        default="1",
+    )
+
+    submit = SubmitField("Guardar Insumo")
+
+    def set_unidades(self, unidades):
+        self.unidad_medida.choices = [
+            (u.id_unidad, f"{u.nombre} ({u.abreviacion})" if u.abreviacion else u.nombre)
+            for u in unidades
+        ]

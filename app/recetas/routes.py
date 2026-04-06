@@ -1,0 +1,268 @@
+from decimal import Decimal
+
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from sqlalchemy import or_
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.usuarios.routes import requiereRol
+from forms import RecetaForm, RecetaLoteForm
+from model import MateriaPrima, Producto, Receta, db
+
+recetas_bp = Blueprint("recetas", __name__, url_prefix="/recetas")
+
+
+def _cargar_formulario_receta(form: RecetaForm) -> None:
+    productos = Producto.query.order_by(Producto.estatus.desc(), Producto.nombre.asc()).all()
+    materias = MateriaPrima.query.filter_by(estatus=True).order_by(MateriaPrima.nombre.asc()).all()
+    form.set_productos(productos)
+    form.set_materias(materias)
+
+
+def _cargar_formulario_receta_lote(form: RecetaLoteForm):
+    productos = Producto.query.order_by(Producto.estatus.desc(), Producto.nombre.asc()).all()
+    materias = MateriaPrima.query.filter_by(estatus=True).order_by(MateriaPrima.nombre.asc()).all()
+    form.set_productos(productos)
+    return materias
+
+
+@recetas_bp.route("/", methods=["GET"], endpoint="index")
+def recetas():
+    busqueda = (request.args.get("q") or "").strip()
+    estado = (request.args.get("estado") or "todos").strip().lower()
+
+    query = Receta.query.join(Producto, Receta.id_producto == Producto.id_producto).join(
+        MateriaPrima, Receta.id_materia == MateriaPrima.id_materia
+    )
+
+    if busqueda:
+        patron = f"%{busqueda}%"
+        query = query.filter(
+            or_(
+                Producto.nombre.ilike(patron),
+                MateriaPrima.nombre.ilike(patron),
+            )
+        )
+
+    if estado == "activas":
+        query = query.filter(Receta.estado.is_(True))
+    elif estado == "inactivas":
+        query = query.filter(Receta.estado.is_(False))
+
+    recetas = query.order_by(Producto.nombre.asc(), MateriaPrima.nombre.asc()).all()
+    return render_template(
+        "recetas/recetas.html",
+        recetas=recetas,
+        busqueda=busqueda,
+        estado_actual=estado,
+        active_page="recetas",
+    )
+
+
+@recetas_bp.route("/nueva", methods=["GET", "POST"], endpoint="nueva")
+@requiereRol("Gerente")
+def nueva_receta():
+    form = RecetaLoteForm()
+    materias = _cargar_formulario_receta_lote(form)
+
+    if form.validate_on_submit():
+        try:
+            id_producto = form.id_producto.data
+            estado = form.estado.data == "1"
+
+            ids_materia = request.form.getlist("id_materia[]")
+            cantidades = request.form.getlist("cantidad[]")
+
+            if not ids_materia:
+                raise ValueError("No se puede registrar una receta sin insumos.")
+
+            if len(ids_materia) != len(cantidades):
+                raise ValueError("La captura de insumos es inválida.")
+
+            insumos_payload = []
+            ids_vistos = set()
+            for idx, id_materia_raw in enumerate(ids_materia):
+                id_materia = int(id_materia_raw or 0)
+                cantidad = Decimal(str(cantidades[idx] or 0))
+
+                if id_materia <= 0:
+                    raise ValueError("Selecciona un insumo válido en cada renglón.")
+
+                if id_materia in ids_vistos:
+                    raise ValueError("No se puede repetir el mismo insumo en la receta.")
+                ids_vistos.add(id_materia)
+
+                if cantidad <= 0:
+                    raise ValueError("La cantidad de cada insumo debe ser mayor a cero.")
+
+                insumos_payload.append({"id_materia": id_materia, "cantidad": cantidad})
+
+            Receta.reemplazar_receta_producto(id_producto=id_producto, insumos=insumos_payload)
+
+            recetas_producto = Receta.query.filter_by(id_producto=id_producto).all()
+            for receta in recetas_producto:
+                receta.estado = estado
+
+            db.session.commit()
+            form_limpio = RecetaLoteForm()
+            materias = _cargar_formulario_receta_lote(form_limpio)
+            return render_template(
+                "recetas/nueva_receta.html",
+                form=form_limpio,
+                materias=materias,
+                mostrar_modal=True,
+                active_page="recetas",
+            )
+        except ValueError as exc:
+            db.session.rollback()
+            flash(str(exc), "danger")
+        except SQLAlchemyError:
+            db.session.rollback()
+            flash("No se pudo guardar la receta.", "danger")
+
+    if request.method == "POST":
+        for erroresCampo in form.errors.values():
+            if erroresCampo:
+                flash(erroresCampo[0], "danger")
+                break
+
+    return render_template(
+        "recetas/nueva_receta.html",
+        form=form,
+        materias=materias,
+        mostrar_modal=False,
+        active_page="recetas",
+    )
+
+
+@recetas_bp.route("/<int:id_receta>/editar", methods=["GET", "POST"], endpoint="editar")
+@requiereRol("Gerente")
+def modificar_receta(id_receta: int):
+    receta = Receta.query.get_or_404(id_receta)
+    form = RecetaForm(obj=receta)
+    _cargar_formulario_receta(form)
+
+    if request.method == "GET":
+        form.estado.data = "1" if receta.estado else "0"
+
+    if form.validate_on_submit():
+        if form.id_producto.data != receta.id_producto or form.id_materia.data != receta.id_materia:
+            flash("No se puede cambiar producto o insumo en edición. Crea un nuevo registro.", "danger")
+            return render_template(
+                "recetas/editar_receta.html",
+                form=form,
+                receta=receta,
+                mostrar_modal=False,
+                active_page="recetas",
+            )
+
+        try:
+            id_producto = receta.id_producto
+            id_materia = receta.id_materia
+            cantidad = Decimal(str(form.cantidad.data))
+            estado = form.estado.data == "1"
+
+            recetas_activas = Receta.query.filter_by(id_producto=id_producto, estado=True).all()
+            insumos_payload = [
+                {"id_materia": r.id_materia, "cantidad": (cantidad if r.id_materia == id_materia else Decimal(str(r.cantidad)))}
+                for r in recetas_activas
+            ]
+
+            if not any(item["id_materia"] == id_materia for item in insumos_payload):
+                insumos_payload.append({"id_materia": id_materia, "cantidad": cantidad})
+
+            Receta.reemplazar_receta_producto(id_producto=id_producto, insumos=insumos_payload)
+
+            receta_actualizada = Receta.query.filter_by(id_producto=id_producto, id_materia=id_materia).first()
+            if receta_actualizada:
+                receta_actualizada.estado = estado
+
+            db.session.commit()
+            return render_template(
+                "recetas/editar_receta.html",
+                form=form,
+                receta=receta,
+                mostrar_modal=True,
+                active_page="recetas",
+            )
+        except ValueError as exc:
+            db.session.rollback()
+            flash(str(exc), "danger")
+        except SQLAlchemyError:
+            db.session.rollback()
+            flash("No se pudo actualizar la receta.", "danger")
+
+    if request.method == "POST":
+        for erroresCampo in form.errors.values():
+            if erroresCampo:
+                flash(erroresCampo[0], "danger")
+                break
+
+    return render_template(
+        "recetas/editar_receta.html",
+        form=form,
+        receta=receta,
+        mostrar_modal=False,
+        active_page="recetas",
+    )
+
+
+@recetas_bp.route("/producto/<int:id_producto>", methods=["GET"], endpoint="obtener_por_producto")
+def detalle_recetas_producto(id_producto: int):
+    recetas = (
+        Receta.query.filter_by(id_producto=id_producto, estado=True)
+        .order_by(Receta.id_receta.asc())
+        .all()
+    )
+
+    return jsonify(
+        {
+            "id_producto": id_producto,
+            "insumos": [
+                {
+                    "id_receta": receta.id_receta,
+                    "id_materia": receta.id_materia,
+                    "nombre_materia": receta.nombre_materia,
+                    "unidad": receta.unidad_materia,
+                    "cantidad": float(receta.cantidad),
+                    "estado": receta.estado,
+                }
+                for receta in recetas
+            ],
+        }
+    )
+
+
+@recetas_bp.route("/producto/<int:id_producto>", methods=["POST"], endpoint="crear_receta")
+@requiereRol("Gerente")
+def crear_receta_api(id_producto: int):
+    payload = request.get_json(silent=True) or {}
+    insumos = payload.get("insumos", [])
+
+    try:
+        Receta.reemplazar_receta_producto(id_producto=id_producto, insumos=insumos)
+        db.session.commit()
+        return jsonify({"ok": True, "message": "Receta creada correctamente."}), 201
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except SQLAlchemyError:
+        db.session.rollback()
+        return jsonify({"ok": False, "message": "Error al crear la receta."}), 500
+
+
+@recetas_bp.route("/producto/<int:id_producto>", methods=["PUT"], endpoint="editar_receta")
+@requiereRol("Gerente")
+def editar_receta_api(id_producto: int):
+    payload = request.get_json(silent=True) or {}
+    insumos = payload.get("insumos", [])
+
+    try:
+        Receta.reemplazar_receta_producto(id_producto=id_producto, insumos=insumos)
+        db.session.commit()
+        return jsonify({"ok": True, "message": "Receta actualizada correctamente."})
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except SQLAlchemyError:
+        db.session.rollback()
+        return jsonify({"ok": False, "message": "Error al actualizar la receta."}), 500

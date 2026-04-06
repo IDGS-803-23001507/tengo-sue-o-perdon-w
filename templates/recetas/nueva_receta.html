@@ -1,0 +1,113 @@
+{% extends "layout/layout_produccion.html" %}
+
+{% block container %}
+<div class="mb-8">
+    <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Nueva Receta</h1>
+    <p class="text-gray-500 mt-1">Asocia un insumo y cantidad a un producto.</p>
+</div>
+
+<form method="POST" action="{{ url_for('recetas.nueva') }}" class="bg-white rounded-lg shadow-sm border p-8 max-w-4xl">
+    {{ form.hidden_tag() }}
+
+    <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Datos de la receta</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-900">Producto *</label>
+            {{ form.id_producto(class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", required=true) }}
+        </div>
+
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-900">Estado *</label>
+            {{ form.estado(class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", required=true) }}
+        </div>
+
+        <div class="md:col-span-2">
+            <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-medium text-gray-900">Insumos de la receta *</label>
+                <button type="button" id="btnAgregarInsumo" class="text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded border border-blue-200 hover:bg-blue-100">
+                    + Agregar insumo
+                </button>
+            </div>
+
+            <div id="listaInsumos" class="space-y-3">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end insumo-row">
+                    <div class="md:col-span-7">
+                        <label class="block mb-1 text-xs text-gray-600">Insumo</label>
+                        <select name="id_materia[]" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
+                            <option value="" selected disabled>Selecciona...</option>
+                            {% for m in materias %}
+                                <option value="{{ m.id_materia }}">{{ m.nombre }}{% if m.unidad %} ({{ m.unidad.abreviacion or m.unidad.nombre }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-4">
+                        <label class="block mb-1 text-xs text-gray-600">Cantidad</label>
+                        <input type="number" name="cantidad[]" step="0.01" min="0.01" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
+                    </div>
+
+                    <div class="md:col-span-1">
+                        <button type="button" class="btnQuitarInsumo w-full text-red-600 border border-red-200 bg-red-50 hover:bg-red-100 rounded-lg p-2.5 text-sm">×</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex justify-end gap-4 pt-4 border-t mt-4">
+        <a href="{{ url_for('recetas.index') }}" class="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:outline-none focus:ring-gray-100 font-medium rounded-lg text-sm px-5 py-2.5">
+            Cancelar
+        </a>
+        {{ form.submit(class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5") }}
+    </div>
+</form>
+
+{% if mostrar_modal %}
+<div class="fixed inset-0 z-[100] flex justify-center items-center bg-gray-900 bg-opacity-50 p-4">
+    <div class="w-full max-w-md">
+        <div class="bg-white rounded-2xl shadow p-6 md:p-8 text-center">
+            <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-check text-green-500 text-xl"></i>
+            </div>
+
+            <h3 class="mb-2 text-xl md:text-2xl font-bold text-gray-900">¡Receta Guardada!</h3>
+            <p class="text-gray-500 mb-6 text-sm md:text-base">La receta se registró correctamente.</p>
+
+            <div class="flex flex-col gap-3">
+                <a href="{{ url_for('recetas.index') }}"
+                   class="text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-5 py-3 text-center transition">
+                    Ver listado de recetas
+                </a>
+
+                <a href="{{ url_for('recetas.nueva') }}"
+                   class="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 font-medium rounded-lg text-sm px-5 py-3 text-center transition">
+                    Registrar otra receta
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const lista = document.getElementById('listaInsumos');
+const btnAgregar = document.getElementById('btnAgregarInsumo');
+
+btnAgregar.addEventListener('click', () => {
+    const primera = lista.querySelector('.insumo-row');
+    const clon = primera.cloneNode(true);
+    clon.querySelector('select').selectedIndex = 0;
+    clon.querySelector('input').value = '';
+    lista.appendChild(clon);
+});
+
+lista.addEventListener('click', (e) => {
+    if (!e.target.classList.contains('btnQuitarInsumo')) return;
+    const filas = lista.querySelectorAll('.insumo-row');
+    if (filas.length <= 1) return;
+    e.target.closest('.insumo-row').remove();
+});
+</script>
+{% endblock %}
