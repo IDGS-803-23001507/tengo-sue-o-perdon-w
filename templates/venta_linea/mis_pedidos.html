@@ -1,0 +1,82 @@
+{% extends "layout/layout.html" %}
+
+{% block container %}
+
+<div class="max-w-4xl mx-auto px-4 py-8">
+
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
+        <div>
+            <h1 class="text-3xl font-black text-[#4B3621] tracking-tight">
+                Mis Pedidos
+            </h1>
+            <p class="text-gray-500 font-medium">
+                Sigue el estatus de tus bebidas favoritas.
+            </p>
+        </div>
+
+    </div>
+
+    <div class="space-y-4">
+        {% for p in pedidos %}
+        
+        <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row justify-between items-center gap-6 hover:shadow-md transition">
+
+            <div class="flex items-center gap-5">
+                <div class="w-16 h-16 bg-[#FDF8F3] rounded-2xl flex items-center justify-center text-[#8B5E3C]">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                </div>
+
+                <div>
+                    <span class="text-[10px] uppercase font-black text-[#8B5E3C] tracking-widest">
+                        Pedido #{{ p.id_pedido }}
+                    </span>
+
+                    <h3 class="text-lg font-bold text-gray-800">
+                        Recogida: {{ p.hora_recogida.strftime('%H:%M') if p.hora_recogida else 'Pronto' }}
+                    </h3>
+
+                    <p class="text-xs text-gray-400">
+                        Solicitado el {{ p.hora_solicitud.strftime('%d/%m %H:%M') }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Código -->
+            <div class="text-center md:text-right">
+                <p class="text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest">
+                    Código de Recogida
+                </p>
+
+                <span class="text-2xl font-black text-[#4B3621] bg-[#F5E6D3] px-4 py-1 rounded-xl border border-[#EAD7C3]">
+                    {{ p.codigo_recogida }}
+                </span>
+            </div>
+
+            <!-- Estado -->
+            <div class="flex flex-col items-center md:items-end">
+                <span class="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest 
+                    {% if p.estado == 'Pendiente' %}bg-blue-50 text-blue-600
+                    {% elif p.estado == 'Preparando' %}bg-yellow-100 text-yellow-700
+                    {% elif p.estado == 'Listo' %}bg-green-100 text-green-700
+                    {% else %}bg-gray-100 text-gray-500{% endif %}">
+                    {{ p.estado }}
+                </span>
+            </div>
+
+        </div>
+
+        {% else %}
+        <div class="text-center py-20 h-72 bg-white rounded-[3rem] border border-dashed border-gray-200">
+            <p class="text-gray-400 italic font-medium">
+                Aún no tienes pedidos activos.
+            </p>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+{% endblock %}

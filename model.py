@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone, date
 from decimal import Decimal
-from sqlalchemy import CheckConstraint, Enum, UniqueConstraint
+from sqlalchemy import CheckConstraint, Enum, UniqueConstraint, func
 from sqlalchemy.dialects.mysql import LONGTEXT
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -115,7 +115,24 @@ class MateriaPrima(db.Model):
     unidad = db.relationship('UnidadMedida', backref='materias_primas')
     detalles_compra = db.relationship('DetalleCompra', backref='materia_prima', lazy=True)
 
-    def actualizar_stock(self, cantidad, costo_unitario):
+    def actualizar_costo_promedio(self, nuevo_costo, cantidad):
+        nuevo_costo_dec = Decimal(str(nuevo_costo))
+        cantidad_dec = Decimal(str(cantidad))
+
+        if self.stock_actual and self.stock_actual > 0:
+            stock_actual_dec = Decimal(str(self.stock_actual))
+            costo_actual_dec = Decimal(str(self.costo_promedio or 0))
+            costo_anterior = costo_actual_dec * stock_actual_dec
+            costo_nuevo = nuevo_costo_dec * cantidad_dec
+            total_costo = costo_anterior + costo_nuevo
+            total_stock = stock_actual_dec + cantidad_dec
+            if total_stock > 0:
+                self.costo_promedio = float(total_costo / total_stock)
+        else:
+            self.costo_promedio = float(nuevo_costo_dec)
+
+
+    def actualizar_stock(self, cantidad):
 
         if cantidad <= 0:
             raise ValueError("La cantidad debe ser mayor a 0")
@@ -149,6 +166,41 @@ class Producto(db.Model):
     descripcion = db.Column(db.Text, nullable=False)
     imagen = db.Column(LONGTEXT, nullable=True)
     estatus = db.Column(db.Boolean, default=True)
+    
+    def costo_unitario(self):
+   
+        if not self.recetas:
+            return Decimal('0')
+        total = Decimal('0')
+        for receta in self.recetas:
+            if receta.materiaPrima:
+                cantidad = Decimal(str(receta.cantidad))
+                costo = Decimal(str(receta.materiaPrima.costo_promedio or 0))
+                total += cantidad * costo
+        return total
+    
+    def margen_ganancia(self):
+        costo = self.costo_unitario()
+        if self.precio_venta:
+            return Decimal(str(self.precio_venta)) - costo
+        return Decimal('0')
+
+    def margen_porcentaje(self):
+        costo = self.costo_unitario()
+        if self.precio_venta and self.precio_venta > 0:
+            return ((Decimal(str(self.precio_venta)) - costo) / Decimal(str(self.precio_venta))) * 100
+        return Decimal('0')
+
+    def to_dict_rentabilidad(self):
+        return {
+            'id': self.id_producto,
+            'nombre': self.nombre,
+            'precio': float(self.precio_venta) if self.precio_venta else 0,
+            'costo': float(self.costo_unitario()),
+            'margen': float(self.margen_ganancia()),
+            'porcentaje': float(self.margen_porcentaje())
+        }
+
     
 class Proveedores(db.Model):
     __tablename__ = 'Proveedor'
@@ -208,6 +260,7 @@ class Compra(db.Model):
             for detalle in self.detalles
         )
     
+    
 class DetalleCompra(db.Model):
     __tablename__ = 'detalle_compra'
 
@@ -262,12 +315,12 @@ class Venta(db.Model):
     
     total = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     utilidadBruta = db.Column("utilidad_bruta", db.Numeric(10, 2), nullable=False, default=0)
-    confirmada = db.Column(db.Boolean, nullable=False, default=False)
-    origen = db.Column(db.String(20), nullable=False, default="POS")
-   
+    estatus = db.Column(db.Boolean, nullable=False, default=False)
+    estado = db.Column(db.String(20), default='entregado')
     fecha = db.Column("creado_en", db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
-    tipo_venta = db.Column(db.String(20), nullable=False)  
-    metodo_pago = db.Column(db.String(20), nullable=False)
+    tipo_venta = db.Column(Enum('fisica','en_linea', name="tipo_venta"), nullable=False)  
+    metodo_pago = db.Column(db.String(30), nullable=True)
+    codigo_recogida = db.Column(db.String(10), nullable=True)
     
     cliente = db.relationship("Cliente", backref="ventas")
     usuario = db.relationship("Usuario", backref="ventas_realizadas")
@@ -283,6 +336,7 @@ class DetalleVenta(db.Model):
     
     cantidad = db.Column(db.Integer, nullable=False, default=1)
     precio_unitario = db.Column(db.Numeric(10, 2), nullable=False, default = 0)
+    tipo_descuento = db.Column(Enum('monto','porcentaje', name="tipo_descuento"), default = 'monto')  
     descuento = db.Column(db.Numeric(10, 2), default=0.00)
 
     venta = db.relationship("Venta", backref="detalles")
@@ -294,8 +348,8 @@ class Pedido(db.Model):
 
     id_pedido = db.Column(db.Integer, primary_key=True)
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
-    nombre = db.Column(db.String(120), nullable=False)
-    telefono = db.Column(db.String(15))
+    
+    hora_solicitud = db.Column(db.DateTime, nullable=False, server_default=func.now())
     hora_recogida = db.Column(db.DateTime, nullable=False)
     notas = db.Column(db.String(200))
 

@@ -27,7 +27,7 @@
       <div class="flex items-center md:order-2 space-x-3 md:space-x-0 rtl:space-x-reverse relative">
 
         {% if session.get("usuarioRol") == "Cliente" %}
-        <a href="#" class="relative text-gray-600 me-4">
+        <a href="{{ url_for('pedidos.mis_pedidos') }}" class="relative text-gray-600 me-4">
           <i class="fa-solid fa-cart-shopping text-sm"></i>
           
           {% if session.get("carritoCantidad", 0) > 0 %}

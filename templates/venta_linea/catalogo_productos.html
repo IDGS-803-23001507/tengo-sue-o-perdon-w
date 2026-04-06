@@ -30,9 +30,9 @@
                     {{ producto.descripcion }}
                 </p>
 
-                <button class="bg-[#C27C3A] text-white px-6 py-2 mt-2 rounded hover:bg-[#A16730] transition">
+                <a href="{{ url_for('ventas.venta_online')}}" class="inline-block bg-[#C27C3A] text-white px-6 py-2 mt-2 rounded hover:bg-[#A16730] transition">
                     Ordenar
-                </button>
+                </a>
 
             </div>
             {% endfor %}

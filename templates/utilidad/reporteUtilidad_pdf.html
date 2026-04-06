@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #1f2937; background: white; }
+
+    .header { background: #78350f; color: white; padding: 20px 30px; }
+    .header h1 { font-size: 22px; font-weight: bold; }
+    .header p { font-size: 11px; opacity: 0.85; margin-top: 4px; }
+
+    .content { padding: 20px 30px; }
+
+    .meta { display: flex; justify-content: space-between; margin-bottom: 20px;
+            background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px 16px; }
+    .meta p { font-size: 11px; color: #6b7280; }
+    .meta strong { color: #111827; }
+
+    .cards { display: flex; gap: 12px; margin-bottom: 24px; }
+    .card { flex: 1; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; text-align: center; }
+    .card .label { font-size: 10px; color: #6b7280; margin-bottom: 4px; }
+    .card .value { font-size: 18px; font-weight: bold; }
+    .card.green .value { color: #16a34a; }
+    .card.blue .value  { color: #2563eb; }
+    .card.orange .value{ color: #ea580c; }
+    .card.purple .value{ color: #9333ea; }
+
+    /* Tablas */
+    h2 { font-size: 14px; font-weight: bold; color: #111827; margin-bottom: 8px; border-bottom: 2px solid #78350f; padding-bottom: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+    thead { background: #78350f; color: white; }
+    thead th { padding: 8px 10px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+    thead th.right { text-align: right; }
+    tbody tr:nth-child(even) { background: #f9fafb; }
+    tbody td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; font-size: 11px; }
+    tbody td.right { text-align: right; }
+    tfoot td { padding: 8px 10px; font-weight: bold; font-size: 12px; border-top: 2px solid #e5e7eb; }
+    tfoot td.right { text-align: right; color: #16a34a; }
+
+    .badge-pos { color: #16a34a; font-weight: bold; }
+    .badge-neg { color: #dc2626; font-weight: bold; }
+
+    .footer { margin-top: 30px; padding-top: 10px; border-top: 1px solid #e5e7eb;
+              text-align: center; font-size: 10px; color: #9ca3af; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1> UrbanCoffee — Reporte de Utilidad</h1>
+    <p>Período: {{ fecha_inicio }} al {{ fecha_fin }} &nbsp;|&nbsp; Generado: {{ generado }}</p>
+  </div>
+
+  <div class="content">
+
+    <div class="cards" style="margin-top:16px;">
+      <div class="card green">
+        <div class="label">Ventas Totales</div>
+        <div class="value">${{ "%.2f"|format(resumen.total_ventas) }}</div>
+      </div>
+      <div class="card orange">
+        <div class="label">Costo Total</div>
+        <div class="value">${{ "%.2f"|format(resumen.total_costos) }}</div>
+      </div>
+      <div class="card blue">
+        <div class="label">Utilidad Bruta</div>
+        <div class="value">${{ "%.2f"|format(resumen.utilidad_bruta) }}</div>
+      </div>
+      <div class="card purple">
+        <div class="label">Margen Promedio</div>
+        <div class="value">{{ "%.1f"|format(resumen.margen_promedio) }}%</div>
+      </div>
+    </div>
+
+    <div class="meta">
+      <p>Transacciones: <strong>{{ resumen.num_transacciones }}</strong></p>
+      <p>Unidades vendidas: <strong>{{ "%.0f"|format(resumen.productos_vendidos) }}</strong></p>
+    </div>
+
+    <h2>Resumen por Producto</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th class="right">Unidades</th>
+          <th class="right">Ventas</th>
+          <th class="right">Costo</th>
+          <th class="right">Utilidad</th>
+          <th class="right">Margen</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in productos_detalle %}
+        <tr>
+          <td>{{ p.nombre }}</td>
+          <td class="right">{{ "%.0f"|format(p.cantidad) }}</td>
+          <td class="right">${{ "%.2f"|format(p.ventas) }}</td>
+          <td class="right">${{ "%.2f"|format(p.costo) }}</td>
+          <td class="right {% if p.utilidad >= 0 %}badge-pos{% else %}badge-neg{% endif %}">
+            ${{ "%.2f"|format(p.utilidad) }}
+          </td>
+          <td class="right {% if p.margen >= 0 %}badge-pos{% else %}badge-neg{% endif %}">
+            {{ "%.1f"|format(p.margen) }}%
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4">Total General</td>
+          <td class="right">${{ "%.2f"|format(resumen.utilidad_bruta) }}</td>
+          <td class="right">{{ "%.1f"|format(resumen.margen_promedio) }}%</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <h2>Detalle de Ventas</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Fecha</th>
+          <th>Método de Pago</th>
+          <th class="right">Venta</th>
+          <th class="right">Costo</th>
+          <th class="right">Utilidad</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in ventas %}
+        <tr>
+          <td>{{ v.id }}</td>
+          <td>{{ v.fecha }}</td>
+          <td>{{ v.metodo_pago }}</td>
+          <td class="right">${{ "%.2f"|format(v.total) }}</td>
+          <td class="right">${{ "%.2f"|format(v.costo) }}</td>
+          <td class="right {% if v.utilidad >= 0 %}badge-pos{% else %}badge-neg{% endif %}">
+            ${{ "%.2f"|format(v.utilidad) }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+  </div>
+
+  <div class="footer">
+    UrbanCoffee © {{ generado[:4] }} — Reporte generado automáticamente por el Sistema de Gestión
+  </div>
+
+</body>
+</html>

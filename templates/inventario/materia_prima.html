@@ -1,4 +1,5 @@
 {% extends "layout/layout_produccion.html" %}
+{% import '_macros.html' as modals %}
 {% block container %}
 
 <div class="flex justify-between items-center mb-8">
@@ -82,8 +83,37 @@
                         {% endif %}
                     </td>
                     
+
                     <td class="px-6 py-4 text-center">
+
+                        {% if insumo.estatus %}
                         <a href="{{ url_for('inventario.editar_materia', id=insumo.id_materia) }}" class="text-blue-600 hover:underline">Editar</a>
+                        
+                        <button type="button" onclick='abrirModal(
+                            {{ insumo.id_materia }},
+                            {{ insumo.nombre|tojson }},
+                            "{{ url_for("inventario.desactivar_materia", id=insumo.id_materia) }}",
+                            "Desactivar Materia Prima",
+                            "Sí, Desactivar",
+                            "red"
+                        )' class="text-red-600 ml-4 hover:underline">
+                        Desactivar
+                    </button>
+                
+                {% else %}
+                
+                    <button type="button" onclick='abrirModal(
+                            {{ insumo.id_materia }},
+                            {{ insumo.nombre|tojson }},
+                            "{{ url_for("inventario.reactivar_materia", id=insumo.id_materia) }}",
+                            "Reactivar Materia Prima",
+                            "Sí, Reactivar",
+                            "green"
+                        )' class="text-green-600 ml-6 hover:underline">
+                        Reactivar
+                    </button>
+                {% endif %}
+                    
                     </td>
                 </tr>
             
@@ -99,4 +129,47 @@
     </table>
 </div>
 
+{{ modals.alerta_proveedor(form) }}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function abrirModal(id, nombre, formAction, titulo, botonTexto, botonColor) {
+      
+        const modal = document.getElementById('modalAccion');
+        modal.classList.remove('hidden');
+
+        document.getElementById('nombreProveedor').textContent = nombre;
+        document.getElementById('tituloModal').textContent = titulo;
+
+        const boton = document.getElementById('botonModal');
+        boton.textContent = botonTexto;
+
+        let colorClase = '';
+
+        if (botonColor === 'red') {
+            colorClase = 'bg-red-500 hover:bg-red-600';
+        } else if (botonColor === 'green') {
+            colorClase = 'bg-green-500 hover:bg-green-600';
+        }
+
+        boton.className = `w-full text-white ${colorClase} font-medium rounded-lg text-sm px-5 py-3 transition mb-2`;
+
+
+        const form = document.getElementById('formModal');
+        form.action = formAction;
+    }
+
+    function cerrarModal() {
+        document.getElementById('modalAccion').classList.add('hidden');
+    }
+
+    const filtro = document.getElementById('filtroEstado');
+    if (filtro) {
+        filtro.addEventListener('change', function () {
+            this.closest('form').submit();
+        });
+    }
+</script>
 {% endblock %}

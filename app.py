@@ -19,11 +19,14 @@ from app.producto_terminado.routes import producto_bp as producto_terminado_bp
 from app.proveedores.routes import proveedor_bp
 from app.merma.routes import merma_bp
 from app.compras.routes import compras_bp
-from app.ventas.routes import ventasBp
 from app.cliente.routes import clientesBp
 from app.solicitud.routes import solicitud_bp
 from app.recetas.routes import recetas_bp
-from app.produccion.routes import produccion_bp
+from app.utilidad.routes import utilidad_bp
+    
+#Integracion decosas de michelle
+from app.ventas.routes import ventasBp
+from app.pedidos.routes import pedidosBp
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -46,11 +49,14 @@ app.register_blueprint(producto_terminado_bp)
 app.register_blueprint(proveedor_bp)
 app.register_blueprint(merma_bp)
 app.register_blueprint(compras_bp)
-app.register_blueprint(ventasBp)
 app.register_blueprint(clientesBp)
 app.register_blueprint(solicitud_bp)
 app.register_blueprint(recetas_bp)
-app.register_blueprint(produccion_bp)
+app.register_blueprint(utilidad_bp)
+
+#Cosas de michelle
+app.register_blueprint(ventasBp)
+app.register_blueprint(pedidosBp)
 
 try:
     with app.app_context():
@@ -90,31 +96,31 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
 
     if puedeVerFinanzas:
         totalVentasDia = db.session.query(func.coalesce(func.sum(Venta.total), 0)).filter(
-            Venta.confirmada.is_(True),
+            Venta.estatus.is_(True),
             Venta.fecha >= inicioHoy,
             Venta.fecha < finHoy,
         ).scalar() or Decimal("0.00")
 
         totalVentasPeriodo = db.session.query(func.coalesce(func.sum(Venta.total), 0)).filter(
-            Venta.confirmada.is_(True),
+            Venta.estatus.is_(True),
             func.date(Venta.fecha) >= inicioPeriodo,
             func.date(Venta.fecha) <= finPeriodo,
         ).scalar() or Decimal("0.00")
 
         utilidadBrutaDia = db.session.query(func.coalesce(func.sum(Venta.utilidadBruta), 0)).filter(
-            Venta.confirmada.is_(True),
+            Venta.estatus.is_(True),
             Venta.fecha >= inicioHoy,
             Venta.fecha < finHoy,
         ).scalar() or Decimal("0.00")
 
         utilidadBrutaPeriodo = db.session.query(func.coalesce(func.sum(Venta.utilidadBruta), 0)).filter(
-            Venta.confirmada.is_(True),
+            Venta.estatus.is_(True),
             func.date(Venta.fecha) >= inicioPeriodo,
             func.date(Venta.fecha) <= finPeriodo,
         ).scalar() or Decimal("0.00")
 
         numeroTicketsDia = db.session.query(func.count(Venta.id_venta)).filter(
-            Venta.confirmada.is_(True),
+            Venta.estatus.is_(True),
             Venta.fecha >= inicioHoy,
             Venta.fecha < finHoy,
         ).scalar() or 0
@@ -141,7 +147,7 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
         func.date(Venta.fecha).label("fecha"),
         func.coalesce(func.sum(Venta.total), 0).label("monto"),
     ).filter(
-        Venta.confirmada.is_(True),
+        Venta.estatus.is_(True),
         func.date(Venta.fecha) >= inicioPeriodo,
         func.date(Venta.fecha) <= finPeriodo,
     ).group_by(
@@ -166,7 +172,7 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
     ).join(
         Venta, Venta.id_venta == DetalleVenta.id_venta
     ).filter(
-        Venta.confirmada.is_(True),
+        Venta.estatus.is_(True),
         func.date(Venta.fecha) >= inicioPeriodo,
         func.date(Venta.fecha) <= finPeriodo,
     ).group_by(
@@ -176,7 +182,7 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
         func.sum(DetalleVenta.cantidad).desc()
     ).limit(5).all()
 
-    ultimasOperaciones = Venta.query.filter_by(confirmada=True).order_by(Venta.fecha.desc()).limit(7).all()
+    ultimasOperaciones = Venta.query.filter_by(estatus=True).order_by(Venta.fecha.desc()).limit(7).all()
     materiasCriticas = MateriaPrima.query.filter(
         MateriaPrima.estatus.is_(True),
         MateriaPrima.stock_actual <= MateriaPrima.stock_minimo,
@@ -294,7 +300,7 @@ def requerirLogin():
                 "produccion": {"R"},
                 "proveedores": {"C", "R", "U", "D"},
                 "compras": {"C", "R", "U", "D"},
-                "ventas": {"R"},
+                "ventas": {"C", "R", "U"},
             },
             "cajero": {
                 "autenticacion": {"R"},
@@ -325,8 +331,11 @@ def requerirLogin():
         "auth.registrarUsuario",
         "auth.recuperarContrasena",
         "auth.resetearContrasena",
+        "auth.cerrarSesion",
         "producto.producto_venta",
         "clientes.detalle_cliente",
+        "ventas.venta_online",
+        "ventas.pagar_venta_gestion",
         "index",
         "static",
     }
@@ -373,9 +382,13 @@ def requerirLogin():
             "clientes.detalle_cliente",
             "clientes.editar_cliente",
             "clientes.desactivar_cliente",
+            "pedidos.mis_pedidos",
+            "ventas.venta_online",
+            "ventas.pagar_venta_gestion",
             "index",
             "static",
         }
+       
         if request.endpoint not in endpointsPublicos and request.endpoint not in endpointsCliente:
             return redirect(url_for("ventas.tienda_cliente"))
 

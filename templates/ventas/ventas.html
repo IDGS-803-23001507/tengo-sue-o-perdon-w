@@ -1,0 +1,122 @@
+{% extends "layout/layout_produccion.html" %}
+
+{% block container %}
+
+<div class="max-w-7xl mx-auto">
+
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-gray-900">Corte de Caja</h1>
+            <p class="text-gray-500">Administración y resumen de transacciones.</p>
+        </div>
+        
+        <form method="GET" action="{{ url_for('ventas.ventas') }}" 
+              class="flex items-center gap-2 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
+            
+            <input type="date" name="fecha" value="{{ fecha_actual }}" 
+                   class="border-none focus:ring-0 text-gray-700 font-bold px-4">
+
+            <button type="submit" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold transition-all">
+                Filtrar
+            </button>
+        </form>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-sm">
+            <p class="text-xs font-bold text-gray-400 uppercase mb-1">Ventas Totales</p>
+            <p class="text-2xl font-black text-gray-900">$ {{ "{:,.2f}".format(total_dia) }}</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-sm">
+            <p class="text-xs font-bold text-gray-400 uppercase mb-1">Transacciones</p>
+            <p class="text-2xl font-black text-gray-900">{{ transacciones }}</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-sm">
+            <p class="text-xs font-bold text-gray-400 uppercase mb-1">Efectivo</p>
+            <p class="text-2xl font-black text-green-600">$ {{ "{:,.2f}".format(total_efectivo) }}</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-sm">
+            <p class="text-xs font-bold text-gray-400 uppercase mb-1">Tarjeta</p>
+            <p class="text-2xl font-black text-blue-600">$ {{ "{:,.2f}".format(total_tarjeta) }}</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-gray-50/50 border-b border-gray-100">
+                <tr>
+                    <th class="px-6 py-5 text-xs font-bold text-gray-400 uppercase">Folio</th>
+                    <th class="px-6 py-5 text-xs font-bold text-gray-400 uppercase">Hora</th>
+                    <th class="px-6 py-5 text-xs font-bold text-gray-400 uppercase">Método de Pago</th>
+                    <th class="px-6 py-5 text-xs font-bold text-gray-400 uppercase">Total</th>
+                    <th class="px-6 py-5 text-xs font-bold text-gray-400 uppercase text-right">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody class="divide-y divide-gray-50">
+                {% for venta in ventas %}
+                <tr class="hover:bg-gray-50/50 transition-colors">
+                    
+                    <td class="px-6 py-4 font-black text-gray-700">
+                        #UC-{{ venta.id_venta }}
+                    </td>
+
+                    <td class="px-6 py-4 text-sm text-gray-600">
+                        {{ venta.creado_en.strftime('%I:%M %p') if venta.creado_en is not string else venta.creado_en }}
+                    </td>
+
+                    <td class="px-6 py-4">
+                        {% if venta.metodo_pago == 'Efectivo' %}
+                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">Efectivo</span>
+                        {% elif venta.metodo_pago == 'Tarjeta' %}
+                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">Tarjeta</span>
+                        {% else %}
+                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600">Pendiente</span>
+                        {% endif %}
+                    </td>
+
+                    <td class="px-6 py-4 font-bold text-gray-900">
+                        $ {{ "{:,.2f}".format(venta.total) }}
+                    </td>
+
+                    <td class="px-6 py-4 text-right">
+                        <a href="{{ url_for('ventas.ticket', idVenta=venta.id_venta) }}" 
+                           class="inline-flex items-center text-amber-700 hover:text-amber-900 font-bold text-sm">
+                            Ver Ticket
+                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </a>
+                    </td>
+
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="px-6 py-10 text-center text-gray-400">
+                        No hay ventas registradas en esta fecha.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-8 flex justify-center">
+        <a href="{{ url_for('ventas.generar_reporte', fecha=fecha_actual) }}" 
+           class="bg-blue-600 hover:bg-blue-700 text-white px-10 py-4 rounded-2xl font-black transition-all inline-flex items-center gap-2">
+            
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+
+            Cerrar Caja y Generar Reporte
+        </a>
+    </div>
+
+</div>
+
+{% endblock %}
