@@ -38,8 +38,7 @@ def crear_solicitud():
             db.session.add(primer_detalle)
             db.session.commit()
 
-            flash("Solicitud creada correctamente.", "success")
-            return redirect(url_for("solicitud.detalles_solicitud", id=nueva_solicitud.id_solicitud))
+            return redirect(url_for("solicitud.detalles_solicitud", id=nueva_solicitud.id_solicitud, creado=1))
         except SQLAlchemyError:
             db.session.rollback()
             flash("No se pudo crear la solicitud. Inténtalo nuevamente.", "danger")
@@ -61,6 +60,13 @@ def crear_solicitud():
 def detalles_solicitud(id: int):
     solicitud = SolicitudProduccion.query.get_or_404(id)
     productos_disponibles = Producto.query.filter_by(estatus=True).order_by(Producto.nombre.asc()).all()
+    tipo_modal = ""
+    if request.args.get("creado") == "1":
+        tipo_modal = "creado"
+    elif request.args.get("agregado") == "1":
+        tipo_modal = "agregado"
+
+    mostrar_modal = bool(tipo_modal)
     form = AgregarDetalleSolicitudForm()
     form.set_productos(productos_disponibles)
 
@@ -77,8 +83,7 @@ def detalles_solicitud(id: int):
             db.session.add(nuevo_detalle)
             db.session.commit()
 
-            flash("Producto agregado a la solicitud.", "success")
-            return redirect(url_for("solicitud.detalles_solicitud", id=solicitud.id_solicitud))
+            return redirect(url_for("solicitud.detalles_solicitud", id=solicitud.id_solicitud, agregado=1))
         except SQLAlchemyError:
             db.session.rollback()
             flash("No se pudo agregar el producto a la solicitud.", "danger")
@@ -93,5 +98,25 @@ def detalles_solicitud(id: int):
         "solicitud/detalles.html",
         solicitud=solicitud,
         form=form,
+        mostrar_modal=mostrar_modal,
+        tipo_modal=tipo_modal,
         active_page="solicitudes",
     )
+
+
+@solicitud_bp.route("/<int:id>/finalizar", methods=["POST"], endpoint="finalizar_solicitud")
+def finalizar_solicitud(id: int):
+    solicitud = SolicitudProduccion.query.get_or_404(id)
+
+    if not solicitud.detalles:
+        flash("Agrega al menos un producto antes de finalizar la solicitud.", "danger")
+        return redirect(url_for("solicitud.detalles_solicitud", id=solicitud.id_solicitud))
+
+    try:
+        solicitud.estado = "finalizado"
+        db.session.commit()
+        return redirect(url_for("solicitud.index"))
+    except SQLAlchemyError:
+        db.session.rollback()
+        flash("No se pudo finalizar la solicitud. Inténtalo nuevamente.", "danger")
+        return redirect(url_for("solicitud.detalles_solicitud", id=solicitud.id_solicitud))
