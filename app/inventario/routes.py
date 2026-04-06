@@ -1,4 +1,7 @@
-from flask import Blueprint, render_template, request
+from flask import Blueprint, flash, render_template, request
+from sqlalchemy.exc import SQLAlchemyError
+
+from forms import MateriaPrimaForm
 from model import db, MateriaPrima, UnidadMedida 
 
 inventario_bp = Blueprint('inventario', __name__)
@@ -17,42 +20,63 @@ def materias_primas():
 @inventario_bp.route('/nueva-materia', methods=['GET', 'POST'])
 def nueva_materia():
     unidades_db = UnidadMedida.query.all()
+    form = MateriaPrimaForm()
+    form.set_unidades(unidades_db)
     
+    if form.validate_on_submit():
+        try:
+            nuevo_insumo = MateriaPrima(
+                nombre=(form.nombre_insumo.data or "").strip(),
+                descripcion=(form.descripcion.data or "").strip() or None,
+                unidad_medida=form.unidad_medida.data,
+                stock_minimo=form.stock_minimo.data,
+                stock_actual=0.0,
+            )
+
+            db.session.add(nuevo_insumo)
+            db.session.commit()
+
+            return render_template('inventario/nueva_materia.html', mostrar_modal=True, form=form)
+        except SQLAlchemyError:
+            db.session.rollback()
+            flash('No se pudo guardar la materia prima. Inténtalo de nuevo.', 'danger')
+
     if request.method == 'POST':
-        nombre = request.form.get('nombre_insumo')
-        descripcion = request.form.get('descripcion')
-        unidad_medida = request.form.get('unidad_medida') 
-        stock_minimo = request.form.get('stock_minimo')
+        for erroresCampo in form.errors.values():
+            if erroresCampo:
+                flash(erroresCampo[0], 'danger')
+                break
 
-        nuevo_insumo = MateriaPrima(
-            nombre=nombre,
-            descripcion=descripcion,
-            unidad_medida=unidad_medida, 
-            stock_minimo=stock_minimo,
-            stock_actual=0.0 
-        )
-
-        db.session.add(nuevo_insumo)
-        db.session.commit()
-        
-        return render_template('inventario/nueva_materia.html', mostrar_modal=True, unidades=unidades_db)
-    
-    return render_template('inventario/nueva_materia.html', mostrar_modal=False, unidades=unidades_db)
+    return render_template('inventario/nueva_materia.html', mostrar_modal=False, form=form)
 
 @inventario_bp.route('/editar-materia/<int:id>', methods=['GET', 'POST'])
 def editar_materia(id):
     insumo = MateriaPrima.query.get_or_404(id)
-    unidades_db = UnidadMedida.query.all() 
+    unidades_db = UnidadMedida.query.all()
+    form = MateriaPrimaForm(obj=insumo)
+    form.set_unidades(unidades_db)
+
+    if request.method == 'GET':
+        form.estatus.data = '1' if insumo.estatus else '0'
+
+    if form.validate_on_submit():
+        try:
+            insumo.nombre = (form.nombre_insumo.data or '').strip()
+            insumo.descripcion = (form.descripcion.data or '').strip() or None
+            insumo.unidad_medida = form.unidad_medida.data
+            insumo.stock_minimo = form.stock_minimo.data
+            insumo.estatus = True if form.estatus.data == '1' else False
+            db.session.commit()
+
+            return render_template('inventario/editar_materia.html', mostrar_modal=True, insumo=insumo, form=form)
+        except SQLAlchemyError:
+            db.session.rollback()
+            flash('No se pudo actualizar la materia prima.', 'danger')
 
     if request.method == 'POST':
-        insumo.nombre = request.form.get('nombre_insumo')
-        insumo.descripcion = request.form.get('descripcion')
-        insumo.unidad_medida = request.form.get('unidad_medida')
-        insumo.stock_minimo = request.form.get('stock_minimo')
-        estatus_form = request.form.get('estatus')
-        insumo.estatus = True if estatus_form == '1' else False
-        db.session.commit()
-        
-        return render_template('inventario/editar_materia.html', mostrar_modal=True, insumo=insumo, unidades=unidades_db)
-    
-    return render_template('inventario/editar_materia.html', mostrar_modal=False, insumo=insumo, unidades=unidades_db)
+        for erroresCampo in form.errors.values():
+            if erroresCampo:
+                flash(erroresCampo[0], 'danger')
+                break
+
+    return render_template('inventario/editar_materia.html', mostrar_modal=False, insumo=insumo, form=form)

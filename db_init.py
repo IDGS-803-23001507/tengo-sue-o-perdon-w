@@ -1,7 +1,7 @@
 from flask import current_app
 from sqlalchemy import inspect, text
 
-from model import Rol, Usuario, Cliente, Empleado, db
+from model import Rol, Usuario, Cliente, Empleado, UnidadMedida, db
 
 
 def asegurar_esquema_usuarios() -> None:
@@ -129,6 +129,20 @@ def _generar_correo_unico(correo_base: str, usuario_base: str) -> str:
 
 
 def seed_db() -> None:
+
+    unidades_base = [
+        ("Kilogramo", "kg"),
+        ("Gramo", "g"),
+        ("Litro", "l"),
+        ("Mililitro", "ml"),
+        ("Pieza", "pz"),
+        ("Unidad", "u"),
+    ]
+
+    for nombre_unidad, abreviacion in unidades_base:
+        existe_unidad = UnidadMedida.query.filter_by(abreviacion=abreviacion).first()
+        if not existe_unidad:
+            db.session.add(UnidadMedida(nombre=nombre_unidad, abreviacion=abreviacion))
 
     for nombre in ["Gerente", "Operador", "Cliente"]:
         if not Rol.query.filter_by(nombre=nombre).first():

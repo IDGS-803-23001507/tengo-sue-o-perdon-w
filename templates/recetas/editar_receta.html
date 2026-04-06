@@ -1,0 +1,62 @@
+{% extends "layout/layout_produccion.html" %}
+
+{% block container %}
+<div class="mb-8">
+    <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Editar Receta</h1>
+    <p class="text-gray-500 mt-1">Actualiza cantidad o estado del insumo en la receta.</p>
+</div>
+
+<form method="POST" action="{{ url_for('recetas.editar', id_receta=receta.id_receta) }}" class="bg-white rounded-lg shadow-sm border p-8 max-w-4xl">
+    {{ form.hidden_tag() }}
+
+    <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Datos de la receta</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-900">Producto</label>
+            {{ form.id_producto(class="bg-gray-100 border border-gray-300 text-gray-700 text-sm rounded-lg block w-full p-2.5") }}
+        </div>
+
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-900">Insumo</label>
+            {{ form.id_materia(class="bg-gray-100 border border-gray-300 text-gray-700 text-sm rounded-lg block w-full p-2.5") }}
+        </div>
+
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-900">Cantidad *</label>
+            {{ form.cantidad(class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", step="0.01", required=true) }}
+        </div>
+
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-900">Estado *</label>
+            {{ form.estado(class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", required=true) }}
+        </div>
+    </div>
+
+    <div class="flex justify-end gap-4 pt-4 border-t mt-4">
+        <a href="{{ url_for('recetas.index') }}" class="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:outline-none focus:ring-gray-100 font-medium rounded-lg text-sm px-5 py-2.5">
+            Cancelar
+        </a>
+        {{ form.submit(class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5", value="Actualizar Receta") }}
+    </div>
+</form>
+
+{% if mostrar_modal %}
+<div class="fixed inset-0 z-[100] flex justify-center items-center bg-gray-900 bg-opacity-50 p-4">
+    <div class="w-full max-w-md">
+        <div class="bg-white rounded-2xl shadow p-6 md:p-8 text-center">
+            <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-check text-blue-500 text-xl"></i>
+            </div>
+
+            <h3 class="mb-2 text-xl md:text-2xl font-bold text-gray-900">¡Receta Actualizada!</h3>
+            <p class="text-gray-500 mb-6 text-sm md:text-base">Los cambios se guardaron correctamente.</p>
+
+            <a href="{{ url_for('recetas.index') }}"
+               class="text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-3 text-center transition block w-full">
+                Volver al listado
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

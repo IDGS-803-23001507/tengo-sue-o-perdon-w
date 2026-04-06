@@ -110,7 +110,7 @@
           <span>Producción</span>
         </a>
 
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        <a href="{{ url_for('recetas.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
             {% if active_page == 'recetas' %}
                 bg-gray-100 text-gray-900
             {% else %}

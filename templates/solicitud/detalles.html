@@ -6,7 +6,14 @@
         <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Detalle de Solicitud #{{ solicitud.id_solicitud }}</h1>
         <p class="text-gray-500 mt-1">Agrega productos para preparar esta orden de producción.</p>
     </div>
-    <a href="{{ url_for('solicitud.index') }}" class="text-sm text-gray-600 hover:text-gray-900 hover:underline">Volver al listado</a>
+    <div class="flex items-center gap-3">
+        <a href="{{ url_for('solicitud.index') }}" class="text-sm text-gray-600 hover:text-gray-900 hover:underline">Volver al listado</a>
+        <form method="POST" action="{{ url_for('solicitud.finalizar_solicitud', id=solicitud.id_solicitud) }}">
+            <button type="submit" class="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2 transition">
+                Terminar solicitud
+            </button>
+        </form>
+    </div>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -58,4 +65,26 @@
         </table>
     </div>
 </div>
+
+{% if mostrar_modal %}
+<div class="fixed inset-0 z-[100] flex justify-center items-center bg-gray-900 bg-opacity-50">
+    <div class="relative p-4 w-full max-w-md h-auto">
+        <div class="relative bg-white rounded-2xl shadow p-8 text-center">
+            <div class="w-12 h-12 rounded-full bg-green-100 p-2 flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-green-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+            </div>
+            {% if tipo_modal == 'creado' %}
+            <h3 class="mb-2 text-2xl font-bold text-gray-900">¡Solicitud Añadida!</h3>
+            <p class="text-gray-500 mb-6">La solicitud se creó correctamente. Ahora puedes agregar más productos.</p>
+            {% else %}
+            <h3 class="mb-2 text-2xl font-bold text-gray-900">¡Producto Añadido!</h3>
+            <p class="text-gray-500 mb-6">El producto se agregó correctamente a la solicitud.</p>
+            {% endif %}
+            <a href="{{ url_for('solicitud.detalles_solicitud', id=solicitud.id_solicitud) }}" class="text-white bg-green-500 hover:bg-green-600 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-3 text-center transition block w-full">
+                Continuar
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

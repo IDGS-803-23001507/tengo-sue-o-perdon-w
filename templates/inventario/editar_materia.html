@@ -8,34 +8,29 @@
 </div>
 
 <form method="POST" action="{{ url_for('inventario.editar_materia', id=insumo.id_materia) }}" class="bg-white rounded-lg shadow-sm border p-8 max-w-4xl">
+    {{ form.hidden_tag() }}
     
     <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Datos del Insumo</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         
         <div class="md:col-span-2">
             <label class="block mb-2 text-sm font-medium text-gray-900">Nombre de la materia prima *</label>
-            <input type="text" name="nombre_insumo" value="{{ insumo.nombre }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required maxlength="50">
+            {{ form.nombre_insumo(class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", required=true, maxlength="50") }}
         </div>
 
         <div class="md:col-span-2">
             <label class="block mb-2 text-sm font-medium text-gray-900">Descripción</label>
-            <textarea name="descripcion" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">{% if insumo.descripcion %}{{ insumo.descripcion }}{% endif %}</textarea>
+            {{ form.descripcion(rows="3", class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5") }}
         </div>
 
         <div>
             <label class="block mb-2 text-sm font-medium text-gray-900">Unidad de Medida *</label>
-            <select name="unidad_medida" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
-                {% for u in unidades %}
-                    <option value="{{ u.id_unidad }}" {% if insumo.unidad_medida == u.id_unidad %}selected{% endif %}>
-                        {{ u.nombre }} ({{ u.abreviacion }})
-                    </option>
-                {% endfor %}
-            </select>
+            {{ form.unidad_medida(class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", required=true) }}
         </div>
 
         <div>
             <label class="block mb-2 text-sm font-medium text-gray-900">Alerta de Stock Mínimo *</label>
-            <input type="number" step="0.01" name="stock_minimo" value="{{ insumo.stock_minimo }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
+            {{ form.stock_minimo(step="0.01", class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", required=true) }}
         </div>
     </div>
 
@@ -44,20 +39,10 @@
             Estatus de la materia *
         </label>
 
-        <select name="estatus"
-                class="bg-gray-50 border border-gray-300 text-sm rounded-lg 
-                       focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                required>
-
-            <option value="1" {% if insumo.estatus %}selected{% endif %}>
-                Activo
-            </option>
-
-            <option value="0" {% if not insumo.estatus %}selected{% endif %}>
-                Inactivo
-            </option>
-
-        </select>
+        {{ form.estatus(
+               class="bg-gray-50 border border-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5",
+               required=true
+           ) }}
     </div>
 
 

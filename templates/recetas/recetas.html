@@ -1,0 +1,123 @@
+{% extends "layout/layout_produccion.html" %}
+{% from "_macros.html" import badge_estado_booleano %}
+
+{% block container %}
+<div class="flex justify-between items-center mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800">Recetas</h1>
+        <p class="text-gray-500 mt-1">Gestión de insumos por producto.</p>
+    </div>
+    <a href="{{ url_for('recetas.nueva') }}" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 flex items-center gap-2 transition w-fit">
+        <i class="fa-solid fa-plus"></i>
+        Nueva Receta
+    </a>
+</div>
+
+<div class="bg-white rounded-lg shadow-sm border overflow-hidden">
+    <div class="p-4 border-b bg-gray-50">
+        <form method="GET" action="{{ url_for('recetas.index') }}" class="flex flex-col md:flex-row gap-3 md:items-center">
+
+            <div class="relative w-full md:w-1/2">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-gray-400 text-sm"></i>
+
+                <input type="text" name="q" value="{{ busqueda or '' }}" class="bg-white border border-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5 shadow-sm" placeholder="Buscar por producto o insumo...">
+            </div>
+
+            <div class="flex flex-wrap gap-2 items-center">
+                <div class="relative">
+                    <button type="button" onclick="toggleFiltroRecetas()" class="flex items-center gap-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 font-medium rounded-lg text-sm px-4 py-2 shadow-sm">
+                        <i class="fa-solid fa-filter"></i>
+
+                        {% if estado_actual and estado_actual != 'todos' %}
+                            Filtrar: {{ 'Activas' if estado_actual == 'activas' else 'Inactivas' }}
+                        {% else %}
+                            Filtrar
+                        {% endif %}
+                    </button>
+
+                    <div id="filtroMenuRecetas" class="hidden absolute mt-2 w-44 bg-white border rounded-lg shadow z-10">
+                        <button type="button" onclick="setEstadoRecetas('todos')" class="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">Todos</button>
+                        <button type="button" onclick="setEstadoRecetas('activas')" class="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">Activas</button>
+                        <button type="button" onclick="setEstadoRecetas('inactivas')" class="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">Inactivas</button>
+                    </div>
+                </div>
+
+                <input type="hidden" name="estado" id="estadoInputRecetas" value="{{ estado_actual or 'todos' }}">
+
+                <button type="submit" class="text-white bg-gray-800 hover:bg-gray-900 font-medium rounded-lg text-sm px-4 py-2 transition shadow-sm">
+                    Buscar
+                </button>
+
+                {% if busqueda or (estado_actual and estado_actual != 'todos') %}
+                <a href="{{ url_for('recetas.index') }}" class="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 font-medium rounded-lg text-sm px-4 py-2 transition shadow-sm">
+                    Limpiar
+                </a>
+                {% endif %}
+            </div>
+
+        </form>
+    </div>
+
+    <table class="w-full text-sm text-left text-gray-500">
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+            <tr>
+                <th scope="col" class="px-6 py-4">Producto</th>
+                <th scope="col" class="px-6 py-4">Insumo</th>
+                <th scope="col" class="px-6 py-4 text-center">Cantidad</th>
+                <th scope="col" class="px-6 py-4 text-center">Unidad</th>
+                <th scope="col" class="px-6 py-4 text-center">Estado</th>
+                <th scope="col" class="px-6 py-4 text-center">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for receta in recetas %}
+                <tr class="bg-white hover:bg-gray-50 border-b transition">
+                    <td class="px-6 py-4 font-medium text-gray-900">{{ receta.producto.nombre if receta.producto else '-' }}</td>
+                    <td class="px-6 py-4">{{ receta.nombre_materia or '-' }}</td>
+                    <td class="px-6 py-4 text-center">{{ receta.cantidad }}</td>
+                    <td class="px-6 py-4 text-center">{{ receta.unidad_materia or 'Sin unidad' }}</td>
+                    <td class="px-6 py-4 text-center">
+                        {{ badge_estado_booleano(receta.estado, 'Activa', 'Inactiva') }}
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <a href="{{ url_for('recetas.editar', id_receta=receta.id_receta) }}" class="text-blue-600 hover:underline">Editar</a>
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                        <p class="text-lg mb-2">Aún no hay recetas registradas.</p>
+                        <p class="text-sm">Haz clic en "Nueva Receta" para comenzar.</p>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleFiltroRecetas() {
+    document.getElementById('filtroMenuRecetas').classList.toggle('hidden');
+}
+
+function setEstadoRecetas(valor) {
+    const input = document.getElementById('estadoInputRecetas');
+    input.value = valor;
+
+    document.getElementById('filtroMenuRecetas').classList.add('hidden');
+    input.form.submit();
+}
+
+document.addEventListener('click', function (event) {
+    const menu = document.getElementById('filtroMenuRecetas');
+    if (!menu) return;
+
+    const boton = event.target.closest('button[onclick="toggleFiltroRecetas()"]');
+    if (!menu.contains(event.target) && !boton) {
+        menu.classList.add('hidden');
+    }
+});
+</script>
+{% endblock %}

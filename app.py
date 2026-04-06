@@ -21,6 +21,7 @@ from app.compras.routes import compras_bp
 from app.ventas.routes import ventasBp
 from app.cliente.routes import clientesBp
 from app.solicitud.routes import solicitud_bp
+from app.recetas.routes import recetas_bp
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -41,6 +42,7 @@ app.register_blueprint(compras_bp)
 app.register_blueprint(ventasBp)
 app.register_blueprint(clientesBp)
 app.register_blueprint(solicitud_bp)
+app.register_blueprint(recetas_bp)
 
 try:
     with app.app_context():
