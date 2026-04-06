@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for, flash, Blueprint
 from model import db, Proveedores
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DataError, IntegrityError
 from forms import ProveedorForm, DesactivarForm
 
 proveedor_bp = Blueprint('proveedor', __name__)
@@ -68,6 +68,9 @@ def nuevo_proveedor():
             except IntegrityError:
                 db.session.rollback()
                 flash('Error: No se pudo registrar el proveedor. Verifica los datos.', 'error')
+            except DataError:
+                db.session.rollback()
+                flash('Error: Uno o más campos exceden la longitud permitida.', 'error')
 
     return render_template('proveedores/nuevo_proveedor.html', form=form)
 
@@ -110,6 +113,9 @@ def modificar_proveedor(id):
             except IntegrityError:
                 db.session.rollback()
                 flash('Error: No se pudo actualizar el proveedor.', 'error')
+            except DataError:
+                db.session.rollback()
+                flash('Error: Uno o más campos exceden la longitud permitida.', 'error')
 
     return render_template('proveedores/modificar_proveedor.html', form=form, proveedor=proveedor)
 

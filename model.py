@@ -210,9 +210,9 @@ class Proveedores(db.Model):
     nombre = db.Column(          db.String(100), nullable=False)
     email = db.Column('correo', db.String(50),  nullable=True)
     telefono = db.Column(          db.String(15),  nullable=True)
-    colonia = db.Column( db.String(25),  nullable=True)
-    calle = db.Column( db.String(25),  nullable=True)
-    num_exterior = db.Column( db.String(5),  nullable=True)
+    colonia = db.Column(db.String(100), nullable=True)
+    calle = db.Column(db.String(100), nullable=True)
+    num_exterior = db.Column(db.String(10), nullable=True)
     estado = db.Column('estatus',db.Boolean,     default=True)
 
     compras = db.relationship('Compra', backref='proveedor', lazy=True)

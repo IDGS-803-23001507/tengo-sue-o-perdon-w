@@ -28,13 +28,13 @@ def tiendaCliente():
 @ventasBp.route("/ventas", methods=["GET"])
 def ventas():
 
-    fecha_filtro = request.args.get('creado_en')
+    fecha_filtro = request.args.get('fecha') or request.args.get('creado_en')
     
     if not fecha_filtro:
         fecha_filtro = datetime.now().strftime('%Y-%m-%d')
 
     query = text("""
-        SELECT * FROM Ventas 
+        SELECT * FROM ventas 
         WHERE DATE(creado_en) = :f 
         ORDER BY creado_en DESC
     """)
@@ -190,33 +190,20 @@ def venta_online():
                 return redirect(url_for("ventas.venta_online"))
 
             hora_recogida_raw = request.form.get("hora_recogida")
-            
-            try:
-                hora_pedido = datetime.strptime(hora_recogida_raw, '%Y-%m-%dT%H:%M')
-                ahora = datetime.now()
-         
-                if hora_pedido.hour >= 24 or (hora_pedido.hour >= 23 and hora_pedido.minute > 59):
-                    flash("Lo sentimos, la sucursal va a cerrar o ya está cerrada. Te sugerimos realizar tu pedido para el día de mañana.", "warning")
-                    return redirect(url_for("ventas.venta_online"))
-
-
-                if hora_pedido < (ahora + timedelta(minutes=25)):
-                    flash("Requerimos al menos 30 minutos de anticipación para preparar tus productos con calidad.", "danger")
-                    return redirect(url_for("ventas.venta_online"))
-
-            except ValueError:
-                flash("Formato de hora inválido.", "danger")
-                return redirect(url_for("ventas.venta_online"))
 
             try:
                 hora_pedido = datetime.strptime(hora_recogida_raw, '%Y-%m-%dT%H:%M')
                 ahora = datetime.now()
-                
+
                 if hora_pedido.date() != ahora.date():
                     flash("Los pedidos online solo se pueden realizar para el día de hoy.", "danger")
                     return redirect(url_for("ventas.venta_online"))
 
-                if hora_pedido < (ahora + timedelta(hours=2)):
+                if hora_pedido.hour >= 23:
+                    flash("Lo sentimos, la sucursal está por cerrar. Elige una hora más temprana.", "warning")
+                    return redirect(url_for("ventas.venta_online"))
+
+                if hora_pedido < (ahora + timedelta(hours=1)):
                     flash("Para preparar tu pedido con calidad, requerimos al menos 1 hora de anticipación.", "danger")
                     return redirect(url_for("ventas.venta_online"))
 
@@ -273,14 +260,13 @@ def venta_online():
 
 @ventasBp.route("/reporte", methods=["GET"])
 def generar_reporte():
-    fecha_filtro = request.args.get('creado_en')
+    fecha_filtro = request.args.get('fecha') or request.args.get('creado_en')
     if not fecha_filtro:
         fecha_filtro = datetime.now().strftime('%Y-%m-%d')
 
     query = text("""
-        SELECT v.id_venta, v.creado_en, v.metodo_pago, v.total, u.nombre as usuario
-        FROM Ventas v
-        JOIN Usuarios u ON v.id_usuario = u.id 
+        SELECT v.id_venta, v.creado_en, v.metodo_pago, v.total, v.id_usuario
+        FROM ventas v
         WHERE DATE(v.creado_en) = :f
     """)
     
@@ -288,11 +274,11 @@ def generar_reporte():
 
     si = StringIO()
     cw = csv.writer(si)
-    cw.writerow(['Folio', 'Fecha/Hora', 'Metodo Pago', 'Total', 'Atendio']) # Encabezados
+    cw.writerow(['Folio', 'Fecha/Hora', 'Metodo Pago', 'Total', 'Atendio'])
     
     total_acumulado = 0
     for v in ventas:
-        cw.writerow([f"UC-{v.id_venta}", v.fecha, v.metodo_pago, v.total, v.usuario])
+        cw.writerow([f"UC-{v.id_venta}", v.creado_en, v.metodo_pago, v.total, f"Usuario #{v.id_usuario}"])
         total_acumulado += v.total
     
     cw.writerow([])
@@ -356,10 +342,10 @@ def ticket(idVenta):
             p.nombre AS producto,
             dv.cantidad,
             (dv.cantidad * dv.precio_unitario) AS subtotal
-        FROM Ventas v
-        JOIN Detalle_venta dv ON v.id_venta = dv.id_venta
+        FROM ventas v
+        JOIN detalle_venta dv ON v.id_venta = dv.id_venta
         JOIN Producto p ON dv.id_producto = p.id_producto
-        LEFT JOIN Clientes c ON v.id_cliente = c.id
+        LEFT JOIN clientes c ON v.id_cliente = c.id
         WHERE v.id_venta = :idVenta
     """)
     

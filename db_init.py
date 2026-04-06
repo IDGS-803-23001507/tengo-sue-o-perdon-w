@@ -182,7 +182,31 @@ def asegurar_esquema_unidades() -> None:
     db.session.commit()
 
 
+def asegurar_esquema_proveedores() -> None:
+    inspector = inspect(db.engine)
+    tablas = set(inspector.get_table_names())
+
+    if "Proveedor" not in tablas:
+        return
+
+    columnas = {columna["name"] for columna in inspector.get_columns("Proveedor")}
+
+    if "colonia" in columnas:
+        db.session.execute(text("ALTER TABLE `Proveedor` MODIFY COLUMN `colonia` VARCHAR(100) NULL"))
+
+    if "calle" in columnas:
+        db.session.execute(text("ALTER TABLE `Proveedor` MODIFY COLUMN `calle` VARCHAR(100) NULL"))
+
+    if "num_exterior" in columnas:
+        db.session.execute(text("ALTER TABLE `Proveedor` MODIFY COLUMN `num_exterior` VARCHAR(10) NULL"))
+
+    db.session.commit()
+
+
 def asegurar_procedimientos_almacenados() -> None:
+    db.session.execute(text("DROP PROCEDURE IF EXISTS crear_venta_general"))
+    db.session.execute(text("DROP PROCEDURE IF EXISTS crear_venta_online"))
+    db.session.execute(text("DROP PROCEDURE IF EXISTS pagar_venta"))
     db.session.execute(text("DROP PROCEDURE IF EXISTS sp_registrar_venta"))
     db.session.execute(
         text(
@@ -241,6 +265,287 @@ def asegurar_procedimientos_almacenados() -> None:
                 COMMIT;
 
                 SELECT v_id_venta AS id_venta, v_total AS total;
+            END
+            """
+        )
+    )
+
+    db.session.execute(
+        text(
+            """
+            CREATE PROCEDURE crear_venta_general(
+                IN p_id_usuario INT,
+                IN p_id_cliente INT,
+                IN p_tipo VARCHAR(20),
+                IN p_id_producto INT,
+                IN p_cantidad INT,
+                IN p_id_venta_existente INT
+            )
+            BEGIN
+                DECLARE v_id_venta INT;
+                DECLARE v_precio DECIMAL(10,2);
+                DECLARE v_faltantes INT;
+
+                DECLARE EXIT HANDLER FOR SQLEXCEPTION
+                BEGIN
+                    ROLLBACK;
+                    RESIGNAL;
+                END;
+
+                IF p_cantidad IS NULL OR p_cantidad <= 0 THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cantidad inválida';
+                END IF;
+
+                START TRANSACTION;
+
+                SELECT precio_venta INTO v_precio
+                FROM Producto
+                WHERE id_producto = p_id_producto AND estatus = 1
+                FOR UPDATE;
+
+                IF v_precio IS NULL THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto no disponible';
+                END IF;
+
+                IF (
+                    SELECT COUNT(*)
+                    FROM Recetas
+                    WHERE id_producto = p_id_producto AND estado = 1
+                ) = 0 THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto sin receta activa';
+                END IF;
+
+                SELECT COUNT(*) INTO v_faltantes
+                FROM Materia_prima mp
+                JOIN Recetas r ON r.id_materia = mp.id_materia
+                WHERE r.id_producto = p_id_producto
+                  AND r.estado = 1
+                  AND mp.stock_actual < (r.cantidad * p_cantidad);
+
+                IF v_faltantes > 0 THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock insuficiente de insumos para este producto';
+                END IF;
+
+                IF p_id_venta_existente IS NULL OR p_id_venta_existente = 0 THEN
+                    INSERT INTO ventas (
+                        id_usuario,
+                        id_cliente,
+                        tipo_venta,
+                        estado,
+                        total,
+                        utilidad_bruta,
+                        estatus,
+                        creado_en,
+                        metodo_pago
+                    )
+                    VALUES (
+                        p_id_usuario,
+                        p_id_cliente,
+                        p_tipo,
+                        'pendiente',
+                        0,
+                        0,
+                        0,
+                        NOW(),
+                        NULL
+                    );
+                    SET v_id_venta = LAST_INSERT_ID();
+                ELSE
+                    SET v_id_venta = p_id_venta_existente;
+
+                    IF (
+                        SELECT COUNT(*)
+                        FROM ventas
+                        WHERE id_venta = v_id_venta
+                        FOR UPDATE
+                    ) = 0 THEN
+                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La venta indicada no existe';
+                    END IF;
+                END IF;
+
+                INSERT INTO detalle_venta (id_venta, id_producto, cantidad, precio_unitario, descuento)
+                VALUES (v_id_venta, p_id_producto, p_cantidad, v_precio, 0);
+
+                UPDATE Materia_prima mp
+                JOIN Recetas r ON mp.id_materia = r.id_materia
+                SET mp.stock_actual = mp.stock_actual - (r.cantidad * p_cantidad)
+                WHERE r.id_producto = p_id_producto
+                  AND r.estado = 1;
+
+                UPDATE ventas
+                SET total = (
+                        SELECT COALESCE(SUM(dv.cantidad * dv.precio_unitario), 0)
+                        FROM detalle_venta dv
+                        WHERE dv.id_venta = v_id_venta
+                    ),
+                    utilidad_bruta = ROUND((
+                        SELECT COALESCE(SUM(dv.cantidad * dv.precio_unitario), 0)
+                        FROM detalle_venta dv
+                        WHERE dv.id_venta = v_id_venta
+                    ) * 0.35, 2)
+                WHERE id_venta = v_id_venta;
+
+                COMMIT;
+
+                SELECT v_id_venta AS id_venta_generada;
+            END
+            """
+        )
+    )
+
+    db.session.execute(
+        text(
+            """
+            CREATE PROCEDURE crear_venta_online(
+                IN p_id_usuario INT,
+                IN p_id_cliente INT,
+                IN p_hora_recogida DATETIME,
+                IN p_notas VARCHAR(200),
+                IN p_id_producto INT,
+                IN p_cantidad INT,
+                IN p_id_venta_existente INT
+            )
+            BEGIN
+                DECLARE v_id_venta INT;
+                DECLARE v_precio DECIMAL(10,2);
+                DECLARE v_faltantes INT;
+
+                DECLARE EXIT HANDLER FOR SQLEXCEPTION
+                BEGIN
+                    ROLLBACK;
+                    RESIGNAL;
+                END;
+
+                START TRANSACTION;
+
+                IF p_id_venta_existente IS NULL OR p_id_venta_existente = 0 THEN
+                    INSERT INTO ventas (
+                        id_usuario,
+                        id_cliente,
+                        tipo_venta,
+                        estado,
+                        total,
+                        utilidad_bruta,
+                        estatus,
+                        creado_en,
+                        metodo_pago,
+                        codigo_recogida
+                    )
+                    VALUES (
+                        p_id_usuario,
+                        p_id_cliente,
+                        'en_linea',
+                        'pendiente',
+                        0,
+                        0,
+                        0,
+                        NOW(),
+                        'Efectivo',
+                        CONCAT('ORD', LPAD(FLOOR(RAND() * 10000), 4, '0'))
+                    );
+
+                    SET v_id_venta = LAST_INSERT_ID();
+
+                    INSERT INTO pedidos (id_venta, hora_solicitud, hora_recogida, estado, notas)
+                    VALUES (v_id_venta, NOW(), p_hora_recogida, 'pendiente', p_notas);
+                ELSE
+                    SET v_id_venta = p_id_venta_existente;
+                END IF;
+
+                IF p_cantidad IS NULL OR p_cantidad <= 0 THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cantidad inválida';
+                END IF;
+
+                SELECT precio_venta INTO v_precio
+                FROM Producto
+                WHERE id_producto = p_id_producto AND estatus = 1
+                FOR UPDATE;
+
+                IF v_precio IS NULL THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto no disponible';
+                END IF;
+
+                IF (
+                    SELECT COUNT(*)
+                    FROM Recetas
+                    WHERE id_producto = p_id_producto AND estado = 1
+                ) = 0 THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto sin receta activa';
+                END IF;
+
+                SELECT COUNT(*) INTO v_faltantes
+                FROM Materia_prima mp
+                JOIN Recetas r ON r.id_materia = mp.id_materia
+                WHERE r.id_producto = p_id_producto
+                  AND r.estado = 1
+                  AND mp.stock_actual < (r.cantidad * p_cantidad);
+
+                IF v_faltantes > 0 THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock insuficiente de insumos para este producto';
+                END IF;
+
+                INSERT INTO detalle_venta (id_venta, id_producto, cantidad, precio_unitario, descuento)
+                VALUES (v_id_venta, p_id_producto, p_cantidad, v_precio, 0);
+
+                UPDATE Materia_prima mp
+                JOIN Recetas r ON mp.id_materia = r.id_materia
+                SET mp.stock_actual = mp.stock_actual - (r.cantidad * p_cantidad)
+                WHERE r.id_producto = p_id_producto
+                  AND r.estado = 1;
+
+                UPDATE ventas
+                SET total = (
+                        SELECT COALESCE(SUM(dv.cantidad * dv.precio_unitario), 0)
+                        FROM detalle_venta dv
+                        WHERE dv.id_venta = v_id_venta
+                    ),
+                    utilidad_bruta = ROUND((
+                        SELECT COALESCE(SUM(dv.cantidad * dv.precio_unitario), 0)
+                        FROM detalle_venta dv
+                        WHERE dv.id_venta = v_id_venta
+                    ) * 0.35, 2)
+                WHERE id_venta = v_id_venta;
+
+                COMMIT;
+
+                SELECT v_id_venta AS id_generado;
+            END
+            """
+        )
+    )
+
+    db.session.execute(
+        text(
+            """
+            CREATE PROCEDURE pagar_venta(
+                IN p_id_venta INT,
+                IN p_metodo_pago VARCHAR(30)
+            )
+            BEGIN
+                DECLARE v_tipo VARCHAR(20);
+
+                IF (SELECT COUNT(*) FROM ventas WHERE id_venta = p_id_venta) = 0 THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La venta no existe';
+                END IF;
+
+                UPDATE ventas
+                SET
+                    metodo_pago = p_metodo_pago,
+                    estado = 'pagado',
+                    estatus = 1
+                WHERE id_venta = p_id_venta;
+
+                SELECT tipo_venta INTO v_tipo
+                FROM ventas
+                WHERE id_venta = p_id_venta;
+
+                IF v_tipo = 'en_linea' THEN
+                    UPDATE pedidos
+                    SET estado = 'entregado'
+                    WHERE id_venta = p_id_venta;
+                END IF;
+
+                SELECT 'Pago registrado con éxito' AS mensaje;
             END
             """
         )
@@ -490,5 +795,6 @@ def inicializar_db() -> None:
     db.create_all()
     asegurar_esquema_usuarios()
     asegurar_esquema_unidades()
+    asegurar_esquema_proveedores()
     asegurar_procedimientos_almacenados()
     seed_db()

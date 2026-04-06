@@ -23,6 +23,7 @@ from app.cliente.routes import clientesBp
 from app.solicitud.routes import solicitud_bp
 from app.recetas.routes import recetas_bp
 from app.utilidad.routes import utilidad_bp
+from app.produccion.routes import produccion_bp
     
 #Integracion decosas de michelle
 from app.ventas.routes import ventasBp
@@ -53,6 +54,7 @@ app.register_blueprint(clientesBp)
 app.register_blueprint(solicitud_bp)
 app.register_blueprint(recetas_bp)
 app.register_blueprint(utilidad_bp)
+app.register_blueprint(produccion_bp)
 
 #Cosas de michelle
 app.register_blueprint(ventasBp)

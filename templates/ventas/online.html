@@ -3,6 +3,24 @@
 {% block container %}
 <section class="bg-[#fdfcfb] min-h-screen">
     <div class="w-full max-w-6xl mx-auto py-8 px-4">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="mb-6 space-y-3">
+                    {% for category, message in messages %}
+                        {% if category == 'danger' %}
+                            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ message }}</div>
+                        {% elif category == 'success' %}
+                            <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ message }}</div>
+                        {% elif category == 'warning' %}
+                            <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">{{ message }}</div>
+                        {% else %}
+                            <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">{{ message }}</div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
         
         <div class="flex flex-col items-center mb-12">
             <h2 class="text-center text-4xl font-light text-[#814c59] tracking-wide uppercase">
@@ -125,6 +143,7 @@
         if (!input) return;
 
         const ahora = new Date();
+       const minimo = new Date(ahora.getTime() + 60 * 60 * 1000);
         
         const format = (date) => {
             const anio = date.getFullYear();
@@ -135,10 +154,8 @@
             return `${anio}-${mes}-${dia}T${horas}:${minutos}`;
         };
 
-        input.removeAttribute('min'); 
-        input.removeAttribute('max');
-        
-        input.value = format(ahora); 
+        input.min = format(minimo);
+        input.value = format(minimo);
     }
     document.addEventListener('DOMContentLoaded', configurarFechaMinima);
 </script>
