@@ -97,7 +97,7 @@ class UnidadMedida(db.Model):
     id_unidad = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nombre = db.Column(db.String(10), nullable=False)
     abreviacion = db.Column(db.String(4), unique=True)
-    tipo = db.Column(Enum("liquido", "solido", name="tipo_unidad"), nullable=False)
+    tipo = db.Column(Enum("liquido", "solido", "conteo", name="tipo_unidad"), nullable=False)
     factor = db.Column(db.Numeric(10, 4), nullable=False)
 
     
