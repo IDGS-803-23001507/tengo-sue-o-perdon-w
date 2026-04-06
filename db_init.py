@@ -98,6 +98,60 @@ def asegurar_esquema_usuarios() -> None:
     db.session.commit()
 
 
+def asegurar_esquema_unidades() -> None:
+    inspector = inspect(db.engine)
+    tablas = set(inspector.get_table_names())
+
+    if "Unidad_medida" not in tablas:
+        return
+
+    columnas = {columna["name"] for columna in inspector.get_columns("Unidad_medida")}
+
+    if "tipo" not in columnas:
+        db.session.execute(
+            text(
+                """
+                ALTER TABLE `Unidad_medida`
+                ADD COLUMN `tipo` ENUM('liquido','solido') NOT NULL DEFAULT 'solido'
+                """
+            )
+        )
+
+    if "factor" not in columnas:
+        db.session.execute(
+            text(
+                """
+                ALTER TABLE `Unidad_medida`
+                ADD COLUMN `factor` DECIMAL(10,4) NOT NULL DEFAULT 1.0000
+                """
+            )
+        )
+
+    db.session.execute(
+        text(
+            """
+            UPDATE `Unidad_medida`
+            SET `tipo` = CASE
+                WHEN LOWER(`abreviacion`) IN ('l', 'ml') THEN 'liquido'
+                ELSE 'solido'
+            END,
+            `factor` = CASE
+                WHEN LOWER(`abreviacion`) = 'kg' THEN 1000.0000
+                WHEN LOWER(`abreviacion`) = 'kl' THEN 1000.0000
+                WHEN LOWER(`abreviacion`) = 'g' THEN 1.0000
+                WHEN LOWER(`abreviacion`) = 'oz' THEN 28.3500
+                WHEN LOWER(`abreviacion`) = 'l' THEN 1000.0000
+                WHEN LOWER(`abreviacion`) = 'ml' THEN 1.0000
+                WHEN LOWER(`abreviacion`) IN ('pz', 'u') THEN 1.0000
+                ELSE COALESCE(`factor`, 1.0000)
+            END
+            """
+        )
+    )
+
+    db.session.commit()
+
+
 def _generar_usuario_unico(correo_base: str) -> str:
     usuario_base = correo_base.split("@")[0] or "gerente"
     usuario_generado = usuario_base
@@ -131,18 +185,25 @@ def _generar_correo_unico(correo_base: str, usuario_base: str) -> str:
 def seed_db() -> None:
 
     unidades_base = [
-        ("Kilogramo", "kg"),
-        ("Gramo", "g"),
-        ("Litro", "l"),
-        ("Mililitro", "ml"),
-        ("Pieza", "pz"),
-        ("Unidad", "u"),
+        ("Kilogramo", "kg", "solido", 1000),
+        ("Gramo", "g", "solido", 1),
+        ("Litro", "l", "liquido", 1000),
+        ("Mililitro", "ml", "liquido", 1),
+        ("Pieza", "pz", "solido", 1),
+        ("Unidad", "u", "solido", 1),
     ]
 
-    for nombre_unidad, abreviacion in unidades_base:
+    for nombre_unidad, abreviacion, tipo, factor in unidades_base:
         existe_unidad = UnidadMedida.query.filter_by(abreviacion=abreviacion).first()
         if not existe_unidad:
-            db.session.add(UnidadMedida(nombre=nombre_unidad, abreviacion=abreviacion))
+            db.session.add(
+                UnidadMedida(
+                    nombre=nombre_unidad,
+                    abreviacion=abreviacion,
+                    tipo=tipo,
+                    factor=factor,
+                )
+            )
 
     for nombre in ["Gerente", "Operador", "Cliente"]:
         if not Rol.query.filter_by(nombre=nombre).first():
@@ -196,4 +257,5 @@ def seed_db() -> None:
 def inicializar_db() -> None:
     db.create_all()
     asegurar_esquema_usuarios()
+    asegurar_esquema_unidades()
     seed_db()

@@ -1,78 +1,209 @@
-{% extends "layout/layout_produccion.html"%}
+{% extends "layout/layout_produccion.html" %}
 
-    {% block container %}
-            <header class="content-header">
-                <div>
-                    <h1>Resumen de Operaciones</h1>
-                    <p>Métricas de rendimiento en tiempo real</p>
-                </div>
-                <button type="button" class="report-btn">Descargar Reporte</button>
-            </header>
+{% block container %}
+<div class="space-y-6">
+    <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Resumen Financiero y Operativo</h1>
+            <p class="text-gray-500 mt-1">Ingresos, gastos e inventario crítico en un solo panel.</p>
+        </div>
 
-            <section class="stats-grid">
-                <article class="stat-card">
-                    <p class="stat-label">Ingresos Brutos</p>
-                    <div class="stat-main">$24,500.00</div>
-                    <div class="stat-foot">
-                        <span class="up">+12.5 %</span>
-                        <svg viewBox="0 0 90 45" aria-hidden="true"><path d="M4 36L22 14L36 24L52 8L66 16L86 5"/></svg>
-                    </div>
-                </article>
+        <div class="flex gap-2">
+            <a href="{{ url_for(request.endpoint, periodo=7) }}" class="px-3 py-2 rounded-lg text-sm border {{ 'bg-blue-600 text-white border-blue-600' if periodoSeleccionado == 7 else 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">7 días</a>
+            <a href="{{ url_for(request.endpoint, periodo=15) }}" class="px-3 py-2 rounded-lg text-sm border {{ 'bg-blue-600 text-white border-blue-600' if periodoSeleccionado == 15 else 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">15 días</a>
+            <a href="{{ url_for(request.endpoint, periodo=30) }}" class="px-3 py-2 rounded-lg text-sm border {{ 'bg-blue-600 text-white border-blue-600' if periodoSeleccionado == 30 else 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">30 días</a>
+        </div>
+    </div>
 
-                <article class="stat-card">
-                    <p class="stat-label">Tickets Promedio</p>
-                    <div class="stat-main">$142.50</div>
-                    <div class="stat-foot">
-                        <span class="down">-2.4 %</span>
-                        <svg class="trend-down" viewBox="0 0 90 45" aria-hidden="true"><path d="M4 8L20 20L36 16L52 30L68 22L86 36"/></svg>
-                    </div>
-                </article>
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="bg-white border rounded-xl p-4 shadow-sm">
+            <p class="text-sm text-gray-500">Ingresos de hoy</p>
+            <p class="text-2xl font-bold text-green-600 mt-1">${{ '%.2f'|format(totalVentasDia) }}</p>
+            <p class="text-xs text-gray-500 mt-2">Tickets: {{ numeroTicketsDia }}</p>
+        </div>
 
-                <article class="stat-card">
-                    <p class="stat-label">Pedidos Completados</p>
-                    <div class="stat-main">384</div>
-                    <p class="stat-sub">En las últimas 24h</p>
-                </article>
-            </section>
+        <div class="bg-white border rounded-xl p-4 shadow-sm">
+            <p class="text-sm text-gray-500">Gastos de hoy (compras)</p>
+            <p class="text-2xl font-bold text-red-600 mt-1">${{ '%.2f'|format(totalGastosDia) }}</p>
+            <p class="text-xs text-gray-500 mt-2">Promedio por ticket: ${{ '%.2f'|format(ticketPromedioDia) }}</p>
+        </div>
 
-            <section class="chart-card">
-                <div class="chart-head">
-                    <h2>Flujo de Ingresos</h2>
-                    <div class="legend">
-                        <span><i class="dot blue"></i>Esta semana</span>
-                        <span><i class="dot gray"></i>Semana pasada</span>
-                    </div>
-                </div>
+        <div class="bg-white border rounded-xl p-4 shadow-sm">
+            <p class="text-sm text-gray-500">Utilidad neta de hoy</p>
+            <p class="text-2xl font-bold mt-1 {{ 'text-green-600' if utilidadNetaDia >= 0 else 'text-red-600' }}">${{ '%.2f'|format(utilidadNetaDia) }}</p>
+            <p class="text-xs text-gray-500 mt-2">Ingresos - Gastos</p>
+        </div>
 
-                <div class="chart-box">
-                    <svg viewBox="0 0 920 320" preserveAspectRatio="none" aria-hidden="true">
-                        <g class="grid-lines">
-                            <line x1="20" y1="50" x2="900" y2="50"/>
-                            <line x1="20" y1="100" x2="900" y2="100"/>
-                            <line x1="20" y1="150" x2="900" y2="150"/>
-                            <line x1="20" y1="200" x2="900" y2="200"/>
-                            <line x1="20" y1="250" x2="900" y2="250"/>
-                        </g>
+        <div class="bg-white border rounded-xl p-4 shadow-sm">
+            <p class="text-sm text-gray-500">Insumos por surtir</p>
+            <p class="text-2xl font-bold text-amber-600 mt-1">{{ alertasInsumos|length }}</p>
+            <p class="text-xs text-gray-500 mt-2">Stock en o debajo de mínimo</p>
+        </div>
+    </div>
 
-                        <path class="line-secondary" d="M40 210L160 180L280 220L400 140L520 170L640 190L760 170L880 130"/>
-                        <path class="area-primary" d="M40 180L160 200L280 135L400 165L520 95L640 125L760 90L880 45L880 250L40 250Z"/>
-                        <path class="line-primary" d="M40 180L160 200L280 135L400 165L520 95L640 125L760 90L880 45"/>
+    {% if puedeVerFinanzas %}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="bg-white border rounded-xl p-4 shadow-sm">
+            <p class="text-sm text-gray-500">Ingresos ({{ periodoSeleccionado }} días)</p>
+            <p class="text-xl font-bold text-gray-800 mt-1">${{ '%.2f'|format(totalVentasPeriodo) }}</p>
+        </div>
 
-                        <circle cx="520" cy="95" r="6" class="point"/>
-                        <circle cx="640" cy="125" r="6" class="point"/>
-                        <circle cx="880" cy="45" r="6" class="point"/>
+        <div class="bg-white border rounded-xl p-4 shadow-sm">
+            <p class="text-sm text-gray-500">Gastos ({{ periodoSeleccionado }} días)</p>
+            <p class="text-xl font-bold text-gray-800 mt-1">${{ '%.2f'|format(totalGastosPeriodo) }}</p>
+        </div>
 
-                        <g class="axis-labels">
-                            <text x="35" y="295">Lun</text>
-                            <text x="155" y="295">Mar</text>
-                            <text x="275" y="295">Mié</text>
-                            <text x="395" y="295">Jue</text>
-                            <text x="515" y="295">Vie</text>
-                            <text x="635" y="295">Sáb</text>
-                            <text x="755" y="295">Dom</text>
-                        </g>
-                    </svg>
-                </div>
-            </section>
+        <div class="bg-white border rounded-xl p-4 shadow-sm">
+            <p class="text-sm text-gray-500">Utilidad neta ({{ periodoSeleccionado }} días)</p>
+            <p class="text-xl font-bold mt-1 {{ 'text-green-600' if utilidadNetaPeriodo >= 0 else 'text-red-600' }}">${{ '%.2f'|format(utilidadNetaPeriodo) }}</p>
+        </div>
+    </div>
+    {% endif %}
 
-    {% endblock %}
+    <div class="bg-white border rounded-xl shadow-sm p-4">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="font-semibold text-gray-800">Flujo de ingresos ({{ periodoSeleccionado }} días)</h2>
+            <span class="text-xs text-gray-500">Ventas confirmadas</span>
+        </div>
+        <div class="h-72">
+            <canvas id="ingresosChart"></canvas>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div class="bg-white border rounded-xl shadow-sm overflow-hidden">
+            <div class="px-4 py-3 border-b bg-gray-50">
+                <h2 class="font-semibold text-gray-800">Top productos vendidos ({{ periodoSeleccionado }} días)</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-600">
+                    <thead class="text-xs uppercase text-gray-500 bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3">Producto</th>
+                            <th class="px-4 py-3 text-right">Cantidad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in topProductos %}
+                        <tr class="border-t">
+                            <td class="px-4 py-3 font-medium text-gray-800">{{ item.nombre }}</td>
+                            <td class="px-4 py-3 text-right">{{ item.cantidad }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="2" class="px-4 py-6 text-center text-gray-500">Sin ventas en el periodo.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white border rounded-xl shadow-sm overflow-hidden">
+            <div class="px-4 py-3 border-b bg-gray-50">
+                <h2 class="font-semibold text-gray-800">Inventario por surtir</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-600">
+                    <thead class="text-xs uppercase text-gray-500 bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3">Insumo</th>
+                            <th class="px-4 py-3 text-right">Actual</th>
+                            <th class="px-4 py-3 text-right">Mínimo</th>
+                            <th class="px-4 py-3 text-right">Faltante</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in alertasInsumos %}
+                        <tr class="border-t">
+                            <td class="px-4 py-3 font-medium text-gray-800">{{ item.nombre }}</td>
+                            <td class="px-4 py-3 text-right">{{ item.stock_actual }} {{ item.unidad }}</td>
+                            <td class="px-4 py-3 text-right">{{ item.stock_minimo }} {{ item.unidad }}</td>
+                            <td class="px-4 py-3 text-right font-semibold text-red-600">{{ item.faltante }} {{ item.unidad }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="px-4 py-6 text-center text-gray-500">No hay insumos por surtir.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white border rounded-xl shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b bg-gray-50">
+            <h2 class="font-semibold text-gray-800">Últimas ventas confirmadas</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-600">
+                <thead class="text-xs uppercase text-gray-500 bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3">Ticket</th>
+                        <th class="px-4 py-3">Fecha</th>
+                        <th class="px-4 py-3 text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for venta in ultimasOperaciones %}
+                    <tr class="border-t">
+                        <td class="px-4 py-3 font-medium text-gray-800">#{{ venta.id_venta }}</td>
+                        <td class="px-4 py-3">{{ venta.fecha.strftime('%d/%m/%Y %H:%M') if venta.fecha else '-' }}</td>
+                        <td class="px-4 py-3 text-right font-semibold text-green-700">${{ '%.2f'|format(venta.total or 0) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="px-4 py-6 text-center text-gray-500">No hay ventas confirmadas.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function () {
+    const canvas = document.getElementById('ingresosChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    const labels = JSON.parse('{{ etiquetasGrafica|tojson|safe }}');
+    const data = JSON.parse('{{ puntosGrafica|tojson|safe }}');
+
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Ingresos',
+                data: data,
+                borderColor: '#2563eb',
+                backgroundColor: 'rgba(37, 99, 235, 0.15)',
+                fill: true,
+                tension: 0.35,
+                pointRadius: 3,
+                pointHoverRadius: 5
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) { return '$' + value; }
+                    }
+                }
+            }
+        }
+    });
+})();
+</script>
+{% endblock %}
