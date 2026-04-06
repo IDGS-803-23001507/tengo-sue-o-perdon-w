@@ -74,7 +74,7 @@ def endpointDashboardRol(rol: str) -> str:
         "Gerente de Tienda": "dashboard_gerente",
         "Gerente": "dashboard_gerente",
         "Cajero": "ventas.tienda_cliente",
-        "Barista": "dashboard_operador",
+        "Barista": "solicitud.index",
         "Operador": "dashboard_operador",
         "Cliente": "ventas.tienda_cliente",
     }
