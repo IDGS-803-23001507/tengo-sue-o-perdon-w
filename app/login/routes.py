@@ -187,15 +187,41 @@ def iniciarSesion():
         session["inicioSesion"] = True
         session["usuarioId"] = usuario.id
 
-        if usuario.rolRef.nombre == "Cliente":
-            session["usuarioNombre"] = usuario.cliente.nombre
+        rolNombre = usuario.rol
+        if rolNombre == "Cliente":
+            clienteRegistro = usuario.cliente or Cliente.query.filter_by(usuarioId=usuario.id).first()
+            if not clienteRegistro:
+                nombreBase = (usuario.correo or "Cliente").split("@")[0].strip() or "Cliente"
+                clienteRegistro = Cliente(
+                    usuarioId=usuario.id,
+                    nombre=nombreBase,
+                    apellidoPaterno="Pendiente",
+                    apellidoMaterno="",
+                    telefono="",
+                    alias="",
+                )
+                db.session.add(clienteRegistro)
+                db.session.commit()
+            session["usuarioNombre"] = (
+                clienteRegistro.nombre
+                if clienteRegistro
+                else (usuario.empleado.nombre if usuario.empleado else usuario.correo)
+            )
             session["usuarioLogin"] = usuario.correo
+            session["clienteId"] = clienteRegistro.id if clienteRegistro else None
         else:
-            session["usuarioNombre"] = usuario.empleado.nombre
-            session["usuarioLogin"] = usuario.empleado.username
+            session["usuarioNombre"] = (
+                usuario.empleado.nombre
+                if usuario.empleado
+                else (usuario.cliente.nombre if usuario.cliente else usuario.correo)
+            )
+            session["usuarioLogin"] = (
+                usuario.empleado.username if usuario.empleado else usuario.correo
+            )
+            session.pop("clienteId", None)
 
         session["usuarioCorreo"] = usuario.correo
-        session["usuarioRol"] = usuario.rolRef.nombre
+        session["usuarioRol"] = rolNombre
         session["registroSesionId"] = registroSesion.id
         session["tokenSesion"] = tokenSesion
 

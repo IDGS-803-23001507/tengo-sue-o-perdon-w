@@ -211,6 +211,11 @@ class Producto(db.Model):
     precio_venta = db.Column(db.Numeric(10, 2))
     stock = db.Column(db.Integer, nullable=False, default=0)
     stockMinimo = db.Column("stock_minimo", db.Integer, nullable=False, default=0)
+    tipo_preparacion = db.Column(
+        Enum('materia_prima', 'stock', name='tipo_preparacion_enum'),
+        nullable=False,
+        default='materia_prima',
+    )
     descripcion = db.Column(db.Text, nullable=False)
     imagen = db.Column(LONGTEXT, nullable=True)
     estatus = db.Column(db.Boolean, default=True)

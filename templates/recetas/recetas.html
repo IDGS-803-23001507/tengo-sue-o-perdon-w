@@ -62,9 +62,7 @@
         <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
             <tr>
                 <th scope="col" class="px-6 py-4">Producto</th>
-                <th scope="col" class="px-6 py-4">Insumo</th>
-                <th scope="col" class="px-6 py-4 text-center">Cantidad</th>
-                <th scope="col" class="px-6 py-4 text-center">Unidad</th>
+                <th scope="col" class="px-6 py-4">Insumos</th>
                 <th scope="col" class="px-6 py-4 text-center">Estado</th>
                 <th scope="col" class="px-6 py-4 text-center">Acciones</th>
             </tr>
@@ -72,20 +70,27 @@
         <tbody>
             {% for receta in recetas %}
                 <tr class="bg-white hover:bg-gray-50 border-b transition">
-                    <td class="px-6 py-4 font-medium text-gray-900">{{ receta.producto.nombre if receta.producto else '-' }}</td>
-                    <td class="px-6 py-4">{{ receta.nombre_materia or '-' }}</td>
-                    <td class="px-6 py-4 text-center">{{ receta.cantidad }}</td>
-                    <td class="px-6 py-4 text-center">{{ receta.unidad_materia or 'Sin unidad' }}</td>
+                    <td class="px-6 py-4 font-medium text-gray-900">{{ receta.producto_nombre }}</td>
+                    <td class="px-6 py-4">
+                        <ul class="space-y-1">
+                            {% for insumo in receta.insumos %}
+                                <li>
+                                    <span class="font-medium text-gray-800">{{ insumo.nombre_materia }}</span>
+                                    <span class="text-gray-500"> — {{ insumo.cantidad }} {{ insumo.unidad_materia }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </td>
                     <td class="px-6 py-4 text-center">
                         {{ badge_estado_booleano(receta.estado, 'Activa', 'Inactiva') }}
                     </td>
                     <td class="px-6 py-4 text-center">
-                        <a href="{{ url_for('recetas.editar', id_receta=receta.id_receta) }}" class="text-blue-600 hover:underline">Editar</a>
+                        <a href="{{ url_for('recetas.nueva', producto=receta.id_producto) }}" class="text-blue-600 hover:underline">Editar</a>
                     </td>
                 </tr>
             {% else %}
                 <tr>
-                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                    <td colspan="4" class="px-6 py-8 text-center text-gray-500">
                         <p class="text-lg mb-2">Aún no hay recetas registradas.</p>
                         <p class="text-sm">Haz clic en "Nueva Receta" para comenzar.</p>
                     </td>

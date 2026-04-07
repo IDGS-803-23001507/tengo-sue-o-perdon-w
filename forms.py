@@ -493,6 +493,15 @@ class ProductoTerminadoForm(FlaskForm):
         places=2,
     )
 
+    tipo_preparacion = SelectField(
+        "Tipo de preparación",
+        choices=[
+            ("materia_prima", "Preparación al momento (descuenta materia prima en venta)"),
+            ("stock", "Producto con stock (descuenta stock en venta)"),
+        ],
+        validators=[DataRequired(message="Selecciona el tipo de preparación")],
+    )
+
     descripcion = TextAreaField(
         "Descripción",
         validators=[Optional(), Length(max=500)],

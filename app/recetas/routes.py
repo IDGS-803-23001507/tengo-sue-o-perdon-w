@@ -50,10 +50,36 @@ def recetas():
     elif estado == "inactivas":
         query = query.filter(Receta.estado.is_(False))
 
-    recetas = query.order_by(Producto.nombre.asc(), MateriaPrima.nombre.asc()).all()
+    recetas_db = query.order_by(Producto.nombre.asc(), MateriaPrima.nombre.asc()).all()
+
+    recetas_agrupadas = []
+    agrupadas_por_producto = {}
+    for receta in recetas_db:
+        id_producto = receta.id_producto
+        if id_producto not in agrupadas_por_producto:
+            agrupadas_por_producto[id_producto] = {
+                "id_producto": id_producto,
+                "producto_nombre": receta.producto.nombre if receta.producto else "-",
+                "estado": True,
+                "insumos": [],
+            }
+            recetas_agrupadas.append(agrupadas_por_producto[id_producto])
+
+        grupo = agrupadas_por_producto[id_producto]
+        grupo["insumos"].append(
+            {
+                "id_receta": receta.id_receta,
+                "nombre_materia": receta.nombre_materia or "-",
+                "cantidad": receta.cantidad,
+                "unidad_materia": receta.unidad_materia or "Sin unidad",
+                "estado": receta.estado,
+            }
+        )
+        grupo["estado"] = bool(grupo["estado"] and receta.estado)
+
     return render_template(
         "recetas/recetas.html",
-        recetas=recetas,
+        recetas=recetas_agrupadas,
         busqueda=busqueda,
         estado_actual=estado,
         active_page="recetas",
@@ -65,6 +91,7 @@ def recetas():
 def nueva_receta():
     form = RecetaLoteForm()
     materias = _cargar_formulario_receta_lote(form)
+    insumos_precargados = []
 
     if request.method == "GET":
         producto_preseleccionado = request.args.get("producto", type=int)
@@ -72,6 +99,18 @@ def nueva_receta():
             ids_validos = {pid for pid, _ in (form.id_producto.choices or [])}
             if producto_preseleccionado in ids_validos:
                 form.id_producto.data = producto_preseleccionado
+                recetas_producto = (
+                    Receta.query.filter_by(id_producto=producto_preseleccionado, estado=True)
+                    .order_by(Receta.id_receta.asc())
+                    .all()
+                )
+                insumos_precargados = [
+                    {
+                        "id_materia": receta.id_materia,
+                        "cantidad": float(receta.cantidad),
+                    }
+                    for receta in recetas_producto
+                ]
 
     if form.validate_on_submit():
         try:
@@ -128,6 +167,7 @@ def nueva_receta():
                 "recetas/nueva_receta.html",
                 form=form_limpio,
                 materias=materias,
+                insumos_precargados=[],
                 mostrar_modal=True,
                 active_page="recetas",
             )
@@ -148,6 +188,7 @@ def nueva_receta():
         "recetas/nueva_receta.html",
         form=form,
         materias=materias,
+        insumos_precargados=insumos_precargados,
         mostrar_modal=False,
         active_page="recetas",
     )

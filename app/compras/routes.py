@@ -1,10 +1,11 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from app.auditoria import registrar_auditoria
 from model import db, Compra, convertir, DetalleCompra, Proveedores, MateriaPrima, UnidadMedida
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 from decimal import Decimal
+from uuid import uuid4
 import forms
 
 compras_bp = Blueprint('compras', __name__)
@@ -42,12 +43,24 @@ def listar_compras():
 def nueva_compra():
 
     form = forms.CompraForm()
+    compra_token = session.get("compra_form_token")
+    if request.method == "GET" or not compra_token:
+        compra_token = uuid4().hex
+        session["compra_form_token"] = compra_token
 
     proveedores = Proveedores.query.filter_by(estado=True).all()
     form.set_proveedores(proveedores)
 
     if form.validate_on_submit():
-        print(form.errors)
+        token_form = (request.form.get("compra_token") or "").strip()
+        token_sesion = (session.get("compra_form_token") or "").strip()
+
+        if not token_form or token_form != token_sesion:
+            flash("La compra ya fue enviada o el formulario expiró. Intenta nuevamente.", "warning")
+            return redirect(url_for('compras.nueva_compra'))
+
+        session.pop("compra_form_token", None)
+
         try:
             compra = Compra(
                 id_proveedor=form.id_proveedor.data,
@@ -64,6 +77,8 @@ def nueva_compra():
             if not any(m for m in materias_ids if m):
                 raise ValueError('Debe agregar al menos un insumo a la compra')
 
+            insumos_vistos = set()
+
             for i in range(len(materias_ids)):
 
                 if materias_ids[i] and cantidades[i] and costos[i]:
@@ -72,6 +87,14 @@ def nueva_compra():
                     cantidad       = Decimal(cantidades[i])
                     costo_unitario = Decimal(costos[i])
                     unidad_id      = int(unidades_ids[i]) if unidades_ids[i] else None
+
+                    if cantidad <= 0 or costo_unitario <= 0:
+                        raise ValueError("Cantidad y costo unitario deben ser mayores a cero")
+
+                    clave_insumo = (materia_id, unidad_id)
+                    if clave_insumo in insumos_vistos:
+                        raise ValueError("No repitas el mismo insumo con la misma unidad en una compra")
+                    insumos_vistos.add(clave_insumo)
 
 
                     materia = MateriaPrima.query.get(materia_id)
@@ -125,15 +148,32 @@ def nueva_compra():
             flash('Compra registrada exitosamente', 'success')
             return redirect(url_for('compras.detalle_compra', id=compra.id_compra))
 
-        except Exception as e:
+        except (ValueError, SQLAlchemyError) as e:
             db.session.rollback()
-            print("ERROR REAL:", e)
-            raise 
+            flash(str(e) if str(e) else "No se pudo registrar la compra", 'danger')
+
+            compra_token = uuid4().hex
+            session["compra_form_token"] = compra_token
 
     materias_primas = MateriaPrima.query.all()
     unidades        = UnidadMedida.query.all()
 
-    return render_template('compras/nueva_compra.html', active_page = 'compras', form=form, proveedores=proveedores, materias_primas=materias_primas, unidades=unidades, datetime=datetime)
+    if request.method == 'POST' and not form.validate_on_submit():
+        for erroresCampo in form.errors.values():
+            if erroresCampo:
+                flash(erroresCampo[0], 'danger')
+                break
+
+    return render_template(
+        'compras/nueva_compra.html',
+        active_page='compras',
+        form=form,
+        proveedores=proveedores,
+        materias_primas=materias_primas,
+        unidades=unidades,
+        datetime=datetime,
+        compra_token=compra_token,
+    )
 
 
 @compras_bp.route('/compras/detalle/<int:id>')

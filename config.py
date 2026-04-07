@@ -52,4 +52,4 @@ class Config:
 
     USUARIO_GERENTE_NOMBRE = os.getenv("USUARIO_GERENTE_NOMBRE", "Administrador Urban Coffee")
     USUARIO_GERENTE_CORREO = os.getenv("USUARIO_GERENTE_CORREO", "admin@urbancoffee.com")
-    USUARIO_GERENTE_PASSWORD = os.getenv("USUARIO_GERENTE_PASSWORD", "PasswordSegura123!")
+    USUARIO_GERENTE_PASSWORD = os.getenv("USUARIO_GERENTE_PASSWORD", "PasswordSegura123!")  

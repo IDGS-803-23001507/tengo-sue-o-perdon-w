@@ -204,6 +204,43 @@ def asegurar_esquema_proveedores() -> None:
     db.session.commit()
 
 
+def asegurar_esquema_productos() -> None:
+    inspector = inspect(db.engine)
+    tablas = set(inspector.get_table_names())
+
+    if "Producto" not in tablas:
+        return
+
+    columnas = {columna["name"] for columna in inspector.get_columns("Producto")}
+
+    if "tipo_preparacion" not in columnas:
+        db.session.execute(
+            text(
+                """
+                ALTER TABLE `Producto`
+                ADD COLUMN `tipo_preparacion` ENUM('materia_prima','stock')
+                NOT NULL DEFAULT 'materia_prima'
+                """
+            )
+        )
+
+    db.session.execute(
+        text(
+            """
+            UPDATE `Producto`
+            SET `tipo_preparacion` = CASE
+                WHEN LOWER(COALESCE(`categoria`, '')) = 'alimentos' THEN 'stock'
+                ELSE 'materia_prima'
+            END
+            WHERE `tipo_preparacion` IS NULL
+               OR `tipo_preparacion` NOT IN ('materia_prima', 'stock')
+            """
+        )
+    )
+
+    db.session.commit()
+
+
 def asegurar_procedimientos_almacenados() -> None:
     db.session.execute(text("DROP PROCEDURE IF EXISTS crear_venta_general"))
     db.session.execute(text("DROP PROCEDURE IF EXISTS crear_venta_online"))
@@ -286,6 +323,12 @@ def asegurar_procedimientos_almacenados() -> None:
                 DECLARE v_id_venta INT;
                 DECLARE v_precio DECIMAL(10,2);
                 DECLARE v_faltantes INT;
+                DECLARE v_tipo_preparacion VARCHAR(20);
+                DECLARE v_stock_actual INT;
+                DECLARE v_stock_minimo INT;
+                DECLARE v_stock_actualizado INT;
+                DECLARE v_cantidad_reposicion INT;
+                DECLARE v_id_solicitud INT;
 
                 DECLARE EXIT HANDLER FOR SQLEXCEPTION
                 BEGIN
@@ -299,32 +342,14 @@ def asegurar_procedimientos_almacenados() -> None:
 
                 START TRANSACTION;
 
-                SELECT precio_venta INTO v_precio
+                SELECT precio_venta, COALESCE(tipo_preparacion, 'materia_prima'), COALESCE(stock, 0), COALESCE(stock_minimo, 0)
+                INTO v_precio, v_tipo_preparacion, v_stock_actual, v_stock_minimo
                 FROM Producto
                 WHERE id_producto = p_id_producto AND estatus = 1
                 FOR UPDATE;
 
                 IF v_precio IS NULL THEN
                     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto no disponible';
-                END IF;
-
-                IF (
-                    SELECT COUNT(*)
-                    FROM Recetas
-                    WHERE id_producto = p_id_producto AND estado = 1
-                ) = 0 THEN
-                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto sin receta activa';
-                END IF;
-
-                SELECT COUNT(*) INTO v_faltantes
-                FROM Materia_prima mp
-                JOIN Recetas r ON r.id_materia = mp.id_materia
-                WHERE r.id_producto = p_id_producto
-                  AND r.estado = 1
-                  AND mp.stock_actual < (r.cantidad * p_cantidad);
-
-                IF v_faltantes > 0 THEN
-                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock insuficiente de insumos para este producto';
                 END IF;
 
                 IF p_id_venta_existente IS NULL OR p_id_venta_existente = 0 THEN
@@ -367,11 +392,64 @@ def asegurar_procedimientos_almacenados() -> None:
                 INSERT INTO detalle_venta (id_venta, id_producto, cantidad, precio_unitario, descuento)
                 VALUES (v_id_venta, p_id_producto, p_cantidad, v_precio, 0);
 
-                UPDATE Materia_prima mp
-                JOIN Recetas r ON mp.id_materia = r.id_materia
-                SET mp.stock_actual = mp.stock_actual - (r.cantidad * p_cantidad)
-                WHERE r.id_producto = p_id_producto
-                  AND r.estado = 1;
+                IF v_tipo_preparacion = 'stock' THEN
+                    IF v_stock_actual < p_cantidad THEN
+                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock insuficiente';
+                    END IF;
+
+                    UPDATE Producto
+                    SET stock = stock - p_cantidad
+                    WHERE id_producto = p_id_producto;
+
+                    SELECT stock INTO v_stock_actualizado
+                    FROM Producto
+                    WHERE id_producto = p_id_producto;
+
+                    IF v_stock_actualizado = 0 THEN
+                        IF (
+                            SELECT COUNT(*)
+                            FROM Recetas
+                            WHERE id_producto = p_id_producto AND estado = 1
+                        ) = 0 THEN
+                            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto sin receta activa';
+                        END IF;
+
+                        SET v_cantidad_reposicion = GREATEST(1, v_stock_minimo);
+
+                        INSERT INTO Solicitud_produccion (id_usuario, fecha, estado)
+                        VALUES (p_id_usuario, NOW(), 'pendiente');
+
+                        SET v_id_solicitud = LAST_INSERT_ID();
+
+                        INSERT INTO Detalle_produccion (id_solicitud, id_producto, cantidad)
+                        VALUES (v_id_solicitud, p_id_producto, v_cantidad_reposicion);
+                    END IF;
+                ELSE
+                    IF (
+                        SELECT COUNT(*)
+                        FROM Recetas
+                        WHERE id_producto = p_id_producto AND estado = 1
+                    ) = 0 THEN
+                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto sin receta activa';
+                    END IF;
+
+                    SELECT COUNT(*) INTO v_faltantes
+                    FROM Materia_prima mp
+                    JOIN Recetas r ON r.id_materia = mp.id_materia
+                    WHERE r.id_producto = p_id_producto
+                      AND r.estado = 1
+                      AND mp.stock_actual < (r.cantidad * p_cantidad);
+
+                    IF v_faltantes > 0 THEN
+                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock insuficiente de insumos para este producto';
+                    END IF;
+
+                    UPDATE Materia_prima mp
+                    JOIN Recetas r ON mp.id_materia = r.id_materia
+                    SET mp.stock_actual = mp.stock_actual - (r.cantidad * p_cantidad)
+                    WHERE r.id_producto = p_id_producto
+                      AND r.estado = 1;
+                END IF;
 
                 UPDATE ventas
                 SET total = (
@@ -410,6 +488,12 @@ def asegurar_procedimientos_almacenados() -> None:
                 DECLARE v_id_venta INT;
                 DECLARE v_precio DECIMAL(10,2);
                 DECLARE v_faltantes INT;
+                DECLARE v_tipo_preparacion VARCHAR(20);
+                DECLARE v_stock_actual INT;
+                DECLARE v_stock_minimo INT;
+                DECLARE v_stock_actualizado INT;
+                DECLARE v_cantidad_reposicion INT;
+                DECLARE v_id_solicitud INT;
 
                 DECLARE EXIT HANDLER FOR SQLEXCEPTION
                 BEGIN
@@ -457,7 +541,8 @@ def asegurar_procedimientos_almacenados() -> None:
                     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cantidad inválida';
                 END IF;
 
-                SELECT precio_venta INTO v_precio
+                SELECT precio_venta, COALESCE(tipo_preparacion, 'materia_prima'), COALESCE(stock, 0), COALESCE(stock_minimo, 0)
+                INTO v_precio, v_tipo_preparacion, v_stock_actual, v_stock_minimo
                 FROM Producto
                 WHERE id_producto = p_id_producto AND estatus = 1
                 FOR UPDATE;
@@ -466,33 +551,67 @@ def asegurar_procedimientos_almacenados() -> None:
                     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto no disponible';
                 END IF;
 
-                IF (
-                    SELECT COUNT(*)
-                    FROM Recetas
-                    WHERE id_producto = p_id_producto AND estado = 1
-                ) = 0 THEN
-                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto sin receta activa';
-                END IF;
-
-                SELECT COUNT(*) INTO v_faltantes
-                FROM Materia_prima mp
-                JOIN Recetas r ON r.id_materia = mp.id_materia
-                WHERE r.id_producto = p_id_producto
-                  AND r.estado = 1
-                  AND mp.stock_actual < (r.cantidad * p_cantidad);
-
-                IF v_faltantes > 0 THEN
-                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock insuficiente de insumos para este producto';
-                END IF;
-
                 INSERT INTO detalle_venta (id_venta, id_producto, cantidad, precio_unitario, descuento)
                 VALUES (v_id_venta, p_id_producto, p_cantidad, v_precio, 0);
 
-                UPDATE Materia_prima mp
-                JOIN Recetas r ON mp.id_materia = r.id_materia
-                SET mp.stock_actual = mp.stock_actual - (r.cantidad * p_cantidad)
-                WHERE r.id_producto = p_id_producto
-                  AND r.estado = 1;
+                IF v_tipo_preparacion = 'stock' THEN
+                    IF v_stock_actual < p_cantidad THEN
+                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock insuficiente';
+                    END IF;
+
+                    UPDATE Producto
+                    SET stock = stock - p_cantidad
+                    WHERE id_producto = p_id_producto;
+
+                    SELECT stock INTO v_stock_actualizado
+                    FROM Producto
+                    WHERE id_producto = p_id_producto;
+
+                    IF v_stock_actualizado = 0 THEN
+                        IF (
+                            SELECT COUNT(*)
+                            FROM Recetas
+                            WHERE id_producto = p_id_producto AND estado = 1
+                        ) = 0 THEN
+                            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto sin receta activa';
+                        END IF;
+
+                        SET v_cantidad_reposicion = GREATEST(1, v_stock_minimo);
+
+                        INSERT INTO Solicitud_produccion (id_usuario, fecha, estado)
+                        VALUES (p_id_usuario, NOW(), 'pendiente');
+
+                        SET v_id_solicitud = LAST_INSERT_ID();
+
+                        INSERT INTO Detalle_produccion (id_solicitud, id_producto, cantidad)
+                        VALUES (v_id_solicitud, p_id_producto, v_cantidad_reposicion);
+                    END IF;
+                ELSE
+                    IF (
+                        SELECT COUNT(*)
+                        FROM Recetas
+                        WHERE id_producto = p_id_producto AND estado = 1
+                    ) = 0 THEN
+                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto sin receta activa';
+                    END IF;
+
+                    SELECT COUNT(*) INTO v_faltantes
+                    FROM Materia_prima mp
+                    JOIN Recetas r ON r.id_materia = mp.id_materia
+                    WHERE r.id_producto = p_id_producto
+                      AND r.estado = 1
+                      AND mp.stock_actual < (r.cantidad * p_cantidad);
+
+                    IF v_faltantes > 0 THEN
+                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock insuficiente de insumos para este producto';
+                    END IF;
+
+                    UPDATE Materia_prima mp
+                    JOIN Recetas r ON mp.id_materia = r.id_materia
+                    SET mp.stock_actual = mp.stock_actual - (r.cantidad * p_cantidad)
+                    WHERE r.id_producto = p_id_producto
+                      AND r.estado = 1;
+                END IF;
 
                 UPDATE ventas
                 SET total = (
@@ -797,5 +916,6 @@ def inicializar_db() -> None:
     asegurar_esquema_usuarios()
     asegurar_esquema_unidades()
     asegurar_esquema_proveedores()
+    asegurar_esquema_productos()
     asegurar_procedimientos_almacenados()
     seed_db()

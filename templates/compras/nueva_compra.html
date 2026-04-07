@@ -13,6 +13,7 @@
     <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
         <form method="POST" action="{{ url_for('compras.nueva_compra') }}" id="compraForm">
             {{ form.hidden_tag() }}
+            <input type="hidden" name="compra_token" value="{{ compra_token }}">
 
             <h2 class="text-xl font-bold mb-6 text-gray-800 border-b pb-2">Datos de la Compra</h2>
 
@@ -179,7 +180,7 @@
 
             <div class="flex flex-col gap-3">
 
-                <button onclick="confirmarEnvio()" class="text-white bg-blue-600 hover:bg-blue-700 
+                <button id="btnConfirmarCompra" onclick="confirmarEnvio()" class="text-white bg-blue-600 hover:bg-blue-700 
                            font-medium rounded-lg text-sm px-5 py-3 transition">
                     Sí, registrar
                 </button>
@@ -203,8 +204,9 @@
 {% block scripts %}
 <script>
 
-    const form = document.querySelector("form");
+    const form = document.getElementById("compraForm");
     const modal = document.getElementById("modalConfirmacion");
+    const btnConfirmarCompra = document.getElementById("btnConfirmarCompra");
 
     function abrirModalConfirmacion() {
         modal.classList.remove("hidden");
@@ -215,8 +217,22 @@
     }
 
     function confirmarEnvio() {
+        if (form.dataset.submitting === "1") return;
+        form.dataset.submitting = "1";
+
+        if (btnConfirmarCompra) {
+            btnConfirmarCompra.disabled = true;
+            btnConfirmarCompra.classList.add("opacity-60", "cursor-not-allowed");
+            btnConfirmarCompra.textContent = "Registrando...";
+        }
+
         form.submit();
     }
+
+    form.addEventListener('submit', function () {
+        if (form.dataset.submitting === "1") return;
+        form.dataset.submitting = "1";
+    });
 
     document.getElementById('agregarInsumo').addEventListener('click', function () {
         const container = document.getElementById('insumos-container');

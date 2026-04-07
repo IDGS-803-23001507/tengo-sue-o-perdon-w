@@ -34,6 +34,7 @@ def nuevo_producto():
                 nombre=form.nombre.data.strip(),
                 categoria=form.categoria.data,
                 precio_venta=form.precio_venta.data,
+                tipo_preparacion=form.tipo_preparacion.data,
                 descripcion="",
             )
 
@@ -72,6 +73,7 @@ def editar_producto(id: int):
             producto.nombre = form.nombre.data.strip()
             producto.categoria = form.categoria.data
             producto.precio_venta = form.precio_venta.data
+            producto.tipo_preparacion = form.tipo_preparacion.data
             producto.estatus = True if form.estatus.data == "1" else False
             db.session.commit()
 

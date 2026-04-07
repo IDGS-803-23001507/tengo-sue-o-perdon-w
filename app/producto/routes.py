@@ -37,6 +37,7 @@ def nuevo_producto():
             nombre=form.nombre.data.strip(),
             categoria=form.categoria.data.lower(),
             precio_venta=float(form.precio_venta.data),
+            tipo_preparacion=form.tipo_preparacion.data,
             imagen=imagen_base64,
             descripcion=form.descripcion.data,
         )
@@ -68,6 +69,7 @@ def editar_producto(id):
         producto.nombre = form.nombre.data.strip()
         producto.categoria = form.categoria.data
         producto.precio_venta = float(form.precio_venta.data)
+        producto.tipo_preparacion = form.tipo_preparacion.data
         producto.descripcion = form.descripcion.data
         producto.estatus = form.estatus.data == '1'
         db.session.commit()

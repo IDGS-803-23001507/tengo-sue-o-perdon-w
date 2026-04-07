@@ -96,13 +96,41 @@ const lista = document.getElementById('listaInsumos');
 const btnAgregar = document.getElementById('btnAgregarInsumo');
 const formReceta = document.querySelector('form[action="{{ url_for('recetas.nueva') }}"]');
 const campoInsumosJson = document.getElementById('insumos_json');
+const insumosPrecargados = {{ (insumos_precargados or [])|tojson }};
 
-btnAgregar.addEventListener('click', () => {
+function crearFilaInsumo(idMateria = '', cantidad = '') {
     const primera = lista.querySelector('.insumo-row');
     const clon = primera.cloneNode(true);
-    clon.querySelector('select').selectedIndex = 0;
-    clon.querySelector('input').value = '';
-    lista.appendChild(clon);
+
+    const select = clon.querySelector('select[name="id_materia[]"]');
+    const inputCantidad = clon.querySelector('input[name="cantidad[]"]');
+
+    if (select) {
+        select.value = String(idMateria || '');
+        if (select.value !== String(idMateria || '')) {
+            select.selectedIndex = 0;
+        }
+    }
+    if (inputCantidad) {
+        inputCantidad.value = cantidad !== '' ? cantidad : '';
+    }
+
+    return clon;
+}
+
+function cargarInsumosPrecargados() {
+    if (!insumosPrecargados.length) return;
+
+    lista.innerHTML = '';
+    insumosPrecargados.forEach((insumo) => {
+        const fila = crearFilaInsumo(insumo.id_materia, insumo.cantidad);
+        lista.appendChild(fila);
+    });
+}
+
+btnAgregar.addEventListener('click', () => {
+    const fila = crearFilaInsumo('', '');
+    lista.appendChild(fila);
 });
 
 lista.addEventListener('click', (e) => {
@@ -130,5 +158,7 @@ formReceta.addEventListener('submit', () => {
 
     campoInsumosJson.value = JSON.stringify(payload);
 });
+
+document.addEventListener('DOMContentLoaded', cargarInsumosPrecargados);
 </script>
 {% endblock %}

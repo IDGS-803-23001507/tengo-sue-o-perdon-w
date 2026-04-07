@@ -97,11 +97,7 @@
                                 Total
                             </td>
                             <td class="px-4 py-3 text-right font-bold text-green-600 text-base">
-                                ${{ "%.2f"|format(
-                                compra.detalles | sum(attribute='cantidad') *
-                                (compra.detalles | map(attribute='costo_unitario') | list | sum /
-                                (compra.detalles|length if compra.detalles|length > 0 else 1))
-                                ) }}
+                                ${{ "%.2f"|format(compra.precio_total) }}
                             </td>
                         </tr>
                     </tfoot>
