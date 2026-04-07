@@ -1,4 +1,5 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
+from sqlalchemy import text
 from forms import ProductoTerminadoForm, ProductoTerminadoEditarForm
 from model import db, Producto
 
@@ -86,19 +87,36 @@ def editar_producto(id):
 
 @producto_bp.route('/catalogo_venta')
 def producto_venta():
-    busqueda = request.args.get('q')
-    categoria = request.args.get('categoria')
-    
-    query = Producto.query
-    
-    if busqueda:
-        query = query.filter(Producto.nombre.ilike(f'%{busqueda}%'))
-        
-    if categoria and categoria != 'todos':
-        query = query.filter(Producto.categoria == categoria)
-        
-    productos = query.all()    
-        
+    busqueda = (request.args.get('q') or '').strip()
+    categoria = (request.args.get('categoria') or 'todos').strip()
+
+    query_productos = text("""
+        SELECT p.*, 
+        CASE 
+            WHEN COALESCE(p.tipo_preparacion, 'materia_prima') = 'stock' THEN
+                CASE WHEN COALESCE(p.stock, 0) > 0 THEN 1 ELSE 0 END
+            WHEN EXISTS (
+                SELECT 1 FROM Recetas r 
+                JOIN Materia_prima mp ON r.id_materia = mp.id_materia 
+                WHERE r.id_producto = p.id_producto AND r.estado = 1 AND mp.stock_actual < r.cantidad
+            ) THEN 0 ELSE 1 
+        END as disponible_stock
+        FROM Producto p
+        WHERE p.estatus = 1
+          AND (:busqueda = '' OR p.nombre LIKE :busqueda_like)
+          AND (:categoria = 'todos' OR p.categoria = :categoria)
+        ORDER BY p.nombre ASC
+    """)
+
+    productos = db.session.execute(
+        query_productos,
+        {
+            'busqueda': busqueda,
+            'busqueda_like': f"%{busqueda}%",
+            'categoria': categoria,
+        },
+    ).fetchall()
+
     return render_template('venta_linea/catalogo_productos.html', productos=productos, busqueda=busqueda, categoria_actual=categoria)
 
 

@@ -15,14 +15,28 @@ ventasBp = Blueprint("ventas", __name__)
 
 @ventasBp.route("/tienda", methods=["GET"], endpoint="tienda_cliente")
 def tiendaCliente():
-	if not session.get("inicioSesion"):
-		return redirect(url_for("auth.iniciarSesion"))
+    if not session.get("inicioSesion"):
+        return redirect(url_for("auth.iniciarSesion"))
 
-	if session.get("usuarioRol") != "Cliente":
-		return redirect(url_for("index"))
+    if session.get("usuarioRol") != "Cliente":
+        return redirect(url_for("index"))
 
-	productos = Producto.query.filter_by(estatus=True).order_by(Producto.nombre.asc()).all()
-	return render_template("venta_linea/catalogo_productos.html", productos=productos)
+    query_productos = text("""
+        SELECT p.*, 
+        CASE 
+            WHEN COALESCE(p.tipo_preparacion, 'materia_prima') = 'stock' THEN
+                CASE WHEN COALESCE(p.stock, 0) > 0 THEN 1 ELSE 0 END
+            WHEN EXISTS (
+                SELECT 1 FROM Recetas r 
+                JOIN Materia_prima mp ON r.id_materia = mp.id_materia 
+                WHERE r.id_producto = p.id_producto AND r.estado = 1 AND mp.stock_actual < r.cantidad
+            ) THEN 0 ELSE 1 
+        END as disponible_stock
+        FROM Producto p WHERE p.estatus = 1
+        ORDER BY p.nombre ASC
+    """)
+    productos = db.session.execute(query_productos).fetchall()
+    return render_template("venta_linea/catalogo_productos.html", productos=productos)
 
 
 @ventasBp.route("/ventas", methods=["GET"])

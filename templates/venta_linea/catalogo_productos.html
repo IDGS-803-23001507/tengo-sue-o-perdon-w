@@ -13,9 +13,14 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
 
             {% for producto in productos %}
-            <div class="flex flex-col items-center text-center">
+            <div class="flex flex-col items-center text-center group {{ 'opacity-50' if producto.disponible_stock == 0 }}">
 
-                <div class="overflow-hidden rounded-lg shadow-md w-full">
+                <div class="overflow-hidden rounded-lg shadow-md w-full relative">
+                    {% if producto.disponible_stock == 0 %}
+                    <div class="absolute inset-0 z-10 flex items-center justify-center bg-black/10 backdrop-blur-[1px]">
+                        <span class="bg-[#b39aa8] text-white text-xs font-bold px-4 py-1 rounded-full uppercase tracking-widest">AGOTADO</span>
+                    </div>
+                    {% endif %}
                     <img 
                         src="{{ producto.imagen if producto.imagen else url_for('static', filename='img/default.png') }}" 
                         alt="{{ producto.nombre }}"
@@ -30,7 +35,7 @@
                     {{ producto.descripcion }}
                 </p>
 
-                <a href="{{ url_for('ventas.venta_online')}}" class="inline-block mt-2 text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 transition">
+                <a href="{{ url_for('ventas.venta_online')}}" class="inline-block mt-2 text-white bg-[#814c59] hover:bg-[#C27C3A] focus:ring-4 focus:ring-[#e5cbb2] font-medium rounded-lg text-sm px-5 py-2.5 transition {{ 'opacity-40 pointer-events-none cursor-not-allowed' if producto.disponible_stock == 0 else '' }}">
                     Ordenar
                 </a>
 
