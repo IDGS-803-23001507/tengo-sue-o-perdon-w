@@ -22,7 +22,11 @@ def producto_index():
         
     productos = query.all()    
         
-    return render_template('productos/productos.html', active_page = 'producto', form = form, productos=productos, busqueda=busqueda, categoria_actual=categoria)
+    mostrar_stock = any(p.tipo_preparacion == 'stock' for p in productos)
+        
+    return render_template('productos/productos.html', active_page = 'producto', 
+                           form = form, productos=productos, busqueda=busqueda, 
+                           mostrar_stock=mostrar_stock, categoria_actual=categoria)
 
 
 @producto_bp.route('/nuevo_producto', methods=['GET', 'POST'])
