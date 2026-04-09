@@ -136,7 +136,13 @@ def venta_fisica():
                 
             except Exception as e:
                 db.session.rollback()
-                flash(f"Error: {str(e)}", "danger")
+                error_str = str(e)
+
+                if "Stock insuficiente de insumos" in error_str:
+                    flash("No hay suficiente stock de insumos para completar la venta.", "danger")
+                else:
+                    flash("Ocurrió un error al procesar la venta.", "danger")
+
                 return redirect(url_for("ventas.venta_fisica"))
 
     carrito = session.get("carrito", [])
