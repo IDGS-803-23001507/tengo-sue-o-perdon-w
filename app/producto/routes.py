@@ -1,7 +1,7 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from sqlalchemy import text
-from forms import ProductoTerminadoForm, ProductoTerminadoEditarForm
-from model import db, Producto
+from forms import ProductoTerminadoForm, ProductoTerminadoEditarForm, DesactivarForm
+from model import db, Producto, Receta
 
 producto_bp = Blueprint('producto', __name__)
 
@@ -9,6 +9,8 @@ producto_bp = Blueprint('producto', __name__)
 def producto_index():
     busqueda = request.args.get('q')
     categoria = request.args.get('categoria')
+    
+    form = DesactivarForm()
     
     query = Producto.query
     
@@ -20,7 +22,7 @@ def producto_index():
         
     productos = query.all()    
         
-    return render_template('productos/productos.html', productos=productos, busqueda=busqueda, categoria_actual=categoria)
+    return render_template('productos/productos.html', active_page = 'producto', form = form, productos=productos, busqueda=busqueda, categoria_actual=categoria)
 
 
 @producto_bp.route('/nuevo_producto', methods=['GET', 'POST'])
@@ -63,16 +65,12 @@ def editar_producto(id):
     producto = Producto.query.get_or_404(id)
     form = ProductoTerminadoEditarForm(obj=producto)
 
-    if request.method == 'GET':
-        form.estatus.data = '1' if producto.estatus else '0'
-
     if form.validate_on_submit():
         producto.nombre = form.nombre.data.strip()
         producto.categoria = form.categoria.data
         producto.precio_venta = float(form.precio_venta.data)
         producto.tipo_preparacion = form.tipo_preparacion.data
         producto.descripcion = form.descripcion.data
-        producto.estatus = form.estatus.data == '1'
         db.session.commit()
         
         return render_template('productos/editar_producto.html', mostrar_modal=True, producto=producto, form=form)
@@ -84,6 +82,15 @@ def editar_producto(id):
                 break
     
     return render_template('productos/editar_producto.html', mostrar_modal=False, producto=producto, form=form)
+
+@producto_bp.route('/productos/<int:id>')
+def detalle_producto(id):
+    producto = db.get_or_404(Producto, id)
+
+    return render_template(
+        'productos/detalles_producto.html',
+        producto=producto
+    )
 
 @producto_bp.route('/catalogo_venta')
 def producto_venta():
@@ -119,4 +126,50 @@ def producto_venta():
 
     return render_template('venta_linea/catalogo_productos.html', productos=productos, busqueda=busqueda, categoria_actual=categoria)
 
+@producto_bp.route('/productos/desactivar/<int:id>', methods=['POST'])
+def desactivar_producto(id):
+    producto = db.get_or_404(Producto, id)
+    form = DesactivarForm()
 
+    if form.validate_on_submit():
+        try:
+            producto.estatus = False
+
+            recetas = Receta.query.filter_by(id_producto=producto.id_producto).all()
+            for receta in recetas:
+                receta.estado = False
+
+            db.session.commit()
+            flash(f'Producto {producto.nombre} y sus recetas desactivados.', 'success')
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al desactivar el producto: {str(e)}', 'error')
+    else:
+        flash('Solicitud inválida.', 'error')
+
+    return redirect(url_for('producto.producto_index'))
+
+@producto_bp.route('/productos/reactivar/<int:id>', methods=['POST'])
+def reactivar_producto(id):
+    producto = db.get_or_404(Producto, id)
+    form = DesactivarForm()
+
+    if form.validate_on_submit():
+        try:
+            producto.estatus = True
+            
+            recetas = Receta.query.filter_by(id_producto=producto.id_producto).all()
+            for receta in recetas:
+                receta.estado = True
+
+            db.session.commit()
+            flash(f'Producto {producto.nombre} y sus recetas reactivados.', 'success')
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al reactivar el producto: {str(e)}', 'error')
+    else:
+        flash('Solicitud inválida.', 'error')
+
+    return redirect(url_for('producto.producto_index'))

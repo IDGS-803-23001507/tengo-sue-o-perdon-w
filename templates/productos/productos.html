@@ -1,5 +1,13 @@
 {% extends "layout/layout_produccion.html" %}
+{% import '_macros.html' as modals %}
 {% block container %}
+
+{% set mostrar_stock = false %}
+{% for p in productos %}
+    {% if p.tipo_preparacion == 'stock' %}
+        {% set mostrar_stock = true %}
+    {% endif %}
+{% endfor %}
 
 <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
 
@@ -19,11 +27,9 @@
 
 </div>
 
-
 <div class="bg-white rounded-lg shadow-sm border overflow-hidden">
 
     <div class="p-4 border-b bg-gray-50">
-
         <form method="GET" action="{{ url_for('producto.producto_index') }}"
             class="flex flex-col md:flex-row gap-3 md:items-center">
 
@@ -44,14 +50,14 @@
                         <i class="fa-solid fa-filter"></i>
 
                         {% if categoria_actual and categoria_actual != 'todos' %}
-                        Filtrar:
-                        {% if categoria_actual == 'bebidas' %}
-                        Bebidas
-                        {% elif categoria_actual == 'alimentos' %}
-                        Alimentos
-                        {% endif %}
+                            Filtrar:
+                            {% if categoria_actual == 'bebidas' %}
+                                Bebidas
+                            {% elif categoria_actual == 'alimentos' %}
+                                Alimentos
+                            {% endif %}
                         {% else %}
-                        Filtrar
+                            Filtrar
                         {% endif %}
                     </button>
 
@@ -92,7 +98,6 @@
             </div>
 
         </form>
-
     </div>
 
     <div class="overflow-x-auto">
@@ -103,7 +108,11 @@
                     <th class="px-6 py-4">Producto</th>
                     <th class="px-6 py-4">Categoría</th>
                     <th class="px-6 py-4 text-center">Precio</th>
+
+                    {% if mostrar_stock %}
                     <th class="px-6 py-4 text-center">Stock</th>
+                    {% endif %}
+
                     <th class="px-6 py-4 text-center">Estatus</th>
                     <th class="px-6 py-4 text-center">Acciones</th>
                 </tr>
@@ -125,10 +134,17 @@
                         ${{ producto.precio_venta }}
                     </td>
 
+                    {% if mostrar_stock %}
                     <td class="px-6 py-4 text-center font-bold 
                         {% if producto.stock <= 0 %}text-red-600{% else %}text-gray-800{% endif %}">
-                        {{ producto.stock }} un.
+                        
+                        {% if producto.tipo_preparacion == 'stock' %}
+                            {{ producto.stock }} un.
+                        {% else %}
+                            -
+                        {% endif %}
                     </td>
+                    {% endif %}
 
                     <td class="px-6 py-4 text-center">
                         {% if producto.estatus %}
@@ -142,13 +158,46 @@
                         {% endif %}
                     </td>
 
-                    <td class="px-6 py-4 text-center">
-                        <a href="{{ url_for('producto.editar_producto', id=producto.id_producto) }}"
-                            class="text-blue-600 hover:underline">
-                            Editar
-                        </a>
-                    </td>
+                <td class="px-6 py-4 text-center flex justify-center gap-2">
 
+                    <a href="{{ url_for('producto.detalle_producto', id=producto.id_producto) }}"
+                    class="text-green-600 hover:underline">
+                    Detalle
+                </a>
+
+                    {% if producto.estatus %}
+
+                    <a href="{{ url_for('producto.editar_producto', id=producto.id_producto) }}"
+                        class="mx-2 text-blue-600 hover:underline">
+                        Editar
+                    </a>
+                
+                    <button type="button" onclick='abrirModal(
+                            {{ producto.id_producto }},
+                            {{ producto.nombre|tojson }},
+                            "{{ url_for("producto.desactivar_producto", id=producto.id_producto) }}",
+                            "Desactivar Producto y su receta",
+                            "Sí, Desactivar",
+                            "red"
+                        )' class="text-red-600 hover:underline">
+                        Desactivar
+                    </button>
+                
+                {% else %}
+                
+                    <button type="button" onclick='abrirModal(
+                        {{ producto.id_producto }},
+                        {{ producto.nombre|tojson }},
+                        "{{ url_for("producto.reactivar_producto", id=producto.id_producto) }}",
+                        "Reactivar Producto y su receta",
+                        "Sí, Reactivar",
+                        "green"
+                    )' class="text-green-600 ml-2 hover:underline">
+                        Reactivar
+                    </button>
+                
+                {% endif %}
+            </td>
                 </tr>
 
                 {% else %}
@@ -166,20 +215,46 @@
 
 </div>
 
+{{ modals.alerta_proveedor(form) }}
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-function toggleFiltro() {
-    document.getElementById('filtroMenu').classList.toggle('hidden');
-}
+    function abrirModal(id, nombre, formAction, titulo, botonTexto, botonColor) {
 
-function setCategoria(valor) {
-    const input = document.getElementById('categoriaInput');
-    input.value = valor;
+        const modal = document.getElementById('modalAccion');
+        modal.classList.remove('hidden');
 
-    document.getElementById('filtroMenu').classList.add('hidden');
-    input.form.submit();
-}
+        document.getElementById('nombreProveedor').textContent = nombre;
+        document.getElementById('tituloModal').textContent = titulo;
+
+        const boton = document.getElementById('botonModal');
+        boton.textContent = botonTexto;
+
+        let colorClase = '';
+
+        if (botonColor === 'red') {
+            colorClase = 'bg-red-500 hover:bg-red-600';
+        } else if (botonColor === 'green') {
+            colorClase = 'bg-green-500 hover:bg-green-600';
+        }
+
+        boton.className = `w-full text-white ${colorClase} font-medium rounded-lg text-sm px-5 py-3 transition mb-2`;
+
+        const form = document.getElementById('formModal');
+        form.action = formAction;
+    }
+
+    function cerrarModal() {
+        document.getElementById('modalAccion').classList.add('hidden');
+    }
+
+    const filtro = document.getElementById('filtroEstado');
+    if (filtro) {
+        filtro.addEventListener('change', function () {
+            this.closest('form').submit();
+        });
+    }
 </script>
 {% endblock %}

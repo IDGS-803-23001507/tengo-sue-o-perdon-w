@@ -1,0 +1,100 @@
+{% extends "layout/layout_produccion.html" %}
+{% block container %}
+
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-800">Detalle del Producto</h1>
+    <p class="text-gray-500 mt-1">Información completa del producto.</p>
+</div>
+
+<div class="bg-white rounded-lg shadow-sm border max-w-4xl mx-auto overflow-hidden">
+    
+    <div class="bg-[#059669] px-6 py-8 flex flex-col items-center">
+
+        <div class="w-24 h-24 rounded-full bg-white flex items-center justify-center mb-3 overflow-hidden">
+            {% if producto.imagen %}
+                <img src="{{ producto.imagen }}" 
+                     alt="Imagen del producto"
+                     class="w-full h-full object-cover">
+            {% else %}
+                <span class="text-3xl font-bold text-[#04875E]">
+                    {{ producto.nombre[0] | upper }}
+                </span>
+            {% endif %}
+        </div>
+
+        <h3 class="text-xl font-semibold text-white">
+            {{ producto.nombre }}
+        </h3>
+
+        <p class="text-white text-sm opacity-90">
+            {{ producto.categoria | capitalize }}
+        </p>
+
+        <div class="mt-2">
+            {% if producto.estatus %}
+                <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                    Activo
+                </span>
+            {% else %}
+                <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                    Inactivo
+                </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="px-6 py-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <div>
+                <p class="text-sm text-gray-500">Precio de Venta</p>
+                <p class="text-sm text-gray-900 font-semibold">
+                    ${{ producto.precio_venta }}
+                </p>
+            </div>
+
+            <div>
+                <p class="text-sm text-gray-500">Stock</p>
+                <p class="text-sm text-gray-900">
+                    {{ producto.stock }}
+                </p>
+            </div>
+
+            <div>
+                <p class="text-sm text-gray-500">Stock Mínimo</p>
+                <p class="text-sm text-gray-900">
+                    {{ producto.stock_minimo }}
+                </p>
+            </div>
+
+            <div>
+                <p class="text-sm text-gray-500">Tipo de Preparación</p>
+                <p class="text-sm text-gray-900">
+                    {{ producto.tipo_preparacion | replace('_', ' ') | capitalize }}
+                </p>
+            </div>
+
+            <div class="md:col-span-2">
+                <p class="text-sm text-gray-500">Descripción</p>
+                <p class="text-sm text-gray-900">
+                    {{ producto.descripcion or 'Sin descripción' }}
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+
+<div class="max-w-4xl mx-auto mt-6 flex flex-col md:flex-row gap-3">
+
+    <a href="{{ url_for('producto.producto_index') }}"
+       class="w-full md:w-auto text-center text-gray-700 bg-white border border-gray-300 
+              hover:bg-gray-50 font-medium rounded-lg text-sm px-5 py-2.5 transition">
+        Regresar
+    </a>
+
+</div>
+
+{% endblock %}

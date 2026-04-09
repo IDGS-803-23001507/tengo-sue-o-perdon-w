@@ -115,7 +115,6 @@ def nueva_receta():
     if form.validate_on_submit():
         try:
             id_producto = form.id_producto.data
-            estado = form.estado.data == "1"
 
             try:
                 insumos_raw = json.loads(form.insumos_json.data or "[]")
@@ -127,6 +126,7 @@ def nueva_receta():
 
             insumos_payload = []
             ids_vistos = set()
+
             for item in insumos_raw:
                 id_materia = int((item or {}).get("id_materia") or 0)
                 cantidad = Decimal(str((item or {}).get("cantidad") or 0))
@@ -141,28 +141,37 @@ def nueva_receta():
                 if cantidad <= 0:
                     raise ValueError("La cantidad de cada insumo debe ser mayor a cero.")
 
-                insumos_payload.append({"id_materia": id_materia, "cantidad": cantidad})
+                insumos_payload.append({
+                    "id_materia": id_materia,
+                    "cantidad": cantidad
+                })
 
-            Receta.reemplazar_receta_producto(id_producto=id_producto, insumos=insumos_payload)
-
-            recetas_producto = Receta.query.filter_by(id_producto=id_producto).all()
-            for receta in recetas_producto:
-                receta.estado = estado
+            Receta.reemplazar_receta_producto(
+                id_producto=id_producto,
+                insumos=insumos_payload
+            )
 
             registrar_auditoria(
                 accion="Creación/Actualización de Receta",
                 modulo="Recetas",
                 detalles={
                     "id_producto": id_producto,
-                    "insumos": [{"id_materia": i["id_materia"], "cantidad": str(i["cantidad"])} for i in insumos_payload],
-                    "estado": "activa" if estado else "inactiva",
+                    "insumos": [
+                        {
+                            "id_materia": i["id_materia"],
+                            "cantidad": str(i["cantidad"])
+                        }
+                        for i in insumos_payload
+                    ]
                 },
                 commit=False,
             )
 
             db.session.commit()
+
             form_limpio = RecetaLoteForm()
             materias = _cargar_formulario_receta_lote(form_limpio)
+
             return render_template(
                 "recetas/nueva_receta.html",
                 form=form_limpio,
@@ -171,9 +180,11 @@ def nueva_receta():
                 mostrar_modal=True,
                 active_page="recetas",
             )
+
         except ValueError as exc:
             db.session.rollback()
             flash(str(exc), "danger")
+
         except SQLAlchemyError:
             db.session.rollback()
             flash("No se pudo guardar la receta.", "danger")
@@ -192,7 +203,6 @@ def nueva_receta():
         mostrar_modal=False,
         active_page="recetas",
     )
-
 
 @recetas_bp.route("/<int:id_receta>/editar", methods=["GET", "POST"], endpoint="editar")
 @requiereRol("Gerente")

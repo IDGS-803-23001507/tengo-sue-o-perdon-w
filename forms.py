@@ -516,15 +516,6 @@ class ProductoTerminadoForm(FlaskForm):
 
 
 class ProductoTerminadoEditarForm(ProductoTerminadoForm):
-    estatus = SelectField(
-        "Estatus",
-        choices=[
-            ("1", "Activo (Visible en el menú)"),
-            ("0", "Inactivo (Fuera de temporada/No disponible)"),
-        ],
-        validators=[DataRequired(message="Selecciona un estatus")],
-    )
-
     submit = SubmitField("Actualizar Producto")
 
 
@@ -550,12 +541,6 @@ class RecetaForm(FlaskForm):
         ],
     )
 
-    estado = SelectField(
-        "Estado",
-        choices=[("1", "Activa"), ("0", "Inactiva")],
-        validators=[DataRequired(message="Selecciona el estado")],
-    )
-
     submit = SubmitField("Guardar Receta")
 
     def set_productos(self, productos):
@@ -579,12 +564,6 @@ class RecetaLoteForm(FlaskForm):
         "Producto",
         coerce=int,
         validators=[DataRequired(message="Selecciona un producto")],
-    )
-
-    estado = SelectField(
-        "Estado",
-        choices=[("1", "Activa"), ("0", "Inactiva")],
-        validators=[DataRequired(message="Selecciona el estado")],
     )
 
     insumos_json = HiddenField(
