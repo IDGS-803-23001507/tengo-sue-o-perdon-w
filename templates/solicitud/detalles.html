@@ -9,8 +9,10 @@
     <div class="flex items-center gap-3">
         <a href="{{ url_for('solicitud.index') }}" class="text-sm text-gray-600 hover:text-gray-900 hover:underline">Volver al listado</a>
         <form method="POST" action="{{ url_for('solicitud.finalizar_solicitud', id=solicitud.id_solicitud) }}">
-            <button type="submit" class="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2 transition">
-                Terminar solicitud
+            <button type="submit"
+                {% if solicitud.estado != 'pendiente' %}disabled{% endif %}
+                class="text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2 transition">
+                Enviar a producción
             </button>
         </form>
     </div>
@@ -20,19 +22,25 @@
     <div class="lg:col-span-1 bg-white rounded-lg border shadow-sm p-4">
         <h2 class="font-semibold text-gray-800 mb-4">Agregar producto</h2>
 
+        {% if solicitud.estado != 'pendiente' %}
+        <p class="mb-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            Esta solicitud ya fue enviada a producción y no admite más cambios.
+        </p>
+        {% endif %}
+
         <form method="POST" class="space-y-4">
             {{ form.hidden_tag() }}
             <div>
                 <label class="block text-sm text-gray-600 mb-1">Producto</label>
-                {{ form.id_producto(class="w-full border border-gray-300 rounded-lg p-2.5 text-sm", required=true) }}
+                {{ form.id_producto(class="w-full border border-gray-300 rounded-lg p-2.5 text-sm", required=true, disabled=(solicitud.estado != 'pendiente')) }}
             </div>
 
             <div>
                 <label class="block text-sm text-gray-600 mb-1">Cantidad</label>
-                {{ form.cantidad(min="1", class="w-full border border-gray-300 rounded-lg p-2.5 text-sm", required=true) }}
+                {{ form.cantidad(min="1", class="w-full border border-gray-300 rounded-lg p-2.5 text-sm", required=true, readonly=(solicitud.estado != 'pendiente')) }}
             </div>
 
-            {{ form.submit(class="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 transition") }}
+            {{ form.submit(class="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition", disabled=(solicitud.estado != 'pendiente')) }}
         </form>
     </div>
 

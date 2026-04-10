@@ -1,7 +1,7 @@
 from decimal import Decimal
 import json
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -92,6 +92,7 @@ def nueva_receta():
     form = RecetaLoteForm()
     materias = _cargar_formulario_receta_lote(form)
     insumos_precargados = []
+    cancel_url = url_for("recetas.index")
 
     if request.method == "GET":
         producto_preseleccionado = request.args.get("producto", type=int)
@@ -104,6 +105,26 @@ def nueva_receta():
                     .order_by(Receta.id_receta.asc())
                     .all()
                 )
+
+                if not recetas_producto:
+                    recetas_producto = (
+                        Receta.query.filter_by(id_producto=producto_preseleccionado)
+                        .order_by(Receta.id_receta.asc())
+                        .all()
+                    )
+
+                ids_materias_receta = {receta.id_materia for receta in recetas_producto}
+                ids_materias_actuales = {materia.id_materia for materia in materias}
+                ids_faltantes = ids_materias_receta - ids_materias_actuales
+
+                if ids_faltantes:
+                    materias_faltantes = (
+                        MateriaPrima.query.filter(MateriaPrima.id_materia.in_(ids_faltantes))
+                        .order_by(MateriaPrima.nombre.asc())
+                        .all()
+                    )
+                    materias.extend(materias_faltantes)
+
                 insumos_precargados = [
                     {
                         "id_materia": receta.id_materia,
@@ -111,6 +132,11 @@ def nueva_receta():
                     }
                     for receta in recetas_producto
                 ]
+
+            es_nuevo_producto = request.args.get("nuevo_producto") == "1"
+            pendientes = set(session.get("productos_pendientes_receta", []))
+            if es_nuevo_producto and producto_preseleccionado in pendientes:
+                cancel_url = url_for("producto.descartar_producto_pendiente", id_producto=producto_preseleccionado)
 
     if form.validate_on_submit():
         try:
@@ -167,6 +193,11 @@ def nueva_receta():
                 commit=False,
             )
 
+            pendientes = set(session.get("productos_pendientes_receta", []))
+            if id_producto in pendientes:
+                pendientes.discard(id_producto)
+                session["productos_pendientes_receta"] = list(pendientes)
+
             db.session.commit()
 
             form_limpio = RecetaLoteForm()
@@ -177,6 +208,7 @@ def nueva_receta():
                 form=form_limpio,
                 materias=materias,
                 insumos_precargados=[],
+                cancel_url=url_for("recetas.index"),
                 mostrar_modal=True,
                 active_page="recetas",
             )
@@ -200,6 +232,7 @@ def nueva_receta():
         form=form,
         materias=materias,
         insumos_precargados=insumos_precargados,
+        cancel_url=cancel_url,
         mostrar_modal=False,
         active_page="recetas",
     )

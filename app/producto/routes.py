@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from sqlalchemy import text
 from forms import ProductoTerminadoForm, ProductoTerminadoEditarForm, DesactivarForm
 from model import db, Producto, Receta
@@ -9,6 +9,7 @@ producto_bp = Blueprint('producto', __name__)
 def producto_index():
     busqueda = request.args.get('q')
     categoria = request.args.get('categoria')
+    filtro_stock = (request.args.get('stock') or 'todos').strip().lower()
     
     form = DesactivarForm()
     
@@ -19,6 +20,17 @@ def producto_index():
         
     if categoria and categoria != 'todos':
         query = query.filter(Producto.categoria == categoria)
+
+    if filtro_stock == 'con_stock':
+        query = query.filter(
+            Producto.tipo_preparacion == 'stock',
+            Producto.stock > 0,
+        )
+    elif filtro_stock == 'sin_stock':
+        query = query.filter(
+            Producto.tipo_preparacion == 'stock',
+            Producto.stock <= 0,
+        )
         
     productos = query.all()    
         
@@ -26,7 +38,8 @@ def producto_index():
         
     return render_template('productos/productos.html', active_page = 'producto', 
                            form = form, productos=productos, busqueda=busqueda, 
-                           mostrar_stock=mostrar_stock, categoria_actual=categoria)
+                           mostrar_stock=mostrar_stock, categoria_actual=categoria,
+                           stock_actual=filtro_stock)
 
 
 @producto_bp.route('/nuevo_producto', methods=['GET', 'POST'])
@@ -52,8 +65,12 @@ def nuevo_producto():
         db.session.add(nuevo_producto)
         db.session.commit()
 
+        pendientes = set(session.get('productos_pendientes_receta', []))
+        pendientes.add(nuevo_producto.id_producto)
+        session['productos_pendientes_receta'] = list(pendientes)
+
         flash('Producto registrado. Ahora captura su receta.', 'success')
-        return redirect(url_for('recetas.nueva', producto=nuevo_producto.id_producto))
+        return redirect(url_for('recetas.nueva', producto=nuevo_producto.id_producto, nuevo_producto=1))
 
     if request.method == 'POST':
         for erroresCampo in form.errors.values():
@@ -62,6 +79,37 @@ def nuevo_producto():
                 break
 
     return render_template('productos/nuevo_producto.html', mostrar_modal=False, form=form)
+
+
+@producto_bp.route('/productos/<int:id_producto>/descartar_pendiente', methods=['GET'])
+def descartar_producto_pendiente(id_producto):
+    pendientes = set(session.get('productos_pendientes_receta', []))
+    if id_producto not in pendientes:
+        return redirect(url_for('producto.producto_index'))
+
+    producto = Producto.query.get_or_404(id_producto)
+    tiene_receta_activa = Receta.query.filter_by(id_producto=id_producto, estado=True).first() is not None
+
+    if tiene_receta_activa:
+        pendientes.discard(id_producto)
+        session['productos_pendientes_receta'] = list(pendientes)
+        flash('El producto ya tiene receta asociada y no se descartó.', 'info')
+        return redirect(url_for('producto.producto_index'))
+
+    try:
+        Receta.query.filter_by(id_producto=id_producto).delete(synchronize_session=False)
+        db.session.delete(producto)
+        db.session.commit()
+
+        pendientes.discard(id_producto)
+        session['productos_pendientes_receta'] = list(pendientes)
+        flash('Producto descartado porque no se registró receta.', 'info')
+
+    except Exception:
+        db.session.rollback()
+        flash('No se pudo descartar el producto pendiente.', 'danger')
+
+    return redirect(url_for('producto.producto_index'))
 
 
 @producto_bp.route('/editar_producto/<int:id>', methods=['GET', 'POST'])

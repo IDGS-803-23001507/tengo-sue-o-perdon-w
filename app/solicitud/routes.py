@@ -1,5 +1,5 @@
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
-from sqlalchemy import String, cast, or_, text
+from sqlalchemy import String, cast, or_
 from sqlalchemy.exc import SQLAlchemyError
 
 from forms import AgregarDetalleSolicitudForm
@@ -52,7 +52,12 @@ def index():
 
 @solicitud_bp.route("/crear", methods=["GET", "POST"], endpoint="crear_solicitud")
 def crear_solicitud():
-    productos_disponibles = Producto.query.filter_by(estatus=True).order_by(Producto.nombre.asc()).all()
+    productos_disponibles = (
+        Producto.query
+        .filter_by(estatus=True, tipo_preparacion="stock")
+        .order_by(Producto.nombre.asc())
+        .all()
+    )
     form = AgregarDetalleSolicitudForm()
     form.set_productos(productos_disponibles)
 
@@ -101,7 +106,12 @@ def crear_solicitud():
 @solicitud_bp.route("/<int:id>/detalles", methods=["GET", "POST"], endpoint="detalles_solicitud")
 def detalles_solicitud(id: int):
     solicitud = SolicitudProduccion.query.get_or_404(id)
-    productos_disponibles = Producto.query.filter_by(estatus=True).order_by(Producto.nombre.asc()).all()
+    productos_disponibles = (
+        Producto.query
+        .filter_by(estatus=True, tipo_preparacion="stock")
+        .order_by(Producto.nombre.asc())
+        .all()
+    )
     tipo_modal = ""
     if request.args.get("creado") == "1":
         tipo_modal = "creado"
@@ -113,6 +123,10 @@ def detalles_solicitud(id: int):
     form.set_productos(productos_disponibles)
 
     if form.validate_on_submit():
+        if solicitud.estado != "pendiente":
+            flash("Solo puedes agregar productos cuando la solicitud está pendiente.", "danger")
+            return redirect(url_for("solicitud.detalles_solicitud", id=solicitud.id_solicitud))
+
         id_producto = form.id_producto.data
         cantidad = form.cantidad.data
 
@@ -156,15 +170,28 @@ def finalizar_solicitud(id: int):
     solicitud = SolicitudProduccion.query.get_or_404(id)
 
     try:
-        db.session.execute(
-            text("CALL sp_finalizar_solicitud_produccion(:id_solicitud)"),
-            {"id_solicitud": solicitud.id_solicitud},
-        )
+        if solicitud.estado == "finalizado":
+            flash("La solicitud ya fue finalizada en producción.", "info")
+            return redirect(url_for("solicitud.detalles_solicitud", id=solicitud.id_solicitud))
+
+        if solicitud.estado == "cancelado":
+            flash("No se puede enviar una solicitud cancelada.", "danger")
+            return redirect(url_for("solicitud.detalles_solicitud", id=solicitud.id_solicitud))
+
+        if solicitud.estado == "en_proceso":
+            flash("La solicitud ya fue enviada a producción.", "info")
+            return redirect(url_for("produccion.index"))
+
+        if not solicitud.detalles:
+            flash("Agrega al menos un producto antes de enviar a producción.", "danger")
+            return redirect(url_for("solicitud.detalles_solicitud", id=solicitud.id_solicitud))
+
+        solicitud.estado = "en_proceso"
         db.session.commit()
-        flash("Solicitud finalizada y stock actualizado correctamente.", "success")
-        return redirect(url_for("solicitud.index"))
+        flash("Solicitud enviada a producción correctamente.", "success")
+        return redirect(url_for("produccion.index"))
     except SQLAlchemyError as exc:
         db.session.rollback()
         mensaje = str(getattr(exc, "orig", exc))
-        flash(f"No se pudo finalizar la solicitud: {mensaje}", "danger")
+        flash(f"No se pudo enviar la solicitud a producción: {mensaje}", "danger")
         return redirect(url_for("solicitud.detalles_solicitud", id=solicitud.id_solicitud))

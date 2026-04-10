@@ -42,12 +42,12 @@
 
                         <i class="fa-solid fa-filter"></i>
 
-                        {% if categoria_actual and categoria_actual != 'todos' %}
+                        {% if stock_actual and stock_actual != 'todos' %}
                             Filtrar:
-                            {% if categoria_actual == 'bebidas' %}
-                                Bebidas
-                            {% elif categoria_actual == 'alimentos' %}
-                                Alimentos
+                            {% if stock_actual == 'con_stock' %}
+                                Con stock
+                            {% elif stock_actual == 'sin_stock' %}
+                                Sin stock
                             {% endif %}
                         {% else %}
                             Filtrar
@@ -56,32 +56,33 @@
 
                     <div id="filtroMenu" class="hidden absolute mt-2 w-40 bg-white border rounded-lg shadow z-10">
 
-                        <button type="button" onclick="setCategoria('todos')"
+                        <button type="button" onclick="setStock('todos')"
                             class="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
                             Todos
                         </button>
 
-                        <button type="button" onclick="setCategoria('bebidas')"
+                        <button type="button" onclick="setStock('con_stock')"
                             class="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
-                            Bebidas
+                            Con stock
                         </button>
 
-                        <button type="button" onclick="setCategoria('alimentos')"
+                        <button type="button" onclick="setStock('sin_stock')"
                             class="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
-                            Alimentos
+                            Sin stock
                         </button>
 
                     </div>
                 </div>
 
                 <input type="hidden" name="categoria" id="categoriaInput" value="{{ categoria_actual or '' }}">
+                <input type="hidden" name="stock" id="stockInput" value="{{ stock_actual or 'todos' }}">
 
                 <button type="submit" class="text-white bg-gray-800 hover:bg-gray-900 
                        font-medium rounded-lg text-sm px-4 py-2 transition shadow-sm">
                     Buscar
                 </button>
 
-                {% if busqueda or categoria_actual %}
+                                {% if busqueda or categoria_actual or (stock_actual and stock_actual != 'todos') %}
                 <a href="{{ url_for('producto.producto_index') }}" class="text-gray-700 bg-white border border-gray-300 
                   hover:bg-gray-50 font-medium rounded-lg text-sm px-4 py-2 transition shadow-sm">
                     Limpiar
@@ -243,11 +244,26 @@
         document.getElementById('modalAccion').classList.add('hidden');
     }
 
-    const filtro = document.getElementById('filtroEstado');
-    if (filtro) {
-        filtro.addEventListener('change', function () {
-            this.closest('form').submit();
-        });
+    function toggleFiltro() {
+        document.getElementById('filtroMenu').classList.toggle('hidden');
     }
+
+    function setStock(valor) {
+        const input = document.getElementById('stockInput');
+        input.value = valor;
+
+        document.getElementById('filtroMenu').classList.add('hidden');
+        input.form.submit();
+    }
+
+    document.addEventListener('click', function (event) {
+        const menu = document.getElementById('filtroMenu');
+        if (!menu) return;
+
+        const boton = event.target.closest('button[onclick="toggleFiltro()"]');
+        if (!menu.contains(event.target) && !boton) {
+            menu.classList.add('hidden');
+        }
+    });
 </script>
 {% endblock %}
