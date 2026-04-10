@@ -8,6 +8,7 @@
 
 <form method="POST" action="{{ url_for('recetas.nueva') }}" class="bg-white rounded-lg shadow-sm border p-8 max-w-4xl">
     {{ form.hidden_tag() }}
+    <input type="hidden" name="modo_edicion" value="{{ '1' if modo_edicion else '0' }}">
 
     <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Datos de la receta</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -15,6 +16,12 @@
             <label class="block mb-2 text-sm font-medium text-gray-900">Producto *</label>
             {{ form.id_producto(class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg
             focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", required=true) }}
+        </div>
+
+        <div id="contenedorTamanoVaso" class="hidden">
+            <label class="block mb-2 text-sm font-medium text-gray-900">Tamaño de vaso *</label>
+            {{ form.tamano_vaso(class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5") }}
+            <p class="text-xs text-gray-500 mt-1">Solo aplica para recetas de bebidas.</p>
         </div>
 
         <div class="md:col-span-2">
@@ -101,8 +108,27 @@
     const btnAgregar = document.getElementById('btnAgregarInsumo');
     const formReceta = document.querySelector('form[action="{{ url_for('recetas.nueva') }}"]');
     const campoInsumosJson = document.getElementById('insumos_json');
+    const selectorProducto = document.getElementById('id_producto');
+    const contenedorTamanoVaso = document.getElementById('contenedorTamanoVaso');
+    const campoTamanoVaso = document.getElementById('tamano_vaso');
+    const productosMeta = {{ (productos_meta or {})|tojson }};
     const insumosPrecargados = {{ (insumos_precargados or[])| tojson }};
     const filaPlantilla = lista.querySelector('.insumo-row')?.cloneNode(true);
+
+    function actualizarCampoTamanoVaso() {
+        const idProducto = Number(selectorProducto?.value || 0);
+        const categoria = (productosMeta[idProducto]?.categoria || '').toLowerCase();
+        const esBebida = categoria === 'bebidas';
+
+        contenedorTamanoVaso.classList.toggle('hidden', !esBebida);
+
+        if (esBebida) {
+            campoTamanoVaso.setAttribute('required', 'required');
+        } else {
+            campoTamanoVaso.removeAttribute('required');
+            campoTamanoVaso.value = '';
+        }
+    }
 
     function crearFilaInsumo(idMateria = '', cantidad = '') {
         if (!filaPlantilla) return null;
@@ -169,6 +195,13 @@
         campoInsumosJson.value = JSON.stringify(payload);
     });
 
-    document.addEventListener('DOMContentLoaded', cargarInsumosPrecargados);
+    if (selectorProducto) {
+        selectorProducto.addEventListener('change', actualizarCampoTamanoVaso);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        cargarInsumosPrecargados();
+        actualizarCampoTamanoVaso();
+    });
 </script>
 {% endblock %}

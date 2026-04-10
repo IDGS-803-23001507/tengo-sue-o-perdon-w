@@ -9,7 +9,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.auditoria import registrar_auditoria
-from model import Cliente, DetalleProduccion, DetalleVenta, Producto, Receta, SolicitudProduccion, Venta, db
+from model import Cliente, DetalleVenta, Producto, Venta, db
 
 ventasBp = Blueprint("ventas", __name__)
 
@@ -91,6 +91,22 @@ def venta_fisica():
                     return redirect(url_for("ventas.venta_fisica"))
 
                 carrito = session.get("carrito", [])
+
+                if prod.tipo_preparacion == "stock":
+                    cantidad_actual_en_carrito = sum(
+                        item.get("cantidad", 0)
+                        for item in carrito
+                        if item.get("id_producto") == p_id
+                    )
+
+                    if cantidad_actual_en_carrito >= int(prod.stock or 0):
+                        session["modal_solicitud_produccion"] = {
+                            "id_producto": prod.id_producto,
+                            "nombre": prod.nombre,
+                        }
+                        session.modified = True
+                        return redirect(url_for("ventas.venta_fisica"))
+
                 carrito.append({
                     "id_producto": p_id,
                     "nombre": prod.nombre,
@@ -145,9 +161,16 @@ def venta_fisica():
             except Exception as e:
                 db.session.rollback()
                 error_str = str(e)
+                error_texto = error_str.lower()
 
-                if "Stock insuficiente de insumos" in error_str:
+                if "stock insuficiente" in error_texto and "insumo" in error_texto:
                     flash("No hay suficiente stock de insumos para completar la venta.", "danger")
+                elif "stock insuficiente" in error_texto:
+                    flash("No hay suficiente stock del producto para completar la venta.", "danger")
+                elif "producto sin receta activa" in error_texto:
+                    flash("El producto no tiene receta activa. Revisa el módulo de recetas.", "danger")
+                elif "producto no disponible" in error_texto:
+                    flash("El producto ya no está disponible para la venta.", "danger")
                 else:
                     flash("Ocurrió un error al procesar la venta.", "danger")
 
@@ -168,11 +191,6 @@ def venta_fisica():
 
 @ventasBp.route("/fisica/solicitar-produccion", methods=["POST"], endpoint="solicitar_produccion_desde_pos")
 def solicitar_produccion_desde_pos():
-    usuario_id = session.get("usuarioId")
-    if not usuario_id:
-        flash("Tu sesión no es válida. Inicia sesión nuevamente.", "danger")
-        return redirect(url_for("auth.iniciarSesion"))
-
     id_producto = request.form.get("producto_id", type=int)
     if not id_producto:
         flash("Producto inválido para generar solicitud.", "danger")
@@ -187,31 +205,11 @@ def solicitar_produccion_desde_pos():
         flash("Solo los productos de tipo stock se envían a solicitud de producción.", "danger")
         return redirect(url_for("ventas.venta_fisica"))
 
-    try:
-        Receta.validar_activa_para_produccion(producto.id_producto)
-
-        solicitud = SolicitudProduccion(id_usuario=usuario_id, estado="pendiente")
-        db.session.add(solicitud)
-        db.session.flush()
-
-        detalle = DetalleProduccion(
-            id_solicitud=solicitud.id_solicitud,
-            id_producto=producto.id_producto,
-            cantidad=1,
-        )
-        db.session.add(detalle)
-        db.session.commit()
-
-        flash(f"Se creó una solicitud para producir {producto.nombre}.", "success")
-        return redirect(url_for("solicitud.detalles_solicitud", id=solicitud.id_solicitud, creado=1))
-    except ValueError as exc:
-        db.session.rollback()
-        flash(str(exc), "danger")
-    except Exception:
-        db.session.rollback()
-        flash("No se pudo crear la solicitud de producción.", "danger")
-
-    return redirect(url_for("ventas.venta_fisica"))
+    flash(
+        f"Te redirigimos a Nueva Solicitud para registrar manualmente la producción de {producto.nombre}.",
+        "info",
+    )
+    return redirect(url_for("solicitud.crear_solicitud", producto=producto.id_producto))
 
 @ventasBp.route("/online", methods=["GET", "POST"])
 def venta_online():

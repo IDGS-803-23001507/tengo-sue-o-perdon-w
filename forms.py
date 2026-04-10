@@ -572,6 +572,18 @@ class RecetaLoteForm(FlaskForm):
         render_kw={"id": "insumos_json"},
     )
 
+    tamano_vaso = SelectField(
+        "Tamaño de vaso",
+        choices=[
+            ("", "Selecciona tamaño..."),
+            ("chico", "Chico"),
+            ("mediano", "Mediano"),
+            ("grande", "Grande"),
+        ],
+        validators=[Optional()],
+        default="",
+    )
+
     submit = SubmitField("Guardar Receta")
 
     def set_productos(self, productos):

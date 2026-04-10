@@ -56,7 +56,7 @@ def _obtener_solicitudes_en_produccion() -> list[SolicitudProduccion]:
         .outerjoin(Usuario, SolicitudProduccion.id_usuario == Usuario.id)
         .outerjoin(Empleado, Usuario.id == Empleado.usuarioId)
         .outerjoin(Cliente, Usuario.id == Cliente.usuarioId)
-        .filter(SolicitudProduccion.estado == "en_proceso")
+        .filter(SolicitudProduccion.estado.in_(["pendiente", "en_proceso"]))
         .order_by(SolicitudProduccion.fecha.asc(), SolicitudProduccion.id_solicitud.asc())
         .all()
     )
@@ -91,8 +91,8 @@ def finalizar_produccion(id_solicitud: int):
             return redirect(url_for("produccion.index"))
 
         if solicitud.estado == "pendiente":
-            flash("Primero envía la solicitud a producción desde su detalle.", "danger")
-            return redirect(url_for("solicitud.detalles_solicitud", id=solicitud.id_solicitud))
+            solicitud.estado = "en_proceso"
+            db.session.flush()
 
         db.session.execute(
             text("CALL sp_finalizar_solicitud_produccion(:id_solicitud)"),

@@ -2,7 +2,7 @@ from decimal import Decimal
 import json
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.usuarios.routes import requiereRol
@@ -24,7 +24,48 @@ def _cargar_formulario_receta_lote(form: RecetaLoteForm):
     productos = Producto.query.order_by(Producto.estatus.desc(), Producto.nombre.asc()).all()
     materias = MateriaPrima.query.filter_by(estatus=True).order_by(MateriaPrima.nombre.asc()).all()
     form.set_productos(productos)
-    return materias
+    return materias, productos
+
+
+def _asegurar_tabla_detalle_receta() -> None:
+    db.session.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS receta_detalle (
+                id_producto INT PRIMARY KEY,
+                tamano_vaso VARCHAR(20) NULL,
+                actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                CONSTRAINT fk_receta_detalle_producto
+                    FOREIGN KEY (id_producto) REFERENCES Producto(id_producto)
+                    ON DELETE CASCADE
+            )
+            """
+        )
+    )
+
+
+def _obtener_tamano_vaso_producto(id_producto: int) -> str:
+    fila = db.session.execute(
+        text("SELECT tamano_vaso FROM receta_detalle WHERE id_producto = :id_producto"),
+        {"id_producto": id_producto},
+    ).fetchone()
+    return (fila[0] if fila and fila[0] else "")
+
+
+def _guardar_tamano_vaso_producto(id_producto: int, tamano_vaso: str | None) -> None:
+    db.session.execute(
+        text(
+            """
+            INSERT INTO receta_detalle (id_producto, tamano_vaso)
+            VALUES (:id_producto, :tamano_vaso)
+            ON DUPLICATE KEY UPDATE tamano_vaso = VALUES(tamano_vaso)
+            """
+        ),
+        {
+            "id_producto": id_producto,
+            "tamano_vaso": tamano_vaso,
+        },
+    )
 
 
 @recetas_bp.route("/", methods=["GET"], endpoint="index")
@@ -90,11 +131,21 @@ def recetas():
 @requiereRol("Gerente")
 def nueva_receta():
     form = RecetaLoteForm()
-    materias = _cargar_formulario_receta_lote(form)
+    materias, productos = _cargar_formulario_receta_lote(form)
+    productos_meta = {
+        producto.id_producto: {
+            "categoria": (producto.categoria or "").lower(),
+        }
+        for producto in productos
+    }
     insumos_precargados = []
     cancel_url = url_for("recetas.index")
+    modo_edicion = False
+
+    _asegurar_tabla_detalle_receta()
 
     if request.method == "GET":
+        modo_edicion = request.args.get("editar") == "1"
         producto_preseleccionado = request.args.get("producto", type=int)
         if producto_preseleccionado:
             ids_validos = {pid for pid, _ in (form.id_producto.choices or [])}
@@ -133,6 +184,8 @@ def nueva_receta():
                     for receta in recetas_producto
                 ]
 
+                form.tamano_vaso.data = _obtener_tamano_vaso_producto(producto_preseleccionado)
+
             es_nuevo_producto = request.args.get("nuevo_producto") == "1"
             pendientes = set(session.get("productos_pendientes_receta", []))
             if es_nuevo_producto and producto_preseleccionado in pendientes:
@@ -140,7 +193,24 @@ def nueva_receta():
 
     if form.validate_on_submit():
         try:
+            modo_edicion = request.form.get("modo_edicion") == "1"
             id_producto = form.id_producto.data
+            producto = Producto.query.get(id_producto)
+            if not producto:
+                raise ValueError("El producto indicado no existe.")
+
+            receta_existente = Receta.query.filter_by(id_producto=id_producto, estado=True).first()
+            if receta_existente and not modo_edicion:
+                raise ValueError(
+                    "Este producto ya tiene receta registrada. Usa la opción Editar para modificarla."
+                )
+
+            tamano_vaso = (form.tamano_vaso.data or "").strip().lower()
+            if (producto.categoria or "").lower() == "bebidas":
+                if tamano_vaso not in {"chico", "mediano", "grande"}:
+                    raise ValueError("Selecciona el tamaño de vaso para recetas de bebidas.")
+            else:
+                tamano_vaso = ""
 
             try:
                 insumos_raw = json.loads(form.insumos_json.data or "[]")
@@ -177,11 +247,14 @@ def nueva_receta():
                 insumos=insumos_payload
             )
 
+            _guardar_tamano_vaso_producto(id_producto=id_producto, tamano_vaso=tamano_vaso or None)
+
             registrar_auditoria(
                 accion="Creación/Actualización de Receta",
                 modulo="Recetas",
                 detalles={
                     "id_producto": id_producto,
+                    "tamano_vaso": tamano_vaso or None,
                     "insumos": [
                         {
                             "id_materia": i["id_materia"],
@@ -201,13 +274,21 @@ def nueva_receta():
             db.session.commit()
 
             form_limpio = RecetaLoteForm()
-            materias = _cargar_formulario_receta_lote(form_limpio)
+            materias, productos = _cargar_formulario_receta_lote(form_limpio)
+            productos_meta = {
+                producto.id_producto: {
+                    "categoria": (producto.categoria or "").lower(),
+                }
+                for producto in productos
+            }
 
             return render_template(
                 "recetas/nueva_receta.html",
                 form=form_limpio,
                 materias=materias,
+                productos_meta=productos_meta,
                 insumos_precargados=[],
+                modo_edicion=False,
                 cancel_url=url_for("recetas.index"),
                 mostrar_modal=True,
                 active_page="recetas",
@@ -231,7 +312,9 @@ def nueva_receta():
         "recetas/nueva_receta.html",
         form=form,
         materias=materias,
+        productos_meta=productos_meta,
         insumos_precargados=insumos_precargados,
+        modo_edicion=modo_edicion,
         cancel_url=cancel_url,
         mostrar_modal=False,
         active_page="recetas",

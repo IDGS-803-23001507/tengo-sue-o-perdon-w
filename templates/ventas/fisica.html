@@ -148,4 +148,37 @@
 
     </div>
 </section>
+
+{% if modal_solicitud %}
+<div class="fixed inset-0 z-[100] flex justify-center items-center bg-gray-900 bg-opacity-50 p-4">
+    <div class="w-full max-w-md">
+        <div class="bg-white rounded-2xl shadow p-6 md:p-8 text-center">
+            <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xl"></i>
+            </div>
+
+            <h3 class="mb-2 text-xl md:text-2xl font-bold text-gray-900">Sin stock disponible</h3>
+            <p class="text-gray-500 mb-6 text-sm md:text-base">
+                <span class="font-semibold text-gray-700">{{ modal_solicitud.nombre }}</span> no tiene existencias y es un producto de producción.
+                ¿Quieres enviar una solicitud al módulo de producción?
+            </p>
+
+            <div class="flex flex-col gap-3">
+                <form method="POST" action="{{ url_for('ventas.solicitar_produccion_desde_pos') }}">
+                    <input type="hidden" name="producto_id" value="{{ modal_solicitud.id_producto }}">
+                    <button type="submit"
+                        class="text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-3 text-center transition w-full">
+                        Enviar a Solicitud de Producción
+                    </button>
+                </form>
+
+                <a href="{{ url_for('ventas.venta_fisica') }}"
+                    class="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 font-medium rounded-lg text-sm px-5 py-3 text-center transition">
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
