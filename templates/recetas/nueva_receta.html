@@ -114,6 +114,35 @@
     const productosMeta = {{ (productos_meta or {})|tojson }};
     const insumosPrecargados = {{ (insumos_precargados or[])| tojson }};
     const filaPlantilla = lista.querySelector('.insumo-row')?.cloneNode(true);
+    const FACTOR_TAMANO_VASO = {
+        chico: 1,
+        mediano: 1.25,
+        grande: 1.5,
+    };
+    let factorTamanoActual = 1;
+
+    function obtenerFactorTamano(valorTamano) {
+        return FACTOR_TAMANO_VASO[(valorTamano || '').toLowerCase()] || 1;
+    }
+
+    function ajustarCantidadesPorTamano(factorNuevo) {
+        if (!factorNuevo || factorNuevo <= 0 || factorTamanoActual <= 0) return;
+
+        const ratio = factorNuevo / factorTamanoActual;
+        const filas = lista.querySelectorAll('.insumo-row');
+
+        filas.forEach((fila) => {
+            const inputCantidad = fila.querySelector('input[name="cantidad[]"]');
+            const valorActual = Number(inputCantidad?.value || 0);
+
+            if (!inputCantidad || !valorActual || valorActual <= 0) return;
+
+            const ajustado = (valorActual * ratio).toFixed(2);
+            inputCantidad.value = Number(ajustado);
+        });
+
+        factorTamanoActual = factorNuevo;
+    }
 
     function actualizarCampoTamanoVaso() {
         const idProducto = Number(selectorProducto?.value || 0);
@@ -124,9 +153,12 @@
 
         if (esBebida) {
             campoTamanoVaso.setAttribute('required', 'required');
+            const factorNuevo = obtenerFactorTamano(campoTamanoVaso?.value || 'chico');
+            ajustarCantidadesPorTamano(factorNuevo);
         } else {
             campoTamanoVaso.removeAttribute('required');
             campoTamanoVaso.value = '';
+            factorTamanoActual = 1;
         }
     }
 
@@ -199,7 +231,19 @@
         selectorProducto.addEventListener('change', actualizarCampoTamanoVaso);
     }
 
+    if (campoTamanoVaso) {
+        campoTamanoVaso.addEventListener('change', () => {
+            const idProducto = Number(selectorProducto?.value || 0);
+            const categoria = (productosMeta[idProducto]?.categoria || '').toLowerCase();
+            if (categoria !== 'bebidas') return;
+
+            const factorNuevo = obtenerFactorTamano(campoTamanoVaso.value || 'chico');
+            ajustarCantidadesPorTamano(factorNuevo);
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+        factorTamanoActual = obtenerFactorTamano(campoTamanoVaso?.value || 'chico');
         cargarInsumosPrecargados();
         actualizarCampoTamanoVaso();
     });
