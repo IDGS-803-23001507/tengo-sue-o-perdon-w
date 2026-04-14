@@ -29,7 +29,7 @@
         {% if session.get("usuarioRol") == "Cliente" %}
         <a href="{{ url_for('pedidos.mis_pedidos') }}" class="relative text-gray-600 me-4">
           <i class="fa-solid fa-cart-shopping text-sm"></i>
-          
+
           {% if session.get("carritoCantidad", 0) > 0 %}
           <span
             class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
@@ -52,7 +52,7 @@
         </button>
 
         <div id="user-dropdown"
-     class="hidden absolute right-4 mt-2 z-50 w-44 bg-neutral-primary-medium border border-default-medium rounded-base shadow-lg">
+          class="hidden absolute right-4 mt-2 z-50 w-44 bg-neutral-primary-medium border border-default-medium rounded-base shadow-lg">
           {% if session.get("inicioSesion") %}
 
           <div class="px-4 py-4 border-b border-gray-100">
@@ -94,19 +94,22 @@
           <ul class="p-2 space-y-1" style="font-family: 'Montserrat', sans-serif;">
             <li>
               <a href="{{ url_for('auth.iniciarSesion') }}"
-                 class="flex items-center w-full px-3 py-2.5 text-sm font-medium text-gray-700 hover:text-[#07A607] hover:bg-green-50 rounded-lg transition-all duration-200 group">
-                <svg class="w-4 h-4 mr-3 text-gray-400 group-hover:text-[#07A607]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                class="flex items-center w-full px-3 py-2.5 text-sm font-medium text-gray-700 hover:text-[#07A607] hover:bg-green-50 rounded-lg transition-all duration-200 group">
+                <svg class="w-4 h-4 mr-3 text-gray-400 group-hover:text-[#07A607]" fill="none" stroke="currentColor"
+                  viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
                 Iniciar sesión
               </a>
             </li>
-          
+
             <li>
               <a href="{{ url_for('auth.registrarUsuario') }}"
-                 class="flex items-center w-full px-3 py-2.5 text-sm font-medium text-gray-700 hover:text-[#07A607] hover:bg-green-50 rounded-lg transition-all duration-200 group">
-                 <svg class="w-4 h-4 mr-3 text-gray-400 " fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                class="flex items-center w-full px-3 py-2.5 text-sm font-medium text-gray-700 hover:text-[#07A607] hover:bg-green-50 rounded-lg transition-all duration-200 group">
+                <svg class="w-4 h-4 mr-3 text-gray-400 " fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                 </svg>
                 Registrarse
               </a>
@@ -215,6 +218,12 @@
     document.addEventListener("click", (e) => {
       if (!button.contains(e.target) && !dropdown.contains(e.target)) {
         dropdown.classList.add("hidden");
+      }
+    });
+
+    window.addEventListener("pageshow", function (event) {
+      if (event.persisted) {
+        window.location.reload();
       }
     });
   </script>

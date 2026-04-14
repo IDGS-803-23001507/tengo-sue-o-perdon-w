@@ -413,6 +413,14 @@ def requerirLogin():
 
     return None
 
+@app.after_request
+def add_header(response):
+    if response.content_type == "text/html; charset=utf-8":
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 
 @app.route("/")
 def index():
