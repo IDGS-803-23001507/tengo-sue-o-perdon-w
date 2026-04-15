@@ -1,0 +1,10 @@
+Folio,Fecha/Hora,Metodo Pago,Total,Atendio
+UC-10,2026-04-09 18:39:11,,50.00,Usuario #1
+UC-14,2026-04-09 19:02:59,,100.00,Usuario #1
+UC-15,2026-04-09 19:03:07,Tarjeta,100.00,Usuario #1
+UC-16,2026-04-09 19:08:27,,40.00,Usuario #1
+UC-17,2026-04-09 19:09:24,Efectivo,40.00,Usuario #1
+UC-18,2026-04-09 19:12:36,Efectivo,90.00,Usuario #4
+UC-20,2026-04-09 20:07:33,Efectivo,300.00,Usuario #5
+
+,,TOTAL DEL DIA:,720.00
