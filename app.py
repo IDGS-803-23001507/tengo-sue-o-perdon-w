@@ -89,26 +89,44 @@ def inject_serializer():
     return dict(serializer=get_serializer())
 
 def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict:
-    hoy = datetime.now(timezone.utc)
-    inicioHoy = hoy.replace(hour=0, minute=0, second=0, microsecond=0)
-    finHoy = inicioHoy + timedelta(days=1)
+    hoy = datetime.now()
+    fechaHoy = hoy.date()
 
-    inicioPeriodo = (inicioHoy - timedelta(days=periodoDias - 1)).date()
-    finPeriodo = inicioHoy.date()
+    inicioPeriodo = fechaHoy - timedelta(days=periodoDias - 1)
+    finPeriodo = fechaHoy
+    inicioPeriodoAnterior = inicioPeriodo - timedelta(days=periodoDias)
+    finPeriodoAnterior = inicioPeriodo - timedelta(days=1)
+    inicioSemanaMovil = fechaHoy - timedelta(days=6)
+
+    def calcular_mediana(valores: list[float]) -> float:
+        if not valores:
+            return 0.0
+        valores_ordenados = sorted(valores)
+        mitad = len(valores_ordenados) // 2
+        if len(valores_ordenados) % 2 == 0:
+            return (valores_ordenados[mitad - 1] + valores_ordenados[mitad]) / 2
+        return valores_ordenados[mitad]
 
     totalVentasDia = Decimal("0.00")
     totalVentasPeriodo = Decimal("0.00")
+    totalVentasPeriodoAnterior = Decimal("0.00")
     totalGastosDia = Decimal("0.00")
     totalGastosPeriodo = Decimal("0.00")
+    totalGastosPeriodoAnterior = Decimal("0.00")
     utilidadBrutaDia = Decimal("0.00")
     utilidadBrutaPeriodo = Decimal("0.00")
+    utilidadBrutaPeriodoAnterior = Decimal("0.00")
+    totalVentasSemana = Decimal("0.00")
     numeroTicketsDia = 0
+    numeroTicketsSemana = 0
+    ticketPromedioSemanal = Decimal("0.00")
+    margenUtilidadBrutaPct = Decimal("0.00")
+    puntoEquilibrioPeriodo = None
 
     if puedeVerFinanzas:
         totalVentasDia = db.session.query(func.coalesce(func.sum(Venta.total), 0)).filter(
             Venta.estatus.is_(True),
-            Venta.fecha >= inicioHoy,
-            Venta.fecha < finHoy,
+            func.date(Venta.fecha) == fechaHoy,
         ).scalar() or Decimal("0.00")
 
         totalVentasPeriodo = db.session.query(func.coalesce(func.sum(Venta.total), 0)).filter(
@@ -117,10 +135,21 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
             func.date(Venta.fecha) <= finPeriodo,
         ).scalar() or Decimal("0.00")
 
+        totalVentasPeriodoAnterior = db.session.query(func.coalesce(func.sum(Venta.total), 0)).filter(
+            Venta.estatus.is_(True),
+            func.date(Venta.fecha) >= inicioPeriodoAnterior,
+            func.date(Venta.fecha) <= finPeriodoAnterior,
+        ).scalar() or Decimal("0.00")
+
+        totalVentasSemana = db.session.query(func.coalesce(func.sum(Venta.total), 0)).filter(
+            Venta.estatus.is_(True),
+            func.date(Venta.fecha) >= inicioSemanaMovil,
+            func.date(Venta.fecha) <= fechaHoy,
+        ).scalar() or Decimal("0.00")
+
         utilidadBrutaDia = db.session.query(func.coalesce(func.sum(Venta.utilidadBruta), 0)).filter(
             Venta.estatus.is_(True),
-            Venta.fecha >= inicioHoy,
-            Venta.fecha < finHoy,
+            func.date(Venta.fecha) == fechaHoy,
         ).scalar() or Decimal("0.00")
 
         utilidadBrutaPeriodo = db.session.query(func.coalesce(func.sum(Venta.utilidadBruta), 0)).filter(
@@ -129,10 +158,21 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
             func.date(Venta.fecha) <= finPeriodo,
         ).scalar() or Decimal("0.00")
 
+        utilidadBrutaPeriodoAnterior = db.session.query(func.coalesce(func.sum(Venta.utilidadBruta), 0)).filter(
+            Venta.estatus.is_(True),
+            func.date(Venta.fecha) >= inicioPeriodoAnterior,
+            func.date(Venta.fecha) <= finPeriodoAnterior,
+        ).scalar() or Decimal("0.00")
+
         numeroTicketsDia = db.session.query(func.count(Venta.id_venta)).filter(
             Venta.estatus.is_(True),
-            Venta.fecha >= inicioHoy,
-            Venta.fecha < finHoy,
+            func.date(Venta.fecha) == fechaHoy,
+        ).scalar() or 0
+
+        numeroTicketsSemana = db.session.query(func.count(Venta.id_venta)).filter(
+            Venta.estatus.is_(True),
+            func.date(Venta.fecha) >= inicioSemanaMovil,
+            func.date(Venta.fecha) <= fechaHoy,
         ).scalar() or 0
 
         totalGastosDia = db.session.query(
@@ -140,8 +180,7 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
         ).join(
             Compra, Compra.id_compra == DetalleCompra.id_compra
         ).filter(
-            Compra.fecha >= inicioHoy,
-            Compra.fecha < finHoy,
+            func.date(Compra.fecha) == fechaHoy,
         ).scalar() or Decimal("0.00")
 
         totalGastosPeriodo = db.session.query(
@@ -152,6 +191,21 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
             func.date(Compra.fecha) >= inicioPeriodo,
             func.date(Compra.fecha) <= finPeriodo,
         ).scalar() or Decimal("0.00")
+
+        totalGastosPeriodoAnterior = db.session.query(
+            func.coalesce(func.sum(DetalleCompra.cantidad * DetalleCompra.costo_unitario), 0)
+        ).join(
+            Compra, Compra.id_compra == DetalleCompra.id_compra
+        ).filter(
+            func.date(Compra.fecha) >= inicioPeriodoAnterior,
+            func.date(Compra.fecha) <= finPeriodoAnterior,
+        ).scalar() or Decimal("0.00")
+
+        ticketPromedioSemanal = (totalVentasSemana / numeroTicketsSemana) if numeroTicketsSemana else Decimal("0.00")
+        margenUtilidadBrutaPct = ((utilidadBrutaPeriodo / totalVentasPeriodo) * 100) if totalVentasPeriodo else Decimal("0.00")
+        indiceContribucion = (utilidadBrutaPeriodo / totalVentasPeriodo) if totalVentasPeriodo else Decimal("0.00")
+        if indiceContribucion > 0:
+            puntoEquilibrioPeriodo = totalGastosPeriodo / indiceContribucion
 
     ventasPeriodo = db.session.query(
         func.date(Venta.fecha).label("fecha"),
@@ -164,17 +218,76 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
         func.date(Venta.fecha)
     ).all()
 
+    ventasPeriodoAnterior = db.session.query(
+        func.date(Venta.fecha).label("fecha"),
+        func.coalesce(func.sum(Venta.total), 0).label("monto"),
+    ).filter(
+        Venta.estatus.is_(True),
+        func.date(Venta.fecha) >= inicioPeriodoAnterior,
+        func.date(Venta.fecha) <= finPeriodoAnterior,
+    ).group_by(
+        func.date(Venta.fecha)
+    ).all()
+
+    gastosPeriodo = []
+    gastosPeriodoAnterior = []
+    if puedeVerFinanzas:
+        gastosPeriodo = db.session.query(
+            func.date(Compra.fecha).label("fecha"),
+            func.coalesce(func.sum(DetalleCompra.cantidad * DetalleCompra.costo_unitario), 0).label("monto"),
+        ).join(
+            Compra, Compra.id_compra == DetalleCompra.id_compra
+        ).filter(
+            func.date(Compra.fecha) >= inicioPeriodo,
+            func.date(Compra.fecha) <= finPeriodo,
+        ).group_by(
+            func.date(Compra.fecha)
+        ).all()
+
+        gastosPeriodoAnterior = db.session.query(
+            func.date(Compra.fecha).label("fecha"),
+            func.coalesce(func.sum(DetalleCompra.cantidad * DetalleCompra.costo_unitario), 0).label("monto"),
+        ).join(
+            Compra, Compra.id_compra == DetalleCompra.id_compra
+        ).filter(
+            func.date(Compra.fecha) >= inicioPeriodoAnterior,
+            func.date(Compra.fecha) <= finPeriodoAnterior,
+        ).group_by(
+            func.date(Compra.fecha)
+        ).all()
+
     mapaVentas = {str(fila.fecha): float(fila.monto or 0) for fila in ventasPeriodo}
+    mapaVentasPeriodoAnterior = {str(fila.fecha): float(fila.monto or 0) for fila in ventasPeriodoAnterior}
+    mapaGastos = {str(fila.fecha): float(fila.monto or 0) for fila in gastosPeriodo}
+    mapaGastosPeriodoAnterior = {str(fila.fecha): float(fila.monto or 0) for fila in gastosPeriodoAnterior}
     etiquetas = []
-    puntos = []
+    puntosIngresos = []
+    puntosIngresosPeriodoAnterior = []
+    puntosGastos = []
+    puntosGastosPeriodoAnterior = []
+    puntosEbitda = []
+    puntosEbitdaPeriodoAnterior = []
 
     for paso in range(periodoDias):
         fecha = inicioPeriodo + timedelta(days=paso)
         clave = fecha.isoformat()
         etiquetas.append(fecha.strftime("%d/%m"))
-        puntos.append(round(mapaVentas.get(clave, 0.0), 2))
+        ingreso_actual = round(mapaVentas.get(clave, 0.0), 2)
+        gasto_actual = round(mapaGastos.get(clave, 0.0), 2)
+        puntosIngresos.append(ingreso_actual)
+        puntosGastos.append(gasto_actual)
+        puntosEbitda.append(round(ingreso_actual - gasto_actual, 2))
 
-    topProductos = db.session.query(
+        fecha_anterior = inicioPeriodoAnterior + timedelta(days=paso)
+        clave_anterior = fecha_anterior.isoformat()
+        ingreso_anterior = round(mapaVentasPeriodoAnterior.get(clave_anterior, 0.0), 2)
+        gasto_anterior = round(mapaGastosPeriodoAnterior.get(clave_anterior, 0.0), 2)
+        puntosIngresosPeriodoAnterior.append(ingreso_anterior)
+        puntosGastosPeriodoAnterior.append(gasto_anterior)
+        puntosEbitdaPeriodoAnterior.append(round(ingreso_anterior - gasto_anterior, 2))
+
+    productosVentasPeriodo = db.session.query(
+        Producto.id_producto,
         Producto.nombre,
         func.coalesce(func.sum(DetalleVenta.cantidad), 0).label("cantidad"),
     ).join(
@@ -190,19 +303,78 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
         Producto.nombre,
     ).order_by(
         func.sum(DetalleVenta.cantidad).desc()
-    ).limit(5).all()
+    ).all()
+
+    rentabilidadProductos = []
+    for item in productosVentasPeriodo:
+        producto = Producto.query.get(item.id_producto)
+        if not producto:
+            continue
+
+        cantidad = Decimal(str(item.cantidad or 0))
+        costo_producto = Decimal(str(producto.costo_unitario() or 0))
+        precio_venta = Decimal(str(producto.precio_venta or 0))
+        margen_contribucion = precio_venta - costo_producto
+        rentabilidad_total = cantidad * margen_contribucion
+
+        rentabilidadProductos.append({
+            "id_producto": item.id_producto,
+            "nombre": item.nombre,
+            "cantidad": float(cantidad),
+            "costo_producto": float(costo_producto),
+            "margen_contribucion": float(margen_contribucion),
+            "rentabilidad_total": float(rentabilidad_total),
+        })
+
+    mediana_cantidad = calcular_mediana([item["cantidad"] for item in rentabilidadProductos])
+    mediana_rentabilidad = calcular_mediana([item["rentabilidad_total"] for item in rentabilidadProductos])
+
+    for item in rentabilidadProductos:
+        es_alta_venta = item["cantidad"] >= mediana_cantidad
+        es_alta_ganancia = item["rentabilidad_total"] >= mediana_rentabilidad
+
+        if es_alta_venta and es_alta_ganancia:
+            item["categoria_menu"] = "Plato Estrella"
+            item["categoria_color"] = "bg-emerald-100 text-emerald-700 border-emerald-200"
+        elif (not es_alta_venta) and (not es_alta_ganancia):
+            item["categoria_menu"] = "Perro"
+            item["categoria_color"] = "bg-rose-100 text-rose-700 border-rose-200"
+        elif es_alta_venta and (not es_alta_ganancia):
+            item["categoria_menu"] = "Caballo"
+            item["categoria_color"] = "bg-amber-100 text-amber-700 border-amber-200"
+        else:
+            item["categoria_menu"] = "Puzzle"
+            item["categoria_color"] = "bg-blue-100 text-blue-700 border-blue-200"
+
+    topProductos = sorted(
+        rentabilidadProductos,
+        key=lambda item: item["rentabilidad_total"],
+        reverse=True,
+    )[:10]
 
     ultimasOperaciones = Venta.query.filter_by(estatus=True).order_by(Venta.fecha.desc()).limit(7).all()
-    materiasCriticas = MateriaPrima.query.filter(
+    materiasActivas = MateriaPrima.query.filter(
         MateriaPrima.estatus.is_(True),
-        MateriaPrima.stock_actual <= MateriaPrima.stock_minimo,
-    ).order_by(MateriaPrima.stock_actual.asc()).all()
+    ).order_by(MateriaPrima.nombre.asc()).all()
 
     alertasInsumos = []
-    for materia in materiasCriticas:
+    for materia in materiasActivas:
         stock_actual = Decimal(str(materia.stock_actual or 0))
         stock_minimo = Decimal(str(materia.stock_minimo or 0))
         faltante = max(stock_minimo - stock_actual, Decimal("0"))
+
+        if stock_minimo > 0 and stock_actual <= stock_minimo:
+            prioridad = "Urgente"
+            prioridad_orden = 1
+            prioridad_color = "bg-red-100 text-red-700 border-red-200"
+        elif stock_minimo > 0 and stock_actual <= (stock_minimo * Decimal("1.25")):
+            prioridad = "Próximo"
+            prioridad_orden = 2
+            prioridad_color = "bg-amber-100 text-amber-700 border-amber-200"
+        else:
+            prioridad = "Stock OK"
+            prioridad_orden = 3
+            prioridad_color = "bg-emerald-100 text-emerald-700 border-emerald-200"
 
         alertasInsumos.append({
             "id_materia": materia.id_materia,
@@ -211,26 +383,61 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
             "stock_actual": float(stock_actual),
             "stock_minimo": float(stock_minimo),
             "faltante": float(faltante),
+            "prioridad": prioridad,
+            "prioridad_orden": prioridad_orden,
+            "prioridad_color": prioridad_color,
         })
 
+    alertasInsumos.sort(key=lambda item: (item["prioridad_orden"], -item["faltante"], item["nombre"]))
+
     ticketPromedioDia = (totalVentasDia / numeroTicketsDia) if numeroTicketsDia else Decimal("0.00")
-    utilidadNetaDia = totalVentasDia - totalGastosDia
-    utilidadNetaPeriodo = totalVentasPeriodo - totalGastosPeriodo
+    ebitdaDia = totalVentasDia - totalGastosDia
+    ebitdaPeriodo = totalVentasPeriodo - totalGastosPeriodo
+    ebitdaPeriodoAnterior = totalVentasPeriodoAnterior - totalGastosPeriodoAnterior
+
+    variacionVentasPct = 0.0
+    if totalVentasPeriodoAnterior > 0:
+        variacionVentasPct = float(((totalVentasPeriodo - totalVentasPeriodoAnterior) / totalVentasPeriodoAnterior) * 100)
+    elif totalVentasPeriodo > 0:
+        variacionVentasPct = 100.0
+
+    variacionEbitdaPct = 0.0
+    if ebitdaPeriodoAnterior > 0:
+        variacionEbitdaPct = float(((ebitdaPeriodo - ebitdaPeriodoAnterior) / ebitdaPeriodoAnterior) * 100)
+    elif ebitdaPeriodo > 0:
+        variacionEbitdaPct = 100.0
 
     return {
         "periodoSeleccionado": periodoDias,
         "totalVentasDia": float(totalVentasDia),
         "totalVentasPeriodo": float(totalVentasPeriodo),
+        "totalVentasPeriodoAnterior": float(totalVentasPeriodoAnterior),
         "totalGastosDia": float(totalGastosDia),
         "totalGastosPeriodo": float(totalGastosPeriodo),
+        "totalGastosPeriodoAnterior": float(totalGastosPeriodoAnterior),
         "utilidadBrutaDia": float(utilidadBrutaDia),
         "utilidadBrutaPeriodo": float(utilidadBrutaPeriodo),
-        "utilidadNetaDia": float(utilidadNetaDia),
-        "utilidadNetaPeriodo": float(utilidadNetaPeriodo),
+        "utilidadBrutaPeriodoAnterior": float(utilidadBrutaPeriodoAnterior),
+        "utilidadNetaDia": float(ebitdaDia),
+        "utilidadNetaPeriodo": float(ebitdaPeriodo),
+        "ebitdaDia": float(ebitdaDia),
+        "ebitdaPeriodo": float(ebitdaPeriodo),
+        "ebitdaPeriodoAnterior": float(ebitdaPeriodoAnterior),
         "ticketPromedioDia": float(ticketPromedioDia),
+        "ticketPromedioSemanal": float(ticketPromedioSemanal),
+        "margenUtilidadBrutaPct": float(margenUtilidadBrutaPct),
+        "puntoEquilibrioPeriodo": float(puntoEquilibrioPeriodo) if puntoEquilibrioPeriodo is not None else None,
         "numeroTicketsDia": int(numeroTicketsDia),
+        "numeroTicketsSemana": int(numeroTicketsSemana),
         "etiquetasGrafica": etiquetas,
-        "puntosGrafica": puntos,
+        "puntosGrafica": puntosIngresos,
+        "puntosGraficaPeriodoAnterior": puntosIngresosPeriodoAnterior,
+        "puntosGraficaGastos": puntosGastos,
+        "puntosGraficaGastosPeriodoAnterior": puntosGastosPeriodoAnterior,
+        "puntosGraficaEbitda": puntosEbitda,
+        "puntosGraficaEbitdaPeriodoAnterior": puntosEbitdaPeriodoAnterior,
+        "variacionVentasPct": variacionVentasPct,
+        "variacionEbitdaPct": variacionEbitdaPct,
         "topProductos": topProductos,
         "ultimasOperaciones": ultimasOperaciones,
         "alertasInsumos": alertasInsumos,
@@ -349,6 +556,9 @@ def requerirLogin():
         "auth.registrarUsuario",
         "auth.recuperarContrasena",
         "auth.resetearContrasena",
+        "auth.verificarCorreo",
+        "auth.reenviarCodigo",
+        "auth.iniciarVerificacion",
         "auth.cerrarSesion",
         "producto.producto_venta",
         "clientes.detalle_cliente",
@@ -384,7 +594,8 @@ def requerirLogin():
         flash("Tu sesión no es válida o expiró. Inicia sesión nuevamente.", "danger")
         return redirect(url_for("auth.iniciarSesion"))
 
-    modulo = moduloDesdeEndpoint(request.endpoint)
+    if request.endpoint not in endpointsPublicos:
+       modulo = moduloDesdeEndpoint(request.endpoint)
     if modulo:
         accion = accionDesdeRequest(request.endpoint, request.method)
         rolCanonico = normalizarRol(session.get("usuarioRol", ""))
@@ -405,7 +616,10 @@ def requerirLogin():
         endpointsCliente = {
             "ventas.tienda_cliente",
             "ventas.comprar_producto",
+            "auth.verificarCorreo",
             "auth.cerrarSesion",
+            "auth.iniciarVerificacion",
+            "auth.reenviarCodigo",
             "clientes.detalle_cliente",
             "clientes.editar_cliente",
             "clientes.desactivar_cliente",
@@ -420,6 +634,14 @@ def requerirLogin():
             return redirect(url_for("ventas.tienda_cliente"))
 
     return None
+
+@app.after_request
+def add_header(response):
+    if response.content_type == "text/html; charset=utf-8":
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
 
 @app.route("/")

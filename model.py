@@ -77,6 +77,7 @@ class Usuario(db.Model):
     correo = db.Column(db.String(120), unique=True, nullable=False, index=True)
     contrasenaHash = db.Column("password_hash", db.String(255), nullable=False)
     rolId = db.Column("rol_id", db.Integer, db.ForeignKey("roles.id"), nullable=False, index=True)
+    verificado = db.Column(db.Boolean, default=False)
     estado = db.Column(db.String(20), nullable=False, default="Activo")
     intentosFallidos = db.Column("intentos_fallidos", db.Integer, nullable=False, default=0)
     cuentaBloqueada = db.Column("cuenta_bloqueada", db.Boolean, nullable=False, default=False)

@@ -1,0 +1,71 @@
+{% extends "layout/layout.html" %}
+{% block container %}
+
+    <div class="flex-grow flex items-center justify-center my-20">
+        
+        <div class="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
+    
+            <div class="text-center">
+                <h2 class="text-2xl font-bold text-gray-800">Verificación</h2>
+                <p class="text-sm text-gray-500 mt-2">
+                    Ingresa el código que enviamos a tu correo
+                </p>
+            </div>
+    
+            <form method="POST" class="mt-6 space-y-4">
+    
+                <input 
+                    type="text" 
+                    name="codigo" 
+                    maxlength="6"
+                    placeholder="123456"
+                    required
+                    class="w-full text-center text-xl tracking-widest p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+    
+                <button 
+                    type="submit"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition"
+                >
+                    Verificar
+                </button>
+    
+            </form>
+    
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="mt-4">
+                        {% for category, message in messages %}
+                            <div class="p-3 rounded-lg text-sm 
+                                {% if category == 'danger' %}
+                                    bg-red-100 text-red-700
+                                {% elif category == 'success' %}
+                                    bg-green-100 text-green-700
+                                {% elif category == 'warning' %}
+                                    bg-yellow-100 text-yellow-700
+                                {% else %}
+                                    bg-blue-100 text-blue-700
+                                {% endif %}
+                            ">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+    
+            <div class="text-center mt-4">
+                <p class="text-sm text-gray-500">
+                    ¿No recibiste el código?
+                    <a href="{{ url_for('auth.reenviarCodigo') }}" class="text-blue-600 hover:underline">
+                        Reenviar
+                    </a>
+                </p>
+            </div>
+    
+        </div>
+    
+    </div>
+    
+    
+{% endblock %}

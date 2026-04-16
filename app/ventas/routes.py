@@ -9,7 +9,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.auditoria import registrar_auditoria
-from model import Cliente, DetalleVenta, Producto, Venta, db
+from model import Cliente, DetalleVenta, Producto, Venta, Usuario, db
 
 ventasBp = Blueprint("ventas", __name__)
 
@@ -268,6 +268,14 @@ def venta_online():
             return redirect(url_for("ventas.venta_online"))
         
         if "terminar" in request.form:
+            
+            usuario = Usuario.query.get(session.get("usuarioId"))
+
+            if usuario and not usuario.verificado:
+                session["verificacion_email"] = usuario.correo
+                flash("Debes verificar tu correo para completar la compra", "warning")
+                return redirect(url_for("auth.verificarCorreo"))
+     
             carrito = session.get("carrito", [])
             if not carrito:
                 flash("Carrito vacío", "warning")
