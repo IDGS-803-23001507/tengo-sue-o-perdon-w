@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from urllib.parse import quote_plus
 
 from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
-from sqlalchemy import func
-from sqlalchemy.exc import OperationalError
+from sqlalchemy import create_engine, func
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from werkzeug.routing import BuildError
 
 from config import Config
@@ -24,6 +25,7 @@ from app.solicitud.routes import solicitud_bp
 from app.recetas.routes import recetas_bp
 from app.utilidad.routes import utilidad_bp
 from app.produccion.routes import produccion_bp
+from app.backups import backups_bp
     
 #Integracion decosas de michelle
 from app.ventas.routes import ventasBp
@@ -37,6 +39,8 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
+
+_ENGINES_TECNICOS: dict[str, object] = {}
 
 try:
     asegurar_base_de_datos()
@@ -57,6 +61,7 @@ app.register_blueprint(solicitud_bp)
 app.register_blueprint(recetas_bp)
 app.register_blueprint(utilidad_bp)
 app.register_blueprint(produccion_bp)
+app.register_blueprint(backups_bp)
 
 #Cosas de michelle
 app.register_blueprint(ventasBp)
@@ -87,6 +92,80 @@ def get_serializer():
 @app.context_processor
 def inject_serializer():
     return dict(serializer=get_serializer())
+
+def _rol_tecnico_desde_rol_app(rol_app: str) -> str:
+    rol_normalizado = (rol_app or "").strip()
+    mapa = {
+        "Admin General (TI)": "admin",
+        "Admin General": "admin",
+        "Gerente de Tienda": "gerente",
+        "Gerente": "gerente",
+        "Cajero": "operativo",
+        "Barista": "operativo",
+        "Operador": "operativo",
+        "Cliente": "cliente",
+    }
+    return mapa.get(rol_normalizado, "cliente")
+
+
+def _credenciales_mysql_tecnicas(clave_rol: str) -> tuple[str, str]:
+    mapa = {
+        "admin": (
+            app.config.get("MYSQL_APP_ADMIN_USER", "app_admin"),
+            app.config.get("MYSQL_APP_ADMIN_PASSWORD", ""),
+        ),
+        "gerente": (
+            app.config.get("MYSQL_APP_GERENTE_USER", "app_gerente"),
+            app.config.get("MYSQL_APP_GERENTE_PASSWORD", ""),
+        ),
+        "operativo": (
+            app.config.get("MYSQL_APP_OPERATIVO_USER", "app_operativo"),
+            app.config.get("MYSQL_APP_OPERATIVO_PASSWORD", ""),
+        ),
+        "cliente": (
+            app.config.get("MYSQL_APP_CLIENTE_USER", "app_cliente"),
+            app.config.get("MYSQL_APP_CLIENTE_PASSWORD", ""),
+        ),
+    }
+    return mapa[clave_rol]
+
+
+def _obtener_engine_tecnico(clave_rol: str):
+    engine = _ENGINES_TECNICOS.get(clave_rol)
+    if engine is not None:
+        return engine
+
+    usuario, contrasena = _credenciales_mysql_tecnicas(clave_rol)
+    host = app.config.get("MYSQL_HOST", "localhost")
+    port = int(app.config.get("MYSQL_PORT", 3306))
+    database = app.config.get("MYSQL_DATABASE", "")
+
+    uri = f"mysql+pymysql://{usuario}:{quote_plus(str(contrasena or ''))}@{host}:{port}/{database}"
+    engine = create_engine(uri, pool_pre_ping=True, pool_recycle=1800)
+    _ENGINES_TECNICOS[clave_rol] = engine
+    return engine
+
+
+def _es_error_acceso_denegado(error: Exception) -> bool:
+    detalle = str(getattr(error, "orig", error)).lower()
+    return "access denied" in detalle or "command denied" in detalle
+
+
+def _asignar_bind_dinamico() -> None:
+    endpoint = request.endpoint or ""
+
+    # Backups siempre corre con credenciales de admin técnico.
+    if endpoint.startswith("backups."):
+        db.session.bind = _obtener_engine_tecnico("admin")
+        return
+
+    rol_sesion = session.get("usuarioRol")
+    if not rol_sesion:
+        return
+
+    rol_tecnico = _rol_tecnico_desde_rol_app(rol_sesion)
+    db.session.bind = _obtener_engine_tecnico(rol_tecnico)
+
 
 def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict:
     hoy = datetime.now()
@@ -574,6 +653,12 @@ def requerirLogin():
     if not usuarioAutenticado():
         return redirect(url_for("auth.iniciarSesion"))
 
+    try:
+        _asignar_bind_dinamico()
+    except Exception:
+        flash("No fue posible preparar la conexión segura a la base de datos.", "danger")
+        return redirect(url_for("auth.iniciarSesion"))
+
     registroSesionId = session.get("registroSesionId")
     tokenSesion = session.get("tokenSesion")
     usuarioId = session.get("usuarioId")
@@ -582,12 +667,21 @@ def requerirLogin():
         session.clear()
         return redirect(url_for("auth.iniciarSesion"))
 
-    sesionActiva = RegistroSesion.query.filter_by(
-        id=registroSesionId,
-        tokenSesion=tokenSesion,
-        usuarioId=usuarioId,
-        activa=True,
-    ).first()
+    try:
+        sesionActiva = RegistroSesion.query.filter_by(
+            id=registroSesionId,
+            tokenSesion=tokenSesion,
+            usuarioId=usuarioId,
+            activa=True,
+        ).first()
+    except (OperationalError, ProgrammingError) as exc:
+        if _es_error_acceso_denegado(exc):
+            session.clear()
+            flash("Permisos insuficientes para operar en la base de datos con tu rol actual.", "danger")
+            return redirect(url_for("auth.iniciarSesion"))
+        session.clear()
+        flash("La base de datos se está sincronizando/restaurando. Inicia sesión nuevamente.", "warning")
+        return redirect(url_for("auth.iniciarSesion"))
 
     if not sesionActiva:
         session.clear()
@@ -634,6 +728,31 @@ def requerirLogin():
             return redirect(url_for("ventas.tienda_cliente"))
 
     return None
+
+
+@app.errorhandler(OperationalError)
+@app.errorhandler(ProgrammingError)
+def manejar_errores_sql(error):
+    if _es_error_acceso_denegado(error):
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+        flash("Tu usuario no tiene privilegios suficientes para esta operación.", "danger")
+        if session.get("inicioSesion"):
+            return redirect(url_for(endpointDashboardRol(session.get("usuarioRol", "Operador"))))
+        return redirect(url_for("auth.iniciarSesion"))
+
+    raise error
+
+
+@app.teardown_request
+def liberar_sesion_db(_exc):
+    try:
+        db.session.remove()
+    except Exception:
+        pass
 
 @app.after_request
 def add_header(response):

@@ -213,7 +213,8 @@ def solicitar_produccion_desde_pos():
 
 @ventasBp.route("/online", methods=["GET", "POST"])
 def venta_online():
-     
+    if not session.get("inicioSesion"):
+        return redirect(url_for("auth.iniciarSesion"))
     form = VentaForm()
     
     query_productos = text("""
@@ -303,7 +304,6 @@ def venta_online():
                 flash("El formato de fecha y hora no es correcto.", "danger")
                 return redirect(url_for("ventas.venta_online"))
             
-   
             u_id = session.get("usuarioId")
             c_id = session.get("clienteId")
 
@@ -331,8 +331,20 @@ def venta_online():
                     c_id = cliente.id
                     session["clienteId"] = c_id
 
+            # --- MODIFICACIÓN PARA EDICIÓN ---
             id_venta_tracker = 0 
-            
+            id_pedido_editando = session.get("editando_pedido_id")
+
+            if id_pedido_editando:
+                # Obtenemos el id_venta original de ese pedido para pasarlo al PROCEDURE
+                res_venta = db.session.execute(
+                    text("SELECT id_venta FROM pedidos WHERE id_pedido = :id"),
+                    {"id": id_pedido_editando}
+                ).fetchone()
+                if res_venta:
+                    id_venta_tracker = res_venta[0]
+            # --------------------------------
+
             try:
                 for item in carrito:
                     result = db.session.execute(
@@ -350,9 +362,14 @@ def venta_online():
                         id_venta_tracker = result[0]
                 
                 db.session.commit()
+                
+                # Limpiamos carrito y la marca de edición
                 session.pop("carrito", None)
-                flash("¡Pedido confirmado! Te esperamos a la hora indicada.", "success")
-                return redirect(url_for("ventas.venta_online"))
+                session.pop("editando_pedido_id", None)
+                
+                msg = "¡Pedido actualizado con éxito!" if id_pedido_editando else "¡Pedido confirmado! Te esperamos a la hora indicada."
+                flash(msg, "success")
+                return redirect(url_for("pedidos.mis_pedidos") if id_pedido_editando else url_for("ventas.venta_online"))
 
             except exc.IntegrityError:
                 db.session.rollback()
@@ -368,8 +385,6 @@ def venta_online():
             return redirect(url_for("ventas.venta_online"))
 
     return render_template("ventas/online.html", form=form, lista_productos=productos)
-
-
 @ventasBp.route("/reporte", methods=["GET"])
 def generar_reporte():
     fecha_filtro = request.args.get('fecha') or request.args.get('creado_en')
@@ -450,7 +465,7 @@ def ticket(idVenta):
     query = text("""
         SELECT 
             v.id_venta, v.creado_en, v.metodo_pago, v.total,
-            c.nombre AS cliente,
+            COALESCE(c.nombre, 'Venta Mostrador') AS cliente_nombre,
             p.nombre AS producto,
             dv.cantidad,
             (dv.cantidad * dv.precio_unitario) AS subtotal
@@ -462,7 +477,6 @@ def ticket(idVenta):
     """)
     
     resultado = db.session.execute(query, {"idVenta": idVenta}).fetchall()
-
     return render_template("ventas/ticket.html", ticket=resultado)
 
 #####################################################################################

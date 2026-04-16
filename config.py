@@ -29,10 +29,22 @@ class Config:
     SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "urban-coffee-dev-secret-key")
 
     MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
-    MYSQL_PORT = int(os.getenv("MYSQL_PORT", 3307))
+    MYSQL_PORT = int(os.getenv("MYSQL_PORT", 3306))
     MYSQL_USER = os.getenv("MYSQL_USER", "root")
     MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "root")
     MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "urban_coffee")
+
+    MYSQL_APP_ADMIN_USER = os.getenv("MYSQL_APP_ADMIN_USER", "app_admin")
+    MYSQL_APP_ADMIN_PASSWORD = os.getenv("MYSQL_APP_ADMIN_PASSWORD", MYSQL_PASSWORD)
+
+    MYSQL_APP_GERENTE_USER = os.getenv("MYSQL_APP_GERENTE_USER", "app_gerente")
+    MYSQL_APP_GERENTE_PASSWORD = os.getenv("MYSQL_APP_GERENTE_PASSWORD", MYSQL_PASSWORD)
+
+    MYSQL_APP_OPERATIVO_USER = os.getenv("MYSQL_APP_OPERATIVO_USER", "app_operativo")
+    MYSQL_APP_OPERATIVO_PASSWORD = os.getenv("MYSQL_APP_OPERATIVO_PASSWORD", MYSQL_PASSWORD)
+
+    MYSQL_APP_CLIENTE_USER = os.getenv("MYSQL_APP_CLIENTE_USER", "app_cliente")
+    MYSQL_APP_CLIENTE_PASSWORD = os.getenv("MYSQL_APP_CLIENTE_PASSWORD", MYSQL_PASSWORD)
 
     SQLALCHEMY_DATABASE_URI = (
         f"mysql+pymysql://{MYSQL_USER}:{quote_plus(MYSQL_PASSWORD)}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}"

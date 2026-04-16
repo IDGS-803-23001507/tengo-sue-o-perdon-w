@@ -1,0 +1,248 @@
+{% extends "layout/layout_produccion.html" %}
+
+{% block container %}
+<div class="space-y-6">
+    <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Backups de Base de Datos</h1>
+            <p class="text-gray-500 mt-1">Genera y restaura respaldos SQL de forma segura.</p>
+        </div>
+    </div>
+
+    <section class="rounded-xl border border-gray-200 bg-white shadow-sm p-6">
+        <div class="flex items-start justify-between gap-4 flex-col lg:flex-row">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Generar backup</h2>
+                <p class="text-sm text-gray-500 mt-1">Descarga un archivo .sql con el estado actual de la base de datos.</p>
+            </div>
+
+            <a id="btnBackupDownload" href="{{ url_for('backups.download') }}"
+               class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 inline-flex items-center gap-2 transition">
+                <i class="fa-solid fa-download"></i>
+                Generar y descargar backup
+            </a>
+        </div>
+    </section>
+
+    <section class="rounded-xl border border-gray-200 bg-white shadow-sm p-6">
+        <div class="mb-4">
+            <h2 class="text-lg font-semibold text-gray-800">Restaurar backup</h2>
+            <p class="text-sm text-gray-500 mt-1">Carga un archivo .sql válido para restaurar la base de datos.</p>
+        </div>
+
+        <form id="restoreBackupForm" method="POST" action="{{ url_for('backups.restore') }}" enctype="multipart/form-data" class="space-y-4">
+            <div>
+                <label for="backup_file" class="block mb-2 text-sm font-medium text-gray-700">Archivo .sql</label>
+                <input
+                    id="backup_file"
+                    name="backup_file"
+                    type="file"
+                    accept=".sql"
+                    required
+                    class="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+            </div>
+
+            <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-700">
+                Esta acción sobrescribe información existente. Verifica que el archivo corresponda al entorno correcto.
+            </div>
+
+            <button type="submit"
+                    class="text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 inline-flex items-center gap-2 transition">
+                <i class="fa-solid fa-rotate-left"></i>
+                Restaurar base de datos
+            </button>
+        </form>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    (function () {
+        const downloadBtn = document.getElementById('btnBackupDownload');
+        const restoreForm = document.getElementById('restoreBackupForm');
+        const fileInput = document.getElementById('backup_file');
+
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', function () {
+                Swal.fire({
+                    title: 'Generando backup...',
+                    html: 'Preparando archivo SQL. Esta ventana se cerrará sola.',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                        setTimeout(() => {
+                            Swal.close();
+                        }, 3000);
+                    }
+                });
+            });
+        }
+
+        if (restoreForm) {
+            restoreForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+
+                if (!fileInput || !fileInput.files || !fileInput.files.length) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Archivo requerido',
+                        text: 'Selecciona un archivo .sql antes de restaurar.'
+                    });
+                    return;
+                }
+
+                const formData = new FormData(restoreForm);
+                const url = restoreForm.getAttribute('action');
+
+                Swal.fire({
+                    title: 'Restaurando base de datos...',
+                    html: `
+                        <div style="text-align:left; margin-top: 8px;">
+                            <div style="width:100%; background:#e5e7eb; border-radius:9999px; height:10px; overflow:hidden;">
+                                <div id="restore-progress-bar" style="width:0%; height:10px; background:#2563eb; transition: width .2s ease;"></div>
+                            </div>
+                            <div id="restore-progress-text" style="margin-top:8px; font-size:12px; color:#374151;">Fase 1/2 · Subiendo archivo: 0%</div>
+                        </div>
+                    `,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', url, true);
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                xhr.setRequestHeader('Accept', 'application/json');
+
+                let procesamientoIniciado = false;
+                let segundosProcesando = 0;
+                let timerProcesamiento = null;
+                const llavePromedio = 'backup_restore_avg_seconds';
+                const promedioGuardado = Number(localStorage.getItem(llavePromedio) || 0);
+                const estimadoBase = promedioGuardado > 0 ? Math.round(promedioGuardado) : 45;
+                const inicioTotal = Date.now();
+
+                function iniciarTimerProcesamiento() {
+                    if (timerProcesamiento) return;
+                    timerProcesamiento = setInterval(() => {
+                        segundosProcesando += 1;
+                        const restante = Math.max(0, estimadoBase - segundosProcesando);
+                        const texto = document.getElementById('restore-progress-text');
+                        if (texto) {
+                            if (restante > 0) {
+                                texto.textContent = `Fase 2/2 · Restaurando en servidor... ${segundosProcesando}s · Estimado restante: ~${restante}s`;
+                            } else {
+                                texto.textContent = `Fase 2/2 · Restaurando en servidor... ${segundosProcesando}s · En tramo final...`;
+                            }
+                        }
+                    }, 1000);
+                }
+
+                function limpiarTimerProcesamiento() {
+                    if (!timerProcesamiento) return;
+                    clearInterval(timerProcesamiento);
+                    timerProcesamiento = null;
+                }
+
+                xhr.upload.onprogress = function (e) {
+                    if (!e.lengthComputable) return;
+                    const porcentaje = Math.round((e.loaded / e.total) * 100);
+
+                    const barra = document.getElementById('restore-progress-bar');
+                    const texto = document.getElementById('restore-progress-text');
+
+                    if (barra) barra.style.width = porcentaje + '%';
+
+                    if (porcentaje < 100) {
+                        if (texto) texto.textContent = `Fase 1/2 · Subiendo archivo: ${porcentaje}%`;
+                        return;
+                    }
+
+                    if (!procesamientoIniciado) {
+                        procesamientoIniciado = true;
+                        if (texto) texto.textContent = 'Fase 2/2 · Archivo subido. Restaurando en servidor...';
+                        iniciarTimerProcesamiento();
+                    }
+                };
+
+                xhr.onload = function () {
+                    limpiarTimerProcesamiento();
+                    const barra = document.getElementById('restore-progress-bar');
+                    const texto = document.getElementById('restore-progress-text');
+                    let respuesta = null;
+                    try {
+                        respuesta = JSON.parse(xhr.responseText || '{}');
+                    } catch (_) {
+                        respuesta = null;
+                    }
+
+                    if (xhr.status >= 200 && xhr.status < 300 && respuesta && respuesta.ok) {
+                        const duracionTotal = Math.max(1, Math.round((Date.now() - inicioTotal) / 1000));
+                        const nuevoPromedio = promedioGuardado > 0
+                            ? Math.round((promedioGuardado * 0.7) + (duracionTotal * 0.3))
+                            : duracionTotal;
+                        localStorage.setItem(llavePromedio, String(nuevoPromedio));
+
+                        if (barra) barra.style.width = '100%';
+                        if (texto) texto.textContent = 'Restauración finalizada. Redirigiendo...';
+
+                        const destino = (respuesta && respuesta.redirect)
+                            ? respuesta.redirect
+                            : '{{ url_for("auth.iniciarSesion") }}';
+                        window.location.href = destino;
+                        return;
+                    }
+
+                    if (respuesta && respuesta.redirect && (xhr.status === 401 || xhr.status === 403)) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Sesión expirada',
+                            text: respuesta.message || 'Tu sesión expiró. Se redirigirá al login.',
+                            timer: 1800,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.href = respuesta.redirect;
+                        });
+                        return;
+                    }
+
+                    let detallePlano = '';
+                    if (!respuesta && xhr.responseText) {
+                        detallePlano = xhr.responseText
+                            .replace(/<[^>]*>/g, ' ')
+                            .replace(/\s+/g, ' ')
+                            .trim()
+                            .slice(0, 220);
+                    }
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error en restauración',
+                        text: (respuesta && respuesta.message)
+                            ? respuesta.message
+                            : (detallePlano || `No se pudo completar la restauración (HTTP ${xhr.status}).`)
+                    });
+                };
+
+                xhr.onerror = function () {
+                    limpiarTimerProcesamiento();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error de conexión',
+                        text: 'No fue posible contactar al servidor.'
+                    });
+                };
+
+                xhr.send(formData);
+            });
+        }
+    })();
+</script>
+{% endblock %}

@@ -2,33 +2,16 @@
 
 {% block container %}
 <section class="bg-[#fdfcfb] min-h-screen flex items-center justify-center px-4">
-
     <div class="bg-white p-8 rounded-2xl shadow-md max-w-md w-full border border-gray-100 text-center">
-
-        <!-- Icono -->
-        <div class="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-5">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-            </svg>
-        </div>
-
-        <!-- Título -->
-        <h2 class="text-xl font-semibold text-[#814c59] mb-1">
-            Venta completada
-        </h2>
-        <p class="text-gray-500 text-sm mb-6">
-            Transacción #{{ ticket[0].id_venta if ticket else '' }}
-        </p>
-
-        <!-- Ticket -->
         <div class="bg-gray-50 p-6 rounded-xl border border-dashed border-gray-200 text-left mb-6 text-xs">
-
-            <img src="{{ url_for('static', filename='img/urbanCoffeeLogo.jpeg') }}" 
-                 class="h-8 mx-auto mb-4 opacity-70">
-
-            <p class="text-center mb-4 uppercase font-semibold tracking-wide text-gray-600">
-                Urban Coffee
-            </p>
+            <img src="{{ url_for('static', filename='img/urbanCoffeeLogo.jpeg') }}" class="h-8 mx-auto mb-4 opacity-70">
+            <p class="text-center mb-2 uppercase font-semibold tracking-wide text-gray-600">Urban Coffee</p>
+            
+            <div class="mb-4 text-[10px] text-gray-500 space-y-1 border-b border-gray-200 pb-2">
+                <p><strong>Fecha:</strong> {{ ticket[0].creado_en.strftime('%d/%m/%Y %H:%M') if ticket else '' }}</p>
+                <p><strong>Cliente:</strong> {{ ticket[0].cliente_nombre if ticket else 'N/A' }}</p>
+                <p><strong>Método:</strong> {{ ticket[0].metodo_pago if ticket else '' }}</p>
+            </div>
 
             <div class="space-y-2">
                 {% for item in ticket %}
@@ -41,38 +24,16 @@
 
             <div class="border-t border-gray-300 my-4"></div>
 
-            <div class="flex justify-between font-semibold text-sm text-gray-800">
-                <span>Total</span>
+            <div class="flex justify-between font-bold text-sm text-gray-800">
+                <span>TOTAL</span>
                 <span>${{ "{:,.2f}".format(ticket[0].total if ticket else 0) }}</span>
             </div>
 
             <p class="mt-4 text-[10px] text-gray-400 text-center italic">
-                Gracias por su compra
+                Atendido por: Sistema Urban Coffee
             </p>
         </div>
-
-        <!-- Botones -->
-        <div class="space-y-3">
-
-            <button onclick="window.print()"
-                class="w-full border border-gray-300 text-gray-700 py-3 rounded-lg text-sm font-semibold 
-                       hover:bg-gray-100 transition flex items-center justify-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zM9 9V5a2 2 0 012-2h2a2 2 0 012 2v4"/>
-                </svg>
-                Imprimir ticket
-            </button>
-
-            <a href="{{ url_for('ventas.venta_fisica') }}"
-               class="block w-full bg-[#814c59] text-white py-3 rounded-lg text-sm font-semibold 
-                      hover:bg-[#C27C3A] transition">
-                Nueva venta
-            </a>
-
+        
         </div>
-
-    </div>
-
 </section>
 {% endblock %}
