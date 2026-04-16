@@ -7,8 +7,13 @@ from forms import  CrearEmpleadoForm, EmpleadoActualizarForm, DesactivarForm
 from app.auditoria import registrar_auditoria
 from model import Rol, Usuario, Empleado, db
 
+from itsdangerous import URLSafeSerializer
+from flask import current_app
+
 usuariosBp = Blueprint("usuarios", __name__, url_prefix="/usuarios")
 
+def get_serializer():
+    return URLSafeSerializer(current_app.config["SECRET_KEY"])
 
 def hayOtroGerenteActivo(idUsuarioActual: int) -> bool:
     return (
@@ -159,17 +164,28 @@ def crear():
 
     return render_template("usuarios/nuevo_usuario.html", active_page='usuarios', form=form)
 
-@usuariosBp.route("/<int:idUsuario>/editar", methods=["GET"], endpoint="editar")
+@usuariosBp.route("/<token>/editar", methods=["GET"], endpoint="editar")
 @requiereRol("Gerente")
-def editar(idUsuario: int):
+def editar(token):
+    
+    try:
+        idUsuario = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("usuarios.index"))
+
     usuario = Usuario.query.get_or_404(idUsuario)
     form = EmpleadoActualizarForm(obj=usuario)
     return render_template("usuarios/editar_usuario.html", usuario=usuario, form=form)
 
 
-@usuariosBp.route("/<int:idUsuario>/actualizar", methods=["POST"], endpoint="actualizar")
+@usuariosBp.route("/<token>/actualizar", methods=["POST"], endpoint="actualizar")
 @requiereRol("Gerente")
-def actualizar(idUsuario: int):
+def actualizar(token):
+    
+    try:
+        idUsuario = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("usuarios.index"))
     
     usuario = Usuario.query.get_or_404(idUsuario)
     
@@ -229,9 +245,15 @@ def actualizar(idUsuario: int):
     return redirect(url_for("usuarios.index"))
 
 
-@usuariosBp.route("/<int:idUsuario>/desactivar", methods=["POST"], endpoint="desactivar")
+@usuariosBp.route("/<token>/desactivar", methods=["POST"], endpoint="desactivar")
 @requiereRol("Gerente")
-def desactivar(idUsuario: int):
+def desactivar(token):
+    
+    try:
+        idUsuario = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("usuarios.index"))
+    
     usuario = Usuario.query.get_or_404(idUsuario)
     form = DesactivarForm()
 
@@ -257,9 +279,15 @@ def desactivar(idUsuario: int):
     
     return redirect(url_for("usuarios.index"))
 
-@usuariosBp.route("/<int:idUsuario>/reactivar", methods=["POST"] )
+@usuariosBp.route("/<token>/reactivar", methods=["POST"] )
 @requiereRol("Gerente")
-def reactivar(idUsuario: int):
+def reactivar(token):
+    
+    try:
+        idUsuario = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("usuarios.index"))
+    
     usuario = Usuario.query.get_or_404(idUsuario)
     form = DesactivarForm()
 

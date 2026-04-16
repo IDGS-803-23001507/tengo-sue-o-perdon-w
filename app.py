@@ -28,6 +28,8 @@ from app.produccion.routes import produccion_bp
 #Integracion decosas de michelle
 from app.ventas.routes import ventasBp
 from app.pedidos.routes import pedidosBp
+from flask import current_app
+from itsdangerous import URLSafeSerializer
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -79,6 +81,12 @@ def utilidadesTemplate():
 
     return {"safe_url_for": safe_url_for}
 
+def get_serializer():
+    return URLSafeSerializer(current_app.config["SECRET_KEY"])
+
+@app.context_processor
+def inject_serializer():
+    return dict(serializer=get_serializer())
 
 def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict:
     hoy = datetime.now(timezone.utc)

@@ -71,13 +71,13 @@
                         <div class="flex items-center justify-end gap-4">
                             {% if usuario.estado == 'Activo' %}
 
-                            <a href="{{ url_for('usuarios.editar', idUsuario=usuario.id) }}"
+                            <a href="{{ url_for('usuarios.editar', token=serializer.dumps(usuario.id)) }}"
                                 class="text-blue-600 hover:underline">Editar</a>
 
                             <button onclick="abrirModalAccion(
                                     'Desactivar usuario',
                                     '¿Seguro que deseas desactivar a este usuario?',
-                                    '{{ url_for("usuarios.desactivar", idUsuario=usuario.id) }}', 'bg-red-600 hover:bg-red-700' , 'Desactivar' )"
+                                    '{{ url_for("usuarios.desactivar", token=serializer.dumps(usuario.id)) }}', 'bg-red-600 hover:bg-red-700' , 'Desactivar' )"
                                     class="text-red-600 hover:underline">
                                 Desactivar
                             </button>
@@ -87,7 +87,7 @@
                             <button onclick="abrirModalAccion(
                             'Reactivar usuario',
                             '¿Seguro que deseas reactivar a este usuario?',
-                            '{{ url_for("usuarios.reactivar", idUsuario=usuario.id) }}',
+                            '{{ url_for("usuarios.reactivar", token=serializer.dumps(usuario.id)) }}',
                             'bg-green-600 hover:bg-green-700',
                             'Reactivar')"
                             class="text-green-600 hover:underline">

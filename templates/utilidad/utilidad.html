@@ -117,7 +117,7 @@
       <div class="p-4 space-y-3">
         {% if top_rentables %}
           {% for producto in top_rentables %}
-          <a href="{{ url_for('utilidad.producto_detalle', producto_id=producto.id) }}">
+          <a href="{{ url_for('utilidad.producto_detalle', token=serializer.dumps(producto.id))}}">
             <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
               
               <div>

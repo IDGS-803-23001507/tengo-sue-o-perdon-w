@@ -1,21 +1,48 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response
 from model import Compra, DetalleCompra, db, Producto, Venta, DetalleVenta
-from sqlalchemy import func
 from datetime import datetime, timedelta
-import forms
+from flask import abort, session
+from sqlalchemy import func
 from decimal import Decimal
 from xhtml2pdf import pisa
+from functools import wraps
+from itsdangerous import URLSafeSerializer
+from flask import current_app
+
+import forms
 import io
 
 utilidad_bp = Blueprint('utilidad', __name__)
 
+def get_serializer():
+    return URLSafeSerializer(current_app.config["SECRET_KEY"])
+
+def roles_requeridos(*roles):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            rol_usuario = session.get("usuarioRol")
+
+            if not rol_usuario:
+                return abort(403)
+
+            if rol_usuario not in roles:
+                return abort(403)
+
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+
 @utilidad_bp.route('/utilidad')
+@roles_requeridos("Gerente")
 def index():
     return redirect(url_for('utilidad.dashboard'))
 
 
 @utilidad_bp.route('/utilidad/dashboard')
+@roles_requeridos("Gerente")
 def dashboard():
    
     try:
@@ -85,6 +112,7 @@ def dashboard():
 
 
 @utilidad_bp.route('/utilidad/reporte', methods=['GET', 'POST'])
+@roles_requeridos("Gerente")
 def reporte():
 
     form = forms.FechasReporteForm(request.form)
@@ -192,8 +220,14 @@ def reporte():
     return render_template('utilidad/reporteUtilidad.html', form=form, ventas=[], resumen={}, productos_detalle=[])
 
 
-@utilidad_bp.route('/utilidad/producto/<int:producto_id>')
-def producto_detalle(producto_id):
+@utilidad_bp.route('/utilidad/producto/<token>')
+@roles_requeridos("Gerente")
+def producto_detalle(token):
+    
+    try:
+        producto_id = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("utilidad.index"))
 
     producto = Producto.query.get_or_404(producto_id)
     
@@ -219,6 +253,7 @@ def producto_detalle(producto_id):
                           total_costos=float(total_costos))
 
 @utilidad_bp.route('/utilidad/reporte/pdf', methods=['POST'])
+@roles_requeridos("Gerente")
 def reporte_pdf():
 
     form = forms.FechasReporteForm(request.form)
