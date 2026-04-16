@@ -102,6 +102,7 @@
             </div>
 
             <div class="bg-gray-50 p-4 grid grid-cols-2 gap-2">
+<<<<<<< HEAD
 
                 <form action="{{ url_for('pedidos.cambiar_estado', token=serializer.dumps(p.id_pedido), estado='Preparando') }}"
                     method="POST">
@@ -123,10 +124,65 @@
                     method="POST" class="col-span-2">
                     <button type="submit"
                         class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-900 text-white hover:bg-black transition-all">
+=======
+                {% set est = p.estado|lower %}
+                {% if est == 'pendiente' %}
+                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='Aceptado') }}" method="POST">
+                    <button type="submit" class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white border border-gray-200 text-gray-600 hover:bg-[#8B5E3C] hover:text-white transition-all">
+                        Aceptar
+                    </button>
+                </form>
+                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='Rechazado') }}" method="POST">
+                    <button type="submit" class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-600 text-white hover:bg-red-700 shadow-sm transition-all">
+                        Rechazar
+                    </button>
+                </form>
+                {% elif est == 'aceptado' %}
+                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='Preparando') }}" method="POST">
+                    <button type="submit" class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-yellow-500 text-white hover:bg-yellow-600 shadow-sm transition-all">
+                        Empezar
+                    </button>
+                </form>
+                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='Cancelado') }}" method="POST">
+                    <button type="submit" class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-600 text-white hover:bg-red-700 shadow-sm transition-all">
+                        Cancelar
+                    </button>
+                </form>
+                {% elif est == 'preparando' %}
+                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='Listo') }}" method="POST">
+                    <button type="submit" class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-green-600 text-white hover:bg-green-700 shadow-sm transition-all">
+                        Terminar
+                    </button>
+                </form>
+                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='Cancelado') }}" method="POST">
+                    <button type="submit" class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-600 text-white hover:bg-red-700 shadow-sm transition-all">
+                        Cancelar
+                    </button>
+                </form>
+                {% elif est == 'listo' %}
+                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='Enviado') }}" method="POST">
+                    <button type="submit" class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all">
+                        Enviar
+                    </button>
+                </form>
+                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='Cancelado') }}" method="POST">
+                    <button type="submit" class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-600 text-white hover:bg-red-700 shadow-sm transition-all">
+                        Cancelar
+                    </button>
+                </form>
+                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='Entregado') }}" method="POST" class="col-span-2">
+                    <button type="submit" class="w-full mt-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-900 text-white hover:bg-black transition-all">
+>>>>>>> features
                         Entregar / Pasar a pago
                     </button>
                 </form>
-
+                {% elif est == 'enviado' %}
+                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='Entregado') }}" method="POST" class="col-span-2">
+                    <button type="submit" class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-900 text-white hover:bg-black transition-all">
+                        Confirmar Entrega
+                    </button>
+                </form>
+                {% endif %}
             </div>
 
         </div>

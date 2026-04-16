@@ -241,6 +241,23 @@ def asegurar_esquema_productos() -> None:
     db.session.commit()
 
 
+def asegurar_stock_reservado() -> None:
+    """Agrega stock_reservado a Producto si no existe todavía."""
+    inspector = inspect(db.engine)
+    tablas = set(inspector.get_table_names())
+    if "Producto" not in tablas:
+        return
+    columnas = {c["name"] for c in inspector.get_columns("Producto")}
+    if "stock_reservado" not in columnas:
+        db.session.execute(
+            text(
+                "ALTER TABLE `Producto` "
+                "ADD COLUMN `stock_reservado` INT NOT NULL DEFAULT 0"
+            )
+        )
+        db.session.commit()
+
+
 def asegurar_procedimientos_almacenados() -> None:
     db.session.execute(text("DROP PROCEDURE IF EXISTS crear_venta_general"))
     db.session.execute(text("DROP PROCEDURE IF EXISTS crear_venta_online"))
@@ -490,10 +507,8 @@ def asegurar_procedimientos_almacenados() -> None:
                 DECLARE v_faltantes INT;
                 DECLARE v_tipo_preparacion VARCHAR(20);
                 DECLARE v_stock_actual INT;
-                DECLARE v_stock_minimo INT;
-                DECLARE v_stock_actualizado INT;
-                DECLARE v_cantidad_reposicion INT;
-                DECLARE v_id_solicitud INT;
+                DECLARE v_stock_reservado INT;
+                DECLARE v_disponible INT;
 
                 DECLARE EXIT HANDLER FOR SQLEXCEPTION
                 BEGIN
@@ -541,8 +556,11 @@ def asegurar_procedimientos_almacenados() -> None:
                     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cantidad inválida';
                 END IF;
 
-                SELECT precio_venta, COALESCE(tipo_preparacion, 'materia_prima'), COALESCE(stock, 0), COALESCE(stock_minimo, 0)
-                INTO v_precio, v_tipo_preparacion, v_stock_actual, v_stock_minimo
+                SELECT precio_venta,
+                       COALESCE(tipo_preparacion, 'materia_prima'),
+                       COALESCE(stock, 0),
+                       COALESCE(stock_reservado, 0)
+                INTO v_precio, v_tipo_preparacion, v_stock_actual, v_stock_reservado
                 FROM Producto
                 WHERE id_producto = p_id_producto AND estatus = 1
                 FOR UPDATE;
@@ -555,38 +573,19 @@ def asegurar_procedimientos_almacenados() -> None:
                 VALUES (v_id_venta, p_id_producto, p_cantidad, v_precio, 0);
 
                 IF v_tipo_preparacion = 'stock' THEN
-                    IF v_stock_actual < p_cantidad THEN
+                    -- Stock disponible = stock real - stock ya apartado
+                    SET v_disponible = v_stock_actual - v_stock_reservado;
+                    IF v_disponible < p_cantidad THEN
                         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock insuficiente';
                     END IF;
 
+                    -- Solo APARTAR, nunca descontar en pedido online
                     UPDATE Producto
-                    SET stock = stock - p_cantidad
+                    SET stock_reservado = stock_reservado + p_cantidad
                     WHERE id_producto = p_id_producto;
 
-                    SELECT stock INTO v_stock_actualizado
-                    FROM Producto
-                    WHERE id_producto = p_id_producto;
-
-                    IF v_stock_actualizado = 0 THEN
-                        IF (
-                            SELECT COUNT(*)
-                            FROM Recetas
-                            WHERE id_producto = p_id_producto AND estado = 1
-                        ) = 0 THEN
-                            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto sin receta activa';
-                        END IF;
-
-                        SET v_cantidad_reposicion = GREATEST(1, v_stock_minimo);
-
-                        INSERT INTO Solicitud_produccion (id_usuario, fecha, estado)
-                        VALUES (p_id_usuario, NOW(), 'pendiente');
-
-                        SET v_id_solicitud = LAST_INSERT_ID();
-
-                        INSERT INTO Detalle_produccion (id_solicitud, id_producto, cantidad)
-                        VALUES (v_id_solicitud, p_id_producto, v_cantidad_reposicion);
-                    END IF;
                 ELSE
+                    -- Productos de materia_prima: descontar insumos inmediatamente
                     IF (
                         SELECT COUNT(*)
                         FROM Recetas
@@ -866,9 +865,13 @@ def seed_db() -> None:
 
     db.session.commit()
 
-    rol_gerente = Rol.query.filter(
-        Rol.nombre.in_(["Gerente de Tienda", "Gerente", "Admin General (TI)"])
-    ).first()
+    rol_gerente_id = int(str(current_app.config.get("USUARIO_GERENTE_ROL_ID", 6)))
+    rol_gerente = Rol.query.get(rol_gerente_id)
+    if not rol_gerente:
+        rol_gerente = Rol.query.filter(
+            Rol.nombre.in_(["Gerente de Tienda", "Gerente", "Admin General (TI)"])
+        ).first()
+
     if not rol_gerente:
         return
 
@@ -917,5 +920,6 @@ def inicializar_db() -> None:
     asegurar_esquema_unidades()
     asegurar_esquema_proveedores()
     asegurar_esquema_productos()
+    asegurar_stock_reservado()
     asegurar_procedimientos_almacenados()
     seed_db()
