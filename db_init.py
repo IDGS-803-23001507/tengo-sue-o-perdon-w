@@ -241,11 +241,115 @@ def asegurar_esquema_productos() -> None:
     db.session.commit()
 
 
+def asegurar_esquema_pedidos_online() -> None:
+    inspector = inspect(db.engine)
+    tablas = set(inspector.get_table_names())
+
+    if "pedidos" not in tablas:
+        return
+
+    columnas_pedidos = {columna["name"] for columna in inspector.get_columns("pedidos")}
+
+    if "stock_descontado" not in columnas_pedidos:
+        db.session.execute(
+            text(
+                """
+                ALTER TABLE pedidos
+                ADD COLUMN stock_descontado TINYINT(1) NOT NULL DEFAULT 0
+                """
+            )
+        )
+
+    if "stock_descontado_en" not in columnas_pedidos:
+        db.session.execute(
+            text(
+                """
+                ALTER TABLE pedidos
+                ADD COLUMN stock_descontado_en DATETIME NULL
+                """
+            )
+        )
+
+    if "version" not in columnas_pedidos:
+        db.session.execute(
+            text(
+                """
+                ALTER TABLE pedidos
+                ADD COLUMN version INT NOT NULL DEFAULT 0
+                """
+            )
+        )
+
+    db.session.execute(text("UPDATE pedidos SET estado = LOWER(TRIM(COALESCE(estado, 'pendiente')))"))
+    db.session.execute(text("UPDATE pedidos SET estado = 'entregado' WHERE estado = 'listo'"))
+
+    db.session.execute(
+        text(
+            """
+            UPDATE pedidos
+            SET stock_descontado = 1,
+                stock_descontado_en = COALESCE(stock_descontado_en, NOW())
+            WHERE estado IN ('aceptado', 'preparando', 'entregado')
+            """
+        )
+    )
+
+    if "pedido_estado_historial" not in tablas:
+        db.session.execute(
+            text(
+                """
+                CREATE TABLE pedido_estado_historial (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id_pedido INT NOT NULL,
+                    estado_origen VARCHAR(20) NOT NULL,
+                    estado_destino VARCHAR(20) NOT NULL,
+                    id_usuario INT NULL,
+                    motivo VARCHAR(200) NULL,
+                    fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_historial_pedido_fecha (id_pedido, fecha),
+                    CONSTRAINT fk_historial_pedido
+                        FOREIGN KEY (id_pedido) REFERENCES pedidos(id_pedido),
+                    CONSTRAINT fk_historial_usuario
+                        FOREIGN KEY (id_usuario) REFERENCES usuarios(id)
+                )
+                """
+            )
+        )
+
+    if "inventario_movimientos" not in tablas:
+        db.session.execute(
+            text(
+                """
+                CREATE TABLE inventario_movimientos (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id_pedido INT NOT NULL,
+                    id_materia INT NOT NULL,
+                    cantidad DECIMAL(12,4) NOT NULL,
+                    tipo VARCHAR(40) NOT NULL,
+                    fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    id_usuario INT NULL,
+                    INDEX idx_movimientos_pedido (id_pedido),
+                    INDEX idx_movimientos_materia_fecha (id_materia, fecha),
+                    CONSTRAINT fk_movimiento_pedido
+                        FOREIGN KEY (id_pedido) REFERENCES pedidos(id_pedido),
+                    CONSTRAINT fk_movimiento_materia
+                        FOREIGN KEY (id_materia) REFERENCES Materia_prima(id_materia),
+                    CONSTRAINT fk_movimiento_usuario
+                        FOREIGN KEY (id_usuario) REFERENCES usuarios(id)
+                )
+                """
+            )
+        )
+
+    db.session.commit()
+
+
 def asegurar_procedimientos_almacenados() -> None:
     db.session.execute(text("DROP PROCEDURE IF EXISTS crear_venta_general"))
     db.session.execute(text("DROP PROCEDURE IF EXISTS crear_venta_online"))
     db.session.execute(text("DROP PROCEDURE IF EXISTS pagar_venta"))
     db.session.execute(text("DROP PROCEDURE IF EXISTS sp_registrar_venta"))
+    db.session.execute(text("DROP PROCEDURE IF EXISTS sp_cambiar_estado_pedido"))
     db.session.execute(
         text(
             """
@@ -487,13 +591,7 @@ def asegurar_procedimientos_almacenados() -> None:
             BEGIN
                 DECLARE v_id_venta INT;
                 DECLARE v_precio DECIMAL(10,2);
-                DECLARE v_faltantes INT;
                 DECLARE v_tipo_preparacion VARCHAR(20);
-                DECLARE v_stock_actual INT;
-                DECLARE v_stock_minimo INT;
-                DECLARE v_stock_actualizado INT;
-                DECLARE v_cantidad_reposicion INT;
-                DECLARE v_id_solicitud INT;
 
                 DECLARE EXIT HANDLER FOR SQLEXCEPTION
                 BEGIN
@@ -541,8 +639,8 @@ def asegurar_procedimientos_almacenados() -> None:
                     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cantidad inválida';
                 END IF;
 
-                SELECT precio_venta, COALESCE(tipo_preparacion, 'materia_prima'), COALESCE(stock, 0), COALESCE(stock_minimo, 0)
-                INTO v_precio, v_tipo_preparacion, v_stock_actual, v_stock_minimo
+                SELECT precio_venta, COALESCE(tipo_preparacion, 'materia_prima')
+                INTO v_precio, v_tipo_preparacion
                 FROM Producto
                 WHERE id_producto = p_id_producto AND estatus = 1
                 FOR UPDATE;
@@ -551,42 +649,7 @@ def asegurar_procedimientos_almacenados() -> None:
                     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto no disponible';
                 END IF;
 
-                INSERT INTO detalle_venta (id_venta, id_producto, cantidad, precio_unitario, descuento)
-                VALUES (v_id_venta, p_id_producto, p_cantidad, v_precio, 0);
-
-                IF v_tipo_preparacion = 'stock' THEN
-                    IF v_stock_actual < p_cantidad THEN
-                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock insuficiente';
-                    END IF;
-
-                    UPDATE Producto
-                    SET stock = stock - p_cantidad
-                    WHERE id_producto = p_id_producto;
-
-                    SELECT stock INTO v_stock_actualizado
-                    FROM Producto
-                    WHERE id_producto = p_id_producto;
-
-                    IF v_stock_actualizado = 0 THEN
-                        IF (
-                            SELECT COUNT(*)
-                            FROM Recetas
-                            WHERE id_producto = p_id_producto AND estado = 1
-                        ) = 0 THEN
-                            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto sin receta activa';
-                        END IF;
-
-                        SET v_cantidad_reposicion = GREATEST(1, v_stock_minimo);
-
-                        INSERT INTO Solicitud_produccion (id_usuario, fecha, estado)
-                        VALUES (p_id_usuario, NOW(), 'pendiente');
-
-                        SET v_id_solicitud = LAST_INSERT_ID();
-
-                        INSERT INTO Detalle_produccion (id_solicitud, id_producto, cantidad)
-                        VALUES (v_id_solicitud, p_id_producto, v_cantidad_reposicion);
-                    END IF;
-                ELSE
+                IF v_tipo_preparacion <> 'stock' THEN
                     IF (
                         SELECT COUNT(*)
                         FROM Recetas
@@ -594,24 +657,10 @@ def asegurar_procedimientos_almacenados() -> None:
                     ) = 0 THEN
                         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto sin receta activa';
                     END IF;
-
-                    SELECT COUNT(*) INTO v_faltantes
-                    FROM Materia_prima mp
-                    JOIN Recetas r ON r.id_materia = mp.id_materia
-                    WHERE r.id_producto = p_id_producto
-                      AND r.estado = 1
-                      AND mp.stock_actual < (r.cantidad * p_cantidad);
-
-                    IF v_faltantes > 0 THEN
-                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock insuficiente de insumos para este producto';
-                    END IF;
-
-                    UPDATE Materia_prima mp
-                    JOIN Recetas r ON mp.id_materia = r.id_materia
-                    SET mp.stock_actual = mp.stock_actual - (r.cantidad * p_cantidad)
-                    WHERE r.id_producto = p_id_producto
-                      AND r.estado = 1;
                 END IF;
+
+                INSERT INTO detalle_venta (id_venta, id_producto, cantidad, precio_unitario, descuento)
+                VALUES (v_id_venta, p_id_producto, p_cantidad, v_precio, 0);
 
                 UPDATE ventas
                 SET total = (
@@ -629,6 +678,286 @@ def asegurar_procedimientos_almacenados() -> None:
                 COMMIT;
 
                 SELECT v_id_venta AS id_generado;
+            END
+            """
+        )
+    )
+
+    db.session.execute(
+        text(
+            """
+            CREATE PROCEDURE sp_cambiar_estado_pedido(
+                IN p_id_pedido INT,
+                IN p_nuevo_estado VARCHAR(20),
+                IN p_id_usuario INT,
+                IN p_motivo VARCHAR(200)
+            )
+            BEGIN
+                DECLARE v_estado_actual VARCHAR(20);
+                DECLARE v_stock_descontado TINYINT(1);
+                DECLARE v_id_venta INT;
+                DECLARE v_faltantes_mp INT DEFAULT 0;
+                DECLARE v_faltantes_producto INT DEFAULT 0;
+                DECLARE v_transicion_valida INT DEFAULT 0;
+                DECLARE v_movimientos_salida INT DEFAULT 0;
+
+                DECLARE EXIT HANDLER FOR SQLEXCEPTION
+                BEGIN
+                    ROLLBACK;
+                    RESIGNAL;
+                END;
+
+                SET p_nuevo_estado = LOWER(TRIM(COALESCE(p_nuevo_estado, '')));
+
+                IF p_nuevo_estado NOT IN ('pendiente', 'aceptado', 'preparando', 'entregado', 'cancelado', 'rechazado') THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Estado destino inválido';
+                END IF;
+
+                START TRANSACTION;
+
+                SELECT LOWER(TRIM(estado)), COALESCE(stock_descontado, 0), id_venta
+                INTO v_estado_actual, v_stock_descontado, v_id_venta
+                FROM pedidos
+                WHERE id_pedido = p_id_pedido
+                FOR UPDATE;
+
+                IF v_estado_actual IS NULL THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Pedido no encontrado';
+                END IF;
+
+                IF p_nuevo_estado <> v_estado_actual THEN
+                    SET v_transicion_valida = (
+                        (v_estado_actual = 'pendiente' AND p_nuevo_estado IN ('aceptado', 'cancelado', 'rechazado'))
+                        OR (v_estado_actual = 'aceptado' AND p_nuevo_estado IN ('preparando', 'cancelado', 'rechazado'))
+                        OR (v_estado_actual = 'preparando' AND p_nuevo_estado IN ('entregado', 'cancelado', 'rechazado'))
+                    );
+
+                    IF v_transicion_valida = 0 THEN
+                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transición inválida: solo se permite avanzar';
+                    END IF;
+
+                    IF p_nuevo_estado = 'aceptado' AND v_stock_descontado = 0 THEN
+                        IF (
+                            SELECT COUNT(*)
+                            FROM detalle_venta
+                            WHERE id_venta = v_id_venta
+                        ) = 0 THEN
+                            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La venta del pedido no tiene productos';
+                        END IF;
+
+                        DROP TEMPORARY TABLE IF EXISTS tmp_consumo_producto_stock;
+                        CREATE TEMPORARY TABLE tmp_consumo_producto_stock (
+                            id_producto INT PRIMARY KEY,
+                            cantidad_requerida INT NOT NULL
+                        );
+
+                        INSERT INTO tmp_consumo_producto_stock (id_producto, cantidad_requerida)
+                        SELECT dv.id_producto, SUM(dv.cantidad)
+                        FROM detalle_venta dv
+                        JOIN Producto p ON p.id_producto = dv.id_producto
+                        WHERE dv.id_venta = v_id_venta
+                          AND COALESCE(p.tipo_preparacion, 'materia_prima') = 'stock'
+                        GROUP BY dv.id_producto;
+
+                        SELECT p.id_producto
+                        FROM Producto p
+                        JOIN tmp_consumo_producto_stock t ON t.id_producto = p.id_producto
+                        FOR UPDATE;
+
+                        SELECT COUNT(*) INTO v_faltantes_producto
+                        FROM Producto p
+                        JOIN tmp_consumo_producto_stock t ON t.id_producto = p.id_producto
+                        WHERE COALESCE(p.stock, 0) < t.cantidad_requerida;
+
+                        IF v_faltantes_producto > 0 THEN
+                            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se puede aceptar: stock insuficiente de producto terminado';
+                        END IF;
+
+                        UPDATE Producto p
+                        JOIN tmp_consumo_producto_stock t ON t.id_producto = p.id_producto
+                        SET p.stock = p.stock - t.cantidad_requerida;
+
+                        IF EXISTS (
+                            SELECT 1
+                            FROM detalle_venta dv
+                            JOIN Producto p ON p.id_producto = dv.id_producto
+                            LEFT JOIN Recetas r
+                                ON r.id_producto = p.id_producto
+                               AND r.estado = 1
+                            WHERE dv.id_venta = v_id_venta
+                              AND COALESCE(p.tipo_preparacion, 'materia_prima') <> 'stock'
+                            GROUP BY dv.id_producto
+                            HAVING COUNT(r.id_receta) = 0
+                        ) THEN
+                            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Hay productos sin receta activa';
+                        END IF;
+
+                        DROP TEMPORARY TABLE IF EXISTS tmp_consumo_materia;
+                        CREATE TEMPORARY TABLE tmp_consumo_materia (
+                            id_materia INT PRIMARY KEY,
+                            cantidad_requerida DECIMAL(12,4) NOT NULL
+                        );
+
+                        INSERT INTO tmp_consumo_materia (id_materia, cantidad_requerida)
+                        SELECT
+                            r.id_materia,
+                            SUM(dv.cantidad * r.cantidad) AS cantidad_requerida
+                        FROM detalle_venta dv
+                        JOIN Producto p ON p.id_producto = dv.id_producto
+                        JOIN Recetas r
+                            ON r.id_producto = p.id_producto
+                           AND r.estado = 1
+                        WHERE dv.id_venta = v_id_venta
+                          AND COALESCE(p.tipo_preparacion, 'materia_prima') <> 'stock'
+                        GROUP BY r.id_materia;
+
+                        SELECT m.id_materia
+                        FROM Materia_prima m
+                        JOIN tmp_consumo_materia t ON t.id_materia = m.id_materia
+                        FOR UPDATE;
+
+                        SELECT COUNT(*) INTO v_faltantes_mp
+                        FROM Materia_prima m
+                        JOIN tmp_consumo_materia t ON t.id_materia = m.id_materia
+                        WHERE m.stock_actual < t.cantidad_requerida;
+
+                        IF v_faltantes_mp > 0 THEN
+                            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se puede aceptar: stock insuficiente de materias primas';
+                        END IF;
+
+                        UPDATE Materia_prima m
+                        JOIN tmp_consumo_materia t ON t.id_materia = m.id_materia
+                        SET m.stock_actual = m.stock_actual - t.cantidad_requerida;
+
+                        INSERT INTO inventario_movimientos (
+                            id_pedido,
+                            id_materia,
+                            cantidad,
+                            tipo,
+                            fecha,
+                            id_usuario
+                        )
+                        SELECT
+                            p_id_pedido,
+                            t.id_materia,
+                            t.cantidad_requerida,
+                            'salida_pedido_online',
+                            NOW(),
+                            p_id_usuario
+                        FROM tmp_consumo_materia t;
+
+                        DROP TEMPORARY TABLE IF EXISTS tmp_consumo_producto_stock;
+                        DROP TEMPORARY TABLE IF EXISTS tmp_consumo_materia;
+
+                        UPDATE pedidos
+                        SET stock_descontado = 1,
+                            stock_descontado_en = NOW()
+                        WHERE id_pedido = p_id_pedido;
+                    END IF;
+
+                    IF p_nuevo_estado IN ('cancelado', 'rechazado')
+                       AND v_stock_descontado = 1
+                       AND v_estado_actual IN ('aceptado', 'preparando') THEN
+
+                        DROP TEMPORARY TABLE IF EXISTS tmp_reversion_materia;
+                        CREATE TEMPORARY TABLE tmp_reversion_materia (
+                            id_materia INT PRIMARY KEY,
+                            cantidad_reponer DECIMAL(12,4) NOT NULL
+                        );
+
+                        INSERT INTO tmp_reversion_materia (id_materia, cantidad_reponer)
+                        SELECT
+                            im.id_materia,
+                            SUM(im.cantidad) AS cantidad_reponer
+                        FROM inventario_movimientos im
+                        WHERE im.id_pedido = p_id_pedido
+                          AND im.tipo = 'salida_pedido_online'
+                        GROUP BY im.id_materia;
+
+                        SELECT COUNT(*) INTO v_movimientos_salida
+                        FROM tmp_reversion_materia;
+
+                        IF v_movimientos_salida = 0 THEN
+                            INSERT INTO tmp_reversion_materia (id_materia, cantidad_reponer)
+                            SELECT
+                                r.id_materia,
+                                SUM(dv.cantidad * r.cantidad) AS cantidad_reponer
+                            FROM detalle_venta dv
+                            JOIN Producto p ON p.id_producto = dv.id_producto
+                            JOIN Recetas r
+                                ON r.id_producto = p.id_producto
+                               AND r.estado = 1
+                            WHERE dv.id_venta = v_id_venta
+                              AND COALESCE(p.tipo_preparacion, 'materia_prima') <> 'stock'
+                            GROUP BY r.id_materia;
+                        END IF;
+
+                        IF (SELECT COUNT(*) FROM tmp_reversion_materia) > 0 THEN
+                            SELECT m.id_materia
+                            FROM Materia_prima m
+                            JOIN tmp_reversion_materia t ON t.id_materia = m.id_materia
+                            FOR UPDATE;
+
+                            UPDATE Materia_prima m
+                            JOIN tmp_reversion_materia t ON t.id_materia = m.id_materia
+                            SET m.stock_actual = m.stock_actual + t.cantidad_reponer;
+
+                            INSERT INTO inventario_movimientos (
+                                id_pedido,
+                                id_materia,
+                                cantidad,
+                                tipo,
+                                fecha,
+                                id_usuario
+                            )
+                            SELECT
+                                p_id_pedido,
+                                t.id_materia,
+                                t.cantidad_reponer,
+                                'entrada_cancelacion',
+                                NOW(),
+                                p_id_usuario
+                            FROM tmp_reversion_materia t;
+                        END IF;
+
+                        DROP TEMPORARY TABLE IF EXISTS tmp_reversion_materia;
+
+                        UPDATE pedidos
+                        SET stock_descontado = 0,
+                            stock_descontado_en = NULL
+                        WHERE id_pedido = p_id_pedido;
+                    END IF;
+
+                    UPDATE pedidos
+                    SET estado = p_nuevo_estado,
+                        version = COALESCE(version, 0) + 1
+                    WHERE id_pedido = p_id_pedido;
+
+                    UPDATE ventas
+                    SET estado = p_nuevo_estado
+                    WHERE id_venta = v_id_venta;
+
+                    INSERT INTO pedido_estado_historial (
+                        id_pedido,
+                        estado_origen,
+                        estado_destino,
+                        id_usuario,
+                        motivo,
+                        fecha
+                    )
+                    VALUES (
+                        p_id_pedido,
+                        v_estado_actual,
+                        p_nuevo_estado,
+                        p_id_usuario,
+                        p_motivo,
+                        NOW()
+                    );
+                END IF;
+
+                COMMIT;
+
+                SELECT p_id_pedido AS id_pedido, p_nuevo_estado AS estado_actual;
             END
             """
         )
@@ -917,5 +1246,6 @@ def inicializar_db() -> None:
     asegurar_esquema_unidades()
     asegurar_esquema_proveedores()
     asegurar_esquema_productos()
+    asegurar_esquema_pedidos_online()
     asegurar_procedimientos_almacenados()
     seed_db()

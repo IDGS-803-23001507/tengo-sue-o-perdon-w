@@ -19,9 +19,9 @@
     <div class="space-y-4">
         {% for p in pedidos %}
         
-        <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row justify-between items-center gap-6 hover:shadow-md transition">
+        <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-6 flex flex-col gap-6 md:grid md:grid-cols-[minmax(0,1fr)_240px_auto] md:items-center md:gap-8 hover:shadow-md transition">
 
-            <div class="flex items-center gap-5">
+            <div class="flex items-center gap-5 md:min-w-0">
                 <div class="w-16 h-16 bg-[#FDF8F3] rounded-2xl flex items-center justify-center text-[#8B5E3C]">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
@@ -45,25 +45,52 @@
             </div>
 
             <!-- Código -->
-            <div class="text-center md:text-right">
-                <p class="text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest">
+            <div class="w-full md:w-[240px] text-center flex flex-col items-center">
+                <p class="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest leading-tight">
                     Código de Recogida
                 </p>
 
-                <span class="text-2xl font-black text-[#4B3621] bg-[#F5E6D3] px-4 py-1 rounded-xl border border-[#EAD7C3]">
+                <span class="inline-flex items-center justify-center text-2xl font-black text-[#4B3621] bg-[#F5E6D3] px-4 py-1.5 rounded-xl border border-[#EAD7C3] leading-none">
                     {{ p.codigo_recogida }}
                 </span>
+                
+                <div class="mt-6 inline-flex items-center rounded-full border border-[#E0D0C1] bg-white shadow-sm overflow-hidden">
+                    <span class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#814C59] bg-[#F8EEE5]">
+                        A pagar
+                    </span>
+                    <span class="px-4 py-1.5 text-sm font-black text-[#4B3621] tracking-wide">
+                        ${{ "%.2f"|format(p.total) }}
+                    </span>
+                </div>
             </div>
 
             <!-- Estado -->
-            <div class="flex flex-col items-center md:items-end">
+            <div class="flex flex-col items-center md:items-end md:justify-self-end">
                 <span class="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest 
-                    {% if p.estado == 'Pendiente' %}bg-blue-50 text-blue-600
-                    {% elif p.estado == 'Preparando' %}bg-yellow-100 text-yellow-700
-                    {% elif p.estado == 'Listo' %}bg-green-100 text-green-700
+                    {% if p.estado|lower == 'pendiente' %}bg-blue-50 text-blue-600
+                    {% elif p.estado|lower == 'aceptado' %}bg-indigo-100 text-indigo-700
+                    {% elif p.estado|lower == 'preparando' %}bg-yellow-100 text-yellow-700
+                    {% elif p.estado|lower == 'entregado' %}bg-green-100 text-green-700
                     {% else %}bg-gray-100 text-gray-500{% endif %}">
                     {{ p.estado }}
                 </span>
+                <p class="mt-2 text-[11px] text-gray-500 font-medium text-center md:text-right">
+                    {% if p.estado|lower == 'pendiente' %}
+                        En espera de confirmación.
+                    {% elif p.estado|lower == 'aceptado' %}
+                        Tu pedido fue aceptado.
+                    {% elif p.estado|lower == 'preparando' %}
+                        Estamos preparando tu pedido.
+                    {% elif p.estado|lower == 'entregado' %}
+                        Pedido finalizado.
+                    {% elif p.estado|lower == 'cancelado' %}
+                        Pedido cancelado.
+                    {% elif p.estado|lower == 'rechazado' %}
+                        Pedido rechazado.
+                    {% else %}
+                        Seguimiento en proceso.
+                    {% endif %}
+                </p>
             </div>
 
         </div>

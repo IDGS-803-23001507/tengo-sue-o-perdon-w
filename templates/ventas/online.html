@@ -86,7 +86,9 @@
                     <div class="space-y-6 mb-8 max-h-96 overflow-y-auto pr-2">
                         {% set carrito = session.get('carrito', []) %}
                         {% if carrito %}
+                            {% set ns = namespace(total=0) %}
                             {% for item in carrito %}
+                            {% set ns.total = ns.total + (item.cantidad * item.precio) %}
                             <div class="flex justify-between items-start border-b border-gray-50 pb-4">
                                 <div>
                                     <p class="text-sm font-bold text-gray-800 uppercase tracking-tighter">{{ item.nombre }}</p>
@@ -106,6 +108,10 @@
                                 </div>
                             </div>
                             {% endfor %}
+                            <div class="flex justify-between items-center pt-2">
+                                <span class="text-sm font-black text-[#4B3621] uppercase tracking-widest">Total</span>
+                                <span class="text-xl font-black text-[#814c59]">${{ "%.2f"|format(ns.total) }}</span>
+                            </div>
                         {% else %}
                             <div class="text-center py-10">
                                 <p class="text-gray-300 italic text-sm">Aún no has seleccionado nada.</p>

@@ -545,6 +545,12 @@ def requerirLogin():
                 "compras": set(),
                 "ventas": set(),
             },
+            "cliente": {
+                "autenticacion": {"C", "R", "U"},
+                "usuarios": {"R", "U"},
+                "productos": {"R"},
+                "ventas": {"C", "R"},
+            },
         }
         return matriz.get(rolCanonico, {}).get(modulo, set())
 

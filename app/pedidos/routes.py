@@ -1,6 +1,7 @@
 from flask import Blueprint, flash, redirect, render_template, session, url_for
 from functools import wraps
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from model import db
 
@@ -25,7 +26,7 @@ def requiereRol(rolRequerido: str):
 def mis_pedidos():
     
     query = text("""
-        SELECT p.*, v.codigo_recogida
+        SELECT p.*, v.codigo_recogida, v.total
         FROM pedidos p
         JOIN ventas v ON p.id_venta = v.id_venta
         WHERE v.id_cliente = :cliente
@@ -47,11 +48,12 @@ def index():
             p.estado, 
             p.notas, 
             v.codigo_recogida,
+            v.total,
             c.nombre AS nombre_cliente
         FROM pedidos p
         JOIN ventas v ON p.id_venta = v.id_venta
         LEFT JOIN clientes c ON v.id_cliente = c.id
-        WHERE LOWER(p.estado) IN ('pendiente', 'preparando', 'listo')
+        WHERE LOWER(p.estado) IN ('pendiente', 'aceptado', 'preparando')
         ORDER BY p.hora_recogida ASC
     """)
     
@@ -74,20 +76,47 @@ def index():
 
 @pedidosBp.route("/<int:idPedido>/estado/<string:estado>", methods=["POST"])
 def cambiar_estado(idPedido, estado):
+    estado_normalizado = (estado or "").strip().lower()
+    estados_validos = {"pendiente", "aceptado", "preparando", "entregado", "cancelado", "rechazado"}
 
-    query_venta = text("SELECT id_venta FROM pedidos WHERE id_pedido = :id")
-    venta = db.session.execute(query_venta, {"id": idPedido}).fetchone()
-    
-    query_update = text("""
-        UPDATE pedidos
-        SET estado = :estado
-        WHERE id_pedido = :id
-    """)
-    
-    db.session.execute(query_update, {"estado": estado, "id": idPedido})
-    db.session.commit()
+    if estado_normalizado not in estados_validos:
+        flash("Estado de pedido inválido.", "danger")
+        return redirect(url_for("pedidos.index"))
 
-    if estado == 'Entregado' and venta:
+    try:
+        query_venta = text("SELECT id_venta FROM pedidos WHERE id_pedido = :id")
+        venta = db.session.execute(query_venta, {"id": idPedido}).fetchone()
+
+        db.session.execute(
+            text("CALL sp_cambiar_estado_pedido(:id_pedido, :nuevo_estado, :id_usuario, :motivo)"),
+            {
+                "id_pedido": idPedido,
+                "nuevo_estado": estado_normalizado,
+                "id_usuario": session.get("usuarioId"),
+                "motivo": "cambio desde panel operativo",
+            },
+        )
+        db.session.commit()
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        detalle = str(getattr(e, "orig", e))
+        detalle_lower = detalle.lower()
+
+        if "no se puede aceptar" in detalle_lower and "stock insuficiente" in detalle_lower:
+            flash("No se pudo aceptar el pedido: inventario insuficiente para cubrir la preparación.", "danger")
+        elif "stock insuficiente" in detalle_lower:
+            flash("Inventario insuficiente para realizar este cambio de estado.", "danger")
+        elif "transición inválida" in detalle_lower:
+            flash("Cambio de estado inválido: el pedido solo puede avanzar al siguiente estado lógico.", "warning")
+        elif "pedido no encontrado" in detalle_lower:
+            flash("El pedido ya no existe o fue actualizado por otro usuario.", "warning")
+        else:
+            flash(detalle if detalle else "No fue posible cambiar el estado del pedido.", "warning")
+
+        return redirect(url_for("pedidos.index"))
+
+    if estado_normalizado == 'entregado' and venta:
         return redirect(url_for("ventas.pagar_venta_gestion", idVenta=venta.id_venta))
 
     return redirect(url_for("pedidos.index"))

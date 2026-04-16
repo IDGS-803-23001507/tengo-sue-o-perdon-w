@@ -89,6 +89,7 @@
                     <div class="flex items-center gap-2">
                         <div class="w-2 h-2 rounded-full 
                             {% if p.estado|lower == 'pendiente' %}bg-red-500 animate-pulse
+                            {% elif p.estado|lower == 'aceptado' %}bg-blue-500
                             {% elif p.estado|lower == 'preparando' %}bg-yellow-500
                             {% else %}bg-green-500{% endif %}">
                         </div>
@@ -102,24 +103,44 @@
             </div>
 
             <div class="bg-gray-50 p-4 grid grid-cols-2 gap-2">
+                {% set estado_actual = p.estado|lower %}
 
-                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='Preparando') }}"
-                    method="POST">
+                {% if estado_actual == 'pendiente' %}
+                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='aceptado') }}"
+                    method="POST" class="col-span-2">
                     <button type="submit"
-                        class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white border border-gray-200 text-gray-600 hover:bg-[#8B5E3C] hover:text-white transition-all">
-                        Empezar
+                        class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-[#8B5E3C] text-white hover:bg-[#6d492f] transition-all">
+                        Aceptar pedido
                     </button>
                 </form>
 
-                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='Listo') }}"
+                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='rechazado') }}"
+                    method="POST" class="col-span-2">
+                    <button type="submit"
+                        class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white border border-red-200 text-red-600 hover:bg-red-50 transition-all">
+                        Rechazar pedido
+                    </button>
+                </form>
+
+                {% elif estado_actual == 'aceptado' %}
+                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='preparando') }}"
                     method="POST">
                     <button type="submit"
                         class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-green-600 text-white hover:bg-green-700 shadow-sm transition-all">
-                        Terminar
+                        Preparando
                     </button>
                 </form>
 
-                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='Entregado') }}"
+                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='cancelado') }}"
+                    method="POST">
+                    <button type="submit"
+                        class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white border border-red-200 text-red-600 hover:bg-red-50 transition-all">
+                        Cancelar
+                    </button>
+                </form>
+
+                {% elif estado_actual == 'preparando' %}
+                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='entregado') }}"
                     method="POST" class="col-span-2">
                     <button type="submit"
                         class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-900 text-white hover:bg-black transition-all">
@@ -127,6 +148,14 @@
                     </button>
                 </form>
 
+                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='cancelado') }}"
+                    method="POST" class="col-span-2">
+                    <button type="submit"
+                        class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white border border-red-200 text-red-600 hover:bg-red-50 transition-all">
+                        Cancelar
+                    </button>
+                </form>
+                {% endif %}
             </div>
 
         </div>
