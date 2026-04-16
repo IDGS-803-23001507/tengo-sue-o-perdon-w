@@ -15,7 +15,8 @@
 <body>
 
   <nav class="bg-neutral-primary fixed w-full z-20 top-0 start-0 border-b border-default shadow-md">
-    <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
+    <div class="max-w-screen-xl flex items-center justify-between mx-auto p-4 gap-6">
+  
       <a href="{{url_for('index')}}" class="flex items-center space-x-3 rtl:space-x-reverse">
         <img src="{{url_for('static',filename='src/imagenes/otros/logo.png')}}" class="h-14 w-14"
           alt="Urban Coffee Logo" />
@@ -24,38 +25,50 @@
           Urban Coffee
         </span>
       </a>
-
-      <div class="flex items-center md:order-2 space-x-3 md:space-x-0 rtl:space-x-reverse relative">
-
+  
+      <div class="hidden md:flex flex-1 justify-center pl-6">
+        <form action="{{ url_for('producto.producto_venta') }}" method="GET" class="w-full max-w-md">
+          <div class="relative">
+            <input type="text" name="q" placeholder="Buscar productos..."
+              class="w-full py-2 pl-10 pr-4 text-sm border border-gray-300 rounded-full focus:ring-2 focus:ring-green-500 focus:outline-none"
+              value="{{ request.args.get('q', '') }}">
+            <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+          </div>
+        </form>
+      </div>
+  
+   
+      <div class="flex items-center md:order-2 gap-4 relative">
+  
         {% if session.get("usuarioRol") == "Cliente" %}
-        <a href="{{ url_for('pedidos.mis_pedidos') }}" class="relative text-gray-600 me-4">
+        <a href="{{ url_for('pedidos.mis_pedidos') }}" class="relative text-gray-600">
           <i class="fa-solid fa-cart-shopping text-sm"></i>
-          
+  
           {% if session.get("carritoCantidad", 0) > 0 %}
           <span
-            class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+            class="absolute -top-2 -right-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
             {{ session.get("carritoCantidad") }}
           </span>
           {% endif %}
         </a>
         {% endif %}
-
+  
         <button type="button"
-          class="flex text-sm bg-neutral-primary rounded-full md:me-0 focus:ring-4 focus:ring-neutral-tertiary"
+          class="flex text-sm bg-neutral-primary rounded-full focus:ring-4 focus:ring-neutral-tertiary"
           id="user-menu-button" aria-expanded="false" data-dropdown-toggle="user-dropdown"
           data-dropdown-placement="bottom">
           <span class="sr-only">Open user menu</span>
-
+  
           <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center">
             <i class="fas fa-user text-gray-600 text-sm"></i>
           </div>
-
         </button>
 
         <div id="user-dropdown"
-     class="hidden absolute right-4 mt-2 z-50 w-44 bg-neutral-primary-medium border border-default-medium rounded-base shadow-lg">
+          class="hidden absolute right-0 mt-3 z-50 w-44 bg-neutral-primary-medium border border-default-medium rounded-base shadow-lg">
+  
           {% if session.get("inicioSesion") %}
-
+  
           <div class="px-4 py-4 border-b border-gray-100">
             <p class="text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2">
               Cliente
@@ -69,11 +82,11 @@
               </span>
             </div>
           </div>
-
+  
           <ul class="p-1.5 text-sm" aria-labelledby="user-menu-button">
             <li>
               <a href="{{url_for('clientes.detalle_cliente')}}"
-                class="flex items-center w-full px-3 py-2 text-gray-700 hover:bg-green-50  rounded-md transition-colors duration-200 group">
+                class="flex items-center w-full px-3 py-2 text-gray-700 hover:bg-green-50 rounded-md transition-colors duration-200 group">
                 <span class="font-medium">Cuenta</span>
               </a>
             </li>
@@ -89,25 +102,28 @@
               </a>
             </li>
           </ul>
-
+  
           {% else %}
-
+  
           <ul class="p-2 space-y-1" style="font-family: 'Montserrat', sans-serif;">
             <li>
               <a href="{{ url_for('auth.iniciarSesion') }}"
-                 class="flex items-center w-full px-3 py-2.5 text-sm font-medium text-gray-700 hover:text-[#07A607] hover:bg-green-50 rounded-lg transition-all duration-200 group">
-                <svg class="w-4 h-4 mr-3 text-gray-400 group-hover:text-[#07A607]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                class="flex items-center w-full px-3 py-2.5 text-sm font-medium text-gray-700 hover:text-[#07A607] hover:bg-green-50 rounded-lg transition-all duration-200 group">
+                <svg class="w-4 h-4 mr-3 text-gray-400 group-hover:text-[#07A607]" fill="none" stroke="currentColor"
+                  viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
                 Iniciar sesión
               </a>
             </li>
-          
+  
             <li>
               <a href="{{ url_for('auth.registrarUsuario') }}"
-                 class="flex items-center w-full px-3 py-2.5 text-sm font-medium text-gray-700 hover:text-[#07A607] hover:bg-green-50 rounded-lg transition-all duration-200 group">
-                 <svg class="w-4 h-4 mr-3 text-gray-400 " fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                class="flex items-center w-full px-3 py-2.5 text-sm font-medium text-gray-700 hover:text-[#07A607] hover:bg-green-50 rounded-lg transition-all duration-200 group">
+                <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                 </svg>
                 Registrarse
               </a>
@@ -115,20 +131,22 @@
           </ul>
           {% endif %}
         </div>
-
+  
         <button data-collapse-toggle="navbar-user" type="button"
-          class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-body rounded-base md:hidden hover:bg-neutral-secondary-soft hover:text-heading focus:outline-none focus:ring-2 focus:ring-neutral-tertiary"
+          class="inline-flex items-center justify-center w-10 h-10 text-sm text-body rounded-base md:hidden hover:bg-neutral-secondary-soft hover:text-heading focus:outline-none focus:ring-2 focus:ring-neutral-tertiary"
           aria-controls="navbar-user" aria-expanded="false">
           <span class="sr-only">Open main menu</span>
-          <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
-            viewBox="0 0 24 24">
-            <path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="M5 7h14M5 12h14M5 17h14" />
+          <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg"
+            fill="none" viewBox="0 0 24 24">
+            <path stroke="currentColor" stroke-linecap="round" stroke-width="2"
+              d="M5 7h14M5 12h14M5 17h14" />
           </svg>
         </button>
+  
       </div>
+  
       <div class="items-center justify-between hidden w-full md:flex md:w-auto md:order-1" id="navbar-user">
-        <ul
-          class="font-medium flex flex-col p-4 md:p-0 mt-4 border border-default rounded-base bg-neutral-secondary-soft md:flex-row md:space-x-8 rtl:space-x-reverse md:mt-0 md:border-0 md:bg-neutral-primary">
+        <ul class="flex items-center gap-6">
           <li>
             <a href="{{ url_for('index') }}"
               class="inline-block pt-2 px-2 pb-2 text-[0.85rem] font-medium tracking-[0.1em] uppercase text-[#4B3621] hover:text-[#07A607] border-b-[3px] border-transparent hover:border-[#07A607] transition-all duration-75"
@@ -143,21 +161,9 @@
               Productos
             </a>
           </li>
-          <li>
-            <a href="#"
-              class="inline-block pt-2 px-2 pb-2 text-[0.85rem] font-medium tracking-[0.1em] uppercase text-[#4B3621] hover:text-[#07A607] border-b-[3px] border-transparent hover:border-[#07A607] transition-all duration-75"
-              style="font-family: 'Montserrat', sans-serif;">
-              Services</a>
-          </li>
-          <li>
-            <a href="#"
-              class="inline-block pt-2 px-2 pb-2 text-[0.85rem] font-medium tracking-[0.1em] uppercase text-[#4B3621] hover:text-[#07A607] border-b-[3px] border-transparent hover:border-[#07A607] transition-all duration-75"
-              style="font-family: 'Montserrat', sans-serif;">
-              Pricing</a>
-          </li>
-
         </ul>
       </div>
+  
     </div>
   </nav>
 
@@ -216,6 +222,12 @@
     document.addEventListener("click", (e) => {
       if (!button.contains(e.target) && !dropdown.contains(e.target)) {
         dropdown.classList.add("hidden");
+      }
+    });
+
+    window.addEventListener("pageshow", function (event) {
+      if (event.persisted) {
+        window.location.reload();
       }
     });
   </script>

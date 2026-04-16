@@ -12,10 +12,43 @@ from forms import LoginForm, RecuperarContrasenaForm, ClienteForm, ResetearContr
 from app.auditoria import registrar_auditoria
 from model import RegistroSesion, Rol, Usuario, Cliente, Empleado, db
 
+import random
+from datetime import timedelta
+
 authBp = Blueprint("auth", __name__)
 
 hashContrasenaSimulada = generate_password_hash("urban-coffee-dummy-password")
 
+codigos_verificacion = {}
+
+def generar_codigo():
+    return str(random.randint(100000, 999999))
+
+def generar_codigo_con_expiracion():
+    codigo = generar_codigo()
+    expira = datetime.now() + timedelta(minutes=5)
+    return codigo, expira
+
+def enviar_codigo_verificacion(destinatario: str, codigo: str):
+    smtpHost = current_app.config.get("SMTP_HOST", "")
+    smtpPort = int(current_app.config.get("SMTP_PORT", 587))
+    smtpUser = current_app.config.get("SMTP_USER", "")
+    smtpPassword = current_app.config.get("SMTP_PASSWORD", "")
+    smtpFrom = current_app.config.get("SMTP_FROM", "")
+
+    mensaje = EmailMessage()
+    mensaje["Subject"] = "Código de verificación - Urban Coffee"
+    mensaje["From"] = smtpFrom
+    mensaje["To"] = destinatario
+    mensaje.set_content(f"Tu código de verificación es: {codigo}")
+
+    contexto = ssl.create_default_context()
+
+    with smtplib.SMTP(smtpHost, smtpPort) as servidor:
+        servidor.starttls(context=contexto)
+        if smtpUser and smtpPassword:
+            servidor.login(smtpUser, smtpPassword)
+        servidor.send_message(mensaje)
 
 def serializadorRecuperacion() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(current_app.config["SECRET_KEY"])
@@ -286,8 +319,20 @@ def registrarUsuario():
             db.session.add(cliente)
             db.session.commit()
 
-            flash("Registro completado. Ahora puedes iniciar sesión.", "success")
-            return redirect(url_for("auth.iniciarSesion"))
+            codigo, expira = generar_codigo_con_expiracion()
+
+            codigos_verificacion[correo] = {
+                "codigo": codigo,
+                "expira": expira,
+                "intentos": 0,
+                "max_intentos": 3
+            }
+
+            enviar_codigo_verificacion(correo, codigo)
+            flash("Registro completado. Revisa tu correo para verificar tu cuenta.", "info")
+
+            session["verificacion_email"] = correo
+            return redirect(url_for("auth.verificarCorreo"))
 
         except Exception as e:
             db.session.rollback()
@@ -392,3 +437,101 @@ def cerrarSesion():
 
     session.clear()
     return redirect(url_for("auth.iniciarSesion"))
+
+@authBp.route("/verificar-correo", methods=["GET", "POST"])
+def verificarCorreo():
+    
+    print("ENDPOINT:", request.endpoint)
+    
+    email = session.get("verificacion_email")
+
+    print(email)
+    
+    if not email:
+        flash("Sesión de verificación inválida", "danger")
+        return redirect(url_for("auth.iniciarSesion"))
+
+    if request.method == "POST":
+        codigo_ingresado = request.form.get("codigo")
+
+        data = codigos_verificacion.get(email)
+
+        if not data:
+            flash("Código no válido o expirado", "danger")
+            return redirect(url_for("auth.iniciarSesion"))
+
+        if datetime.now() > data["expira"]:
+            del codigos_verificacion[email]
+            flash("Código expirado", "danger")
+            return redirect(url_for("auth.registrarUsuario"))
+
+        if data["intentos"] >= data["max_intentos"]:
+            del codigos_verificacion[email]
+            flash("Demasiados intentos", "danger")
+            return redirect(url_for("auth.registrarUsuario"))
+
+        if data["codigo"] != codigo_ingresado:
+            data["intentos"] += 1
+            flash("Código incorrecto", "danger")
+            return render_template("login/verificar.html", email=email)
+
+        usuario = Usuario.query.filter_by(correo=email).first()
+        if usuario:
+            usuario.verificado = True
+            db.session.commit()
+
+        codigos_verificacion.pop(email, None)
+
+        flash("Cuenta verificada correctamente", "success")
+
+        session.pop("verificacion_email", None)
+            
+        return redirect(url_for("auth.iniciarSesion"))
+
+    return render_template("login/verificar.html", email=email)
+
+@authBp.route("/reenviar-codigo", methods=["GET"])
+def reenviarCodigo():
+    email = session.get("verificacion_email")
+
+    if not email:
+        usuario_id = session.get("usuarioId")
+        usuario = Usuario.query.get(usuario_id)
+
+        if usuario:
+            email = usuario.correo
+            session["verificacion_email"] = email
+
+    if not email:
+        flash("No se pudo determinar el correo", "danger")
+        return redirect(url_for("auth.iniciarSesion"))
+
+    codigo, expira = generar_codigo_con_expiracion()
+
+    codigos_verificacion[email] = {
+        "codigo": codigo,
+        "expira": expira,
+        "intentos": 0,
+        "max_intentos": 3
+    }
+
+    enviar_codigo_verificacion(email, codigo)
+
+    flash("Nuevo código enviado", "info")
+    return redirect(url_for("auth.verificarCorreo"))
+
+@authBp.route("/iniciar-verificacion", methods=["GET", "POST"])
+def iniciarVerificacion():
+    usuario_id = session.get("usuarioId")
+
+    print("hola")
+    
+    usuario = Usuario.query.get(usuario_id)
+
+    if not usuario:
+        flash("Usuario no encontrado", "danger")
+        return redirect(url_for("auth.iniciarSesion"))
+
+    session["verificacion_email"] = usuario.correo
+
+    return redirect(url_for("auth.verificarCorreo"))

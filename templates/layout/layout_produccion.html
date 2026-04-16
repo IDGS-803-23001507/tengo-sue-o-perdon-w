@@ -249,6 +249,13 @@
   </div>
 
   <script src="https://unpkg.com/flowbite@latest/dist/flowbite.min.js"></script>
+  <script>
+    window.addEventListener("pageshow", function (event) {
+      if (event.persisted) {
+          window.location.reload();
+      }
+  });
+  </script>
   {% block scripts %}
   {% endblock %}
 </body>

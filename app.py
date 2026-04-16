@@ -341,6 +341,9 @@ def requerirLogin():
         "auth.registrarUsuario",
         "auth.recuperarContrasena",
         "auth.resetearContrasena",
+        "auth.verificarCorreo",
+        "auth.reenviarCodigo",
+        "auth.iniciarVerificacion",
         "auth.cerrarSesion",
         "producto.producto_venta",
         "clientes.detalle_cliente",
@@ -376,7 +379,8 @@ def requerirLogin():
         flash("Tu sesión no es válida o expiró. Inicia sesión nuevamente.", "danger")
         return redirect(url_for("auth.iniciarSesion"))
 
-    modulo = moduloDesdeEndpoint(request.endpoint)
+    if request.endpoint not in endpointsPublicos:
+       modulo = moduloDesdeEndpoint(request.endpoint)
     if modulo:
         accion = accionDesdeRequest(request.endpoint, request.method)
         rolCanonico = normalizarRol(session.get("usuarioRol", ""))
@@ -397,7 +401,10 @@ def requerirLogin():
         endpointsCliente = {
             "ventas.tienda_cliente",
             "ventas.comprar_producto",
+            "auth.verificarCorreo",
             "auth.cerrarSesion",
+            "auth.iniciarVerificacion",
+            "auth.reenviarCodigo",
             "clientes.detalle_cliente",
             "clientes.editar_cliente",
             "clientes.desactivar_cliente",
@@ -412,6 +419,14 @@ def requerirLogin():
             return redirect(url_for("ventas.tienda_cliente"))
 
     return None
+
+@app.after_request
+def add_header(response):
+    if response.content_type == "text/html; charset=utf-8":
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
 
 @app.route("/")
