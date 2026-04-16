@@ -693,7 +693,7 @@ def requerirLogin():
     if modulo:
         accion = accionDesdeRequest(request.endpoint, request.method)
         rolCanonico = normalizarRol(session.get("usuarioRol", ""))
-        if not permitido(rolCanonico, modulo, accion):
+        if rolCanonico != "cliente" and not permitido(rolCanonico, modulo, accion):
             acciones = accionesPermitidas(rolCanonico, modulo)
             nombres = {"R": "leer", "C": "crear", "U": "actualizar", "D": "eliminar"}
 

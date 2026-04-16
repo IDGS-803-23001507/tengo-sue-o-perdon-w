@@ -7,7 +7,7 @@ from flask import request
 from itsdangerous import URLSafeSerializer
 from flask import current_app
 
-from model import db
+from model import Venta, db
 
 pedidosBp = Blueprint("pedidos", __name__, url_prefix="/pedidos")
 
@@ -33,7 +33,7 @@ def requiereRol(rolRequerido: str):
 def mis_pedidos():
    
     query = text("""
-        SELECT p.*, v.codigo_recogida
+        SELECT p.*, v.codigo_recogida, v.total
         FROM pedidos p
         JOIN ventas v ON p.id_venta = v.id_venta
         WHERE v.id_cliente = :cliente
@@ -71,7 +71,7 @@ def index():
         FROM pedidos p
         JOIN ventas v ON p.id_venta = v.id_venta
         LEFT JOIN clientes c ON v.id_cliente = c.id
-        WHERE LOWER(p.estado) IN ('pendiente', 'preparando', 'listo')
+        WHERE LOWER(p.estado) IN ('pendiente', 'aceptado', 'preparando', 'listo', 'enviado')
         ORDER BY p.hora_recogida ASC
     """)
     
@@ -100,21 +100,85 @@ def cambiar_estado(token, estado):
     except Exception:
         return redirect(url_for("pedidos.index"))
 
+    query_pedido = text("SELECT id_venta, estado FROM pedidos WHERE id_pedido = :id")
     query_venta = text("SELECT id_venta FROM pedidos WHERE id_pedido = :id")
+    pedido = db.session.execute(query_pedido, {"id": idPedido}).fetchone()
     venta = db.session.execute(query_venta, {"id": idPedido}).fetchone()
     
+    if not pedido:
+        flash("Pedido no encontrado", "danger")
+        return redirect(url_for("pedidos.index"))
+        
+    id_venta = pedido.id_venta
+    estado_actual = str(pedido.estado).lower()
+    estado_nuevo = estado.lower()
+    
+    # Bloqueo de Reversa Irreversible
+    if estado_actual in ['enviado', 'entregado'] and estado_nuevo in ['cancelado', 'rechazado']:
+        flash("No puedes rechazar o cancelar un pedido que ya fue enviado o entregado.", "danger")
+        return redirect(url_for("pedidos.index"))
+
     query_update = text("""
         UPDATE pedidos
         SET estado = :estado
         WHERE id_pedido = :id
     """)
-    
     db.session.execute(query_update, {"estado": estado, "id": idPedido})
+
+    # --- Lógica de inventario según transición de estado ---
+    query_detalles = text("SELECT id_producto, cantidad FROM detalle_venta WHERE id_venta = :id_venta")
+    detalles = db.session.execute(query_detalles, {"id_venta": id_venta}).fetchall()
+
+    if estado_nuevo in ['cancelado', 'rechazado'] and estado_actual not in ['cancelado', 'rechazado']:
+        # Liberar reservas y restaurar insumos
+        for id_producto, cantidad in detalles:
+            prod_info = db.session.execute(
+                text("SELECT tipo_preparacion FROM Producto WHERE id_producto = :pid"),
+                {"pid": id_producto}
+            ).fetchone()
+            if prod_info:
+                if prod_info[0] == "stock":
+                    # Solo liberar la reserva; el stock real nunca se tocó
+                    db.session.execute(
+                        text("UPDATE Producto SET stock_reservado = GREATEST(0, stock_reservado - :cant) WHERE id_producto = :pid"),
+                        {"cant": cantidad, "pid": id_producto}
+                    )
+                else:
+                    # materia_prima: devolver insumos que sí se descontaron
+                    recetas = db.session.execute(
+                        text("SELECT id_materia, cantidad FROM Recetas WHERE id_producto = :pid AND estado = 1"),
+                        {"pid": id_producto}
+                    ).fetchall()
+                    for id_materia, c_receta in recetas:
+                        db.session.execute(
+                            text("UPDATE Materia_prima SET stock_actual = stock_actual + :total WHERE id_materia = :mid"),
+                            {"total": c_receta * cantidad, "mid": id_materia}
+                        )
+
+    elif estado_nuevo == 'entregado' and estado_actual not in ['entregado', 'cancelado', 'rechazado']:
+        # Descontar stock real y limpiar reserva para productos tipo stock
+        for id_producto, cantidad in detalles:
+            prod_info = db.session.execute(
+                text("SELECT tipo_preparacion FROM Producto WHERE id_producto = :pid"),
+                {"pid": id_producto}
+            ).fetchone()
+            if prod_info and prod_info[0] == "stock":
+                db.session.execute(
+                    text("""
+                        UPDATE Producto
+                        SET stock          = GREATEST(0, stock - :cant),
+                            stock_reservado = GREATEST(0, stock_reservado - :cant)
+                        WHERE id_producto = :pid
+                    """),
+                    {"cant": cantidad, "pid": id_producto}
+                )
+
     db.session.commit()
 
     if estado == 'Entregado' and venta:
         return redirect(url_for("ventas.pagar_venta_gestion", token=get_serializer().dumps(venta.id_venta)))
 
+    flash(f"Estado actualizado a {estado}.", "success")
     return redirect(url_for("pedidos.index"))
    
 MINUTOS_LIMITE_CAMBIO = 10
@@ -153,6 +217,34 @@ def cancelar_pedido(token):
 
     query_cancelar = text("UPDATE pedidos SET estado = 'Cancelado' WHERE id_pedido = :id")
     db.session.execute(query_cancelar, {"id": idPedido})
+    
+    # 4. Liberar reserva / restaurar insumos según tipo de producto
+    query_detalles = text("SELECT id_producto, cantidad FROM detalle_venta WHERE id_venta = :id_venta")
+    detalles = db.session.execute(query_detalles, {"id_venta": pedido.id_venta}).fetchall()
+    for id_producto, cantidad in detalles:
+        prod_info = db.session.execute(
+            text("SELECT tipo_preparacion FROM Producto WHERE id_producto = :pid"),
+            {"pid": id_producto}
+        ).fetchone()
+        if prod_info:
+            if prod_info[0] == "stock":
+                # Solo liberar la reserva; el stock real nunca se tocó
+                db.session.execute(
+                    text("UPDATE Producto SET stock_reservado = GREATEST(0, stock_reservado - :cant) WHERE id_producto = :pid"),
+                    {"cant": cantidad, "pid": id_producto}
+                )
+            else:
+                # materia_prima: devolver los insumos descontados
+                recetas = db.session.execute(
+                    text("SELECT id_materia, cantidad FROM Recetas WHERE id_producto = :pid AND estado = 1"),
+                    {"pid": id_producto}
+                ).fetchall()
+                for id_materia, c_receta in recetas:
+                    db.session.execute(
+                        text("UPDATE Materia_prima SET stock_actual = stock_actual + :total WHERE id_materia = :mid"),
+                        {"total": c_receta * cantidad, "mid": id_materia}
+                    )
+    
     db.session.commit()
 
     flash("Pedido cancelado exitosamente.", "success")

@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 
-<body>
+<body class="min-h-screen flex flex-col">
 
   <nav class="bg-neutral-primary fixed w-full z-20 top-0 start-0 border-b border-default shadow-md">
     <div class="max-w-screen-xl flex items-center justify-between mx-auto p-4 gap-6">
@@ -167,7 +167,7 @@
     </div>
   </nav>
 
-  <div class="{% block content_class %}pt-[92px]{% endblock %}">
+  <div class="flex-grow {% block content_class %}pt-[92px]{% endblock %}">
 
 
     {% block container %}

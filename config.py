@@ -63,5 +63,11 @@ class Config:
     MONGO_AUDIT_COLLECTION = os.getenv("MONGO_AUDIT_COLLECTION", "auditoria_logs")  
 
     USUARIO_GERENTE_NOMBRE = os.getenv("USUARIO_GERENTE_NOMBRE", "Administrador Urban Coffee")
+<<<<<<< HEAD
     USUARIO_GERENTE_CORREO = os.getenv("USUARIO_GERENTE_CORREO", "coffee@gmail.com")
     USUARIO_GERENTE_PASSWORD = os.getenv("USUARIO_GERENTE_PASSWORD", "12345678")  
+=======
+    USUARIO_GERENTE_CORREO = os.getenv("USUARIO_GERENTE_CORREO", "admin@urbancoffee.com")
+    USUARIO_GERENTE_PASSWORD = os.getenv("USUARIO_GERENTE_PASSWORD", "PasswordSegura123!")
+    USUARIO_GERENTE_ROL_ID = int(os.getenv("USUARIO_GERENTE_ROL_ID", 6))  
+>>>>>>> features
