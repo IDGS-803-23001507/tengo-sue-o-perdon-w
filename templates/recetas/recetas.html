@@ -85,7 +85,7 @@
                         {{ badge_estado_booleano(receta.estado, 'Activa', 'Inactiva') }}
                     </td>
                     <td class="px-6 py-4 text-center">
-                        <a href="{{ url_for('recetas.nueva', producto=receta.id_producto, editar=1) }}" class="text-blue-600 hover:underline">Editar</a>
+                        <a href="{{ url_for('recetas.nueva', token=serializer.dumps(receta.id_producto), editar=1) }}" class="text-blue-600 hover:underline">Editar</a>
                     </td>
                 </tr>
             {% else %}

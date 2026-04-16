@@ -102,7 +102,7 @@
                     </td>
 
                     <td class="px-6 py-4">
-                        <a href="{{ url_for('compras.detalle_compra', id=compra.id_compra) }}"
+                        <a href="{{ url_for('compras.detalle_compra', token=serializer.dumps(compra.id_compra)) }}"
                         class="text-blue-600 hover:underline">
                             Ver Detalle
                         </a>

@@ -28,8 +28,8 @@ _load_local_env()
 class Config:
     SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "urban-coffee-dev-secret-key")
 
-    MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
-    MYSQL_PORT = int(os.getenv("MYSQL_PORT", 3306))
+    MYSQL_HOST = os.getenv("MYSQL_HOST", "127.0.0.1")
+    MYSQL_PORT = int(os.getenv("MYSQL_PORT", 3307))
     MYSQL_USER = os.getenv("MYSQL_USER", "root")
     MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "root")
     MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "urban_coffee")
@@ -63,5 +63,5 @@ class Config:
     MONGO_AUDIT_COLLECTION = os.getenv("MONGO_AUDIT_COLLECTION", "auditoria_logs")  
 
     USUARIO_GERENTE_NOMBRE = os.getenv("USUARIO_GERENTE_NOMBRE", "Administrador Urban Coffee")
-    USUARIO_GERENTE_CORREO = os.getenv("USUARIO_GERENTE_CORREO", "admin@urbancoffee.com")
-    USUARIO_GERENTE_PASSWORD = os.getenv("USUARIO_GERENTE_PASSWORD", "PasswordSegura123!")  
+    USUARIO_GERENTE_CORREO = os.getenv("USUARIO_GERENTE_CORREO", "coffee@gmail.com")
+    USUARIO_GERENTE_PASSWORD = os.getenv("USUARIO_GERENTE_PASSWORD", "12345678")  

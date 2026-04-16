@@ -11,7 +11,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.auditoria import registrar_auditoria
 from model import Cliente, DetalleVenta, Producto, Venta, Usuario, db
 
+from itsdangerous import URLSafeSerializer
+from flask import current_app
+
 ventasBp = Blueprint("ventas", __name__)
+
+def get_serializer():
+    return URLSafeSerializer(current_app.config["SECRET_KEY"])
 
 @ventasBp.route("/tienda", methods=["GET"], endpoint="tienda_cliente")
 def tiendaCliente():
@@ -156,7 +162,7 @@ def venta_fisica():
                 session.pop("carrito", None) 
                 session.modified = True 
                 
-                return redirect(url_for("ventas.pagar_venta_gestion", idVenta=id_venta_actual))
+                return redirect(url_for("ventas.pagar_venta_gestion", token=get_serializer().dumps(id_venta_actual)))
                 
             except Exception as e:
                 db.session.rollback()
@@ -331,19 +337,18 @@ def venta_online():
                     c_id = cliente.id
                     session["clienteId"] = c_id
 
-            # --- MODIFICACIÓN PARA EDICIÓN ---
+       
             id_venta_tracker = 0 
             id_pedido_editando = session.get("editando_pedido_id")
 
             if id_pedido_editando:
-                # Obtenemos el id_venta original de ese pedido para pasarlo al PROCEDURE
+  
                 res_venta = db.session.execute(
                     text("SELECT id_venta FROM pedidos WHERE id_pedido = :id"),
                     {"id": id_pedido_editando}
                 ).fetchone()
                 if res_venta:
                     id_venta_tracker = res_venta[0]
-            # --------------------------------
 
             try:
                 for item in carrito:
@@ -385,8 +390,10 @@ def venta_online():
             return redirect(url_for("ventas.venta_online"))
 
     return render_template("ventas/online.html", form=form, lista_productos=productos)
+
 @ventasBp.route("/reporte", methods=["GET"])
 def generar_reporte():
+
     fecha_filtro = request.args.get('fecha') or request.args.get('creado_en')
     if not fecha_filtro:
         fecha_filtro = datetime.now().strftime('%Y-%m-%d')
@@ -418,9 +425,14 @@ def generar_reporte():
     
     return output
 
-@ventasBp.route("/<int:idVenta>/pagar", methods=["GET", "POST"])
-def pagar_venta_gestion(idVenta): 
+@ventasBp.route("/<token>/pagar", methods=["GET", "POST"])
+def pagar_venta_gestion(token): 
     
+    try:
+        idVenta = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("ventas.venta_fisica"))
+
     form = PagoForm()
     
     if request.method == "GET":
@@ -453,15 +465,21 @@ def pagar_venta_gestion(idVenta):
         db.session.commit()
         
         flash(f"¡Venta #{idVenta} pagada con éxito!", "success")
-        return redirect(url_for("ventas.ticket", idVenta=idVenta))
+        return redirect(url_for("ventas.ticket", token=get_serializer().dumps(idVenta)))
         
     except Exception as e:
         db.session.rollback()
         flash(f"Error al procesar el pago: {str(e)}", "danger")
         return redirect(url_for("ventas.venta_fisica"))
     
-@ventasBp.route("/ticket/<int:idVenta>", methods=["GET", "POST"], endpoint="ticket")
-def ticket(idVenta):
+@ventasBp.route("/ticket/<token>", methods=["GET", "POST"], endpoint="ticket")
+def ticket(token):
+    
+    try:
+        idVenta = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("ventas.venta_fisica"))
+    
     query = text("""
         SELECT 
             v.id_venta, v.creado_en, v.metodo_pago, v.total,
@@ -479,4 +497,4 @@ def ticket(idVenta):
     resultado = db.session.execute(query, {"idVenta": idVenta}).fetchall()
     return render_template("ventas/ticket.html", ticket=resultado)
 
-#####################################################################################
+

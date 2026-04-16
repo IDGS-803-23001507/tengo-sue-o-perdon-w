@@ -3,7 +3,13 @@ from sqlalchemy import text
 from forms import ProductoTerminadoForm, ProductoTerminadoEditarForm, DesactivarForm
 from model import db, Producto, Receta
 
+from itsdangerous import URLSafeSerializer
+from flask import current_app
+
 producto_bp = Blueprint('producto', __name__)
+
+def get_serializer():
+    return URLSafeSerializer(current_app.config["SECRET_KEY"])
 
 @producto_bp.route('/catalogo')
 def producto_index():
@@ -83,6 +89,7 @@ def nuevo_producto():
 
 @producto_bp.route('/productos/<int:id_producto>/descartar_pendiente', methods=['GET'])
 def descartar_producto_pendiente(id_producto):
+    
     pendientes = set(session.get('productos_pendientes_receta', []))
     if id_producto not in pendientes:
         return redirect(url_for('producto.producto_index'))
@@ -112,8 +119,14 @@ def descartar_producto_pendiente(id_producto):
     return redirect(url_for('producto.producto_index'))
 
 
-@producto_bp.route('/editar_producto/<int:id>', methods=['GET', 'POST'])
-def editar_producto(id):
+@producto_bp.route('/editar_producto/<token>', methods=['GET', 'POST'])
+def editar_producto(token):
+    
+    try:
+        id = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("producto.producto_index"))
+    
     producto = Producto.query.get_or_404(id)
     form = ProductoTerminadoEditarForm(obj=producto)
 
@@ -135,8 +148,14 @@ def editar_producto(id):
     
     return render_template('productos/editar_producto.html', mostrar_modal=False, producto=producto, form=form)
 
-@producto_bp.route('/productos/<int:id>')
-def detalle_producto(id):
+@producto_bp.route('/productos/<token>')
+def detalle_producto(token):
+    
+    try:
+        id = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("producto.producto_index"))
+    
     producto = db.get_or_404(Producto, id)
 
     return render_template(
@@ -178,8 +197,14 @@ def producto_venta():
 
     return render_template('venta_linea/catalogo_productos.html', productos=productos, busqueda=busqueda, categoria_actual=categoria)
 
-@producto_bp.route('/productos/desactivar/<int:id>', methods=['POST'])
-def desactivar_producto(id):
+@producto_bp.route('/productos/desactivar/<token>', methods=['POST'])
+def desactivar_producto(token):
+    
+    try:
+        id = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("producto.producto_index"))
+    
     producto = db.get_or_404(Producto, id)
     form = DesactivarForm()
 
@@ -202,8 +227,14 @@ def desactivar_producto(id):
 
     return redirect(url_for('producto.producto_index'))
 
-@producto_bp.route('/productos/reactivar/<int:id>', methods=['POST'])
-def reactivar_producto(id):
+@producto_bp.route('/productos/reactivar/<token>', methods=['POST'])
+def reactivar_producto(token):
+    
+    try:
+        id = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("producto.producto_index"))
+    
     producto = db.get_or_404(Producto, id)
     form = DesactivarForm()
 

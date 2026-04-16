@@ -154,14 +154,14 @@
 
                 <td class="px-6 py-4 text-center flex justify-center gap-2">
 
-                    <a href="{{ url_for('producto.detalle_producto', id=producto.id_producto) }}"
+                    <a href="{{ url_for('producto.detalle_producto', token=serializer.dumps(producto.id_producto)) }}"
                     class="text-green-600 hover:underline">
                     Detalle
                 </a>
 
                     {% if producto.estatus %}
 
-                    <a href="{{ url_for('producto.editar_producto', id=producto.id_producto) }}"
+                    <a href="{{ url_for('producto.editar_producto', token=serializer.dumps(producto.id_producto)) }}"
                         class="mx-2 text-blue-600 hover:underline">
                         Editar
                     </a>
@@ -169,7 +169,7 @@
                     <button type="button" onclick='abrirModal(
                             {{ producto.id_producto }},
                             {{ producto.nombre|tojson }},
-                            "{{ url_for("producto.desactivar_producto", id=producto.id_producto) }}",
+                            "{{ url_for("producto.desactivar_producto", token=serializer.dumps(producto.id_producto)) }}",
                             "Desactivar Producto y su receta",
                             "Sí, Desactivar",
                             "red"
@@ -182,7 +182,7 @@
                     <button type="button" onclick='abrirModal(
                         {{ producto.id_producto }},
                         {{ producto.nombre|tojson }},
-                        "{{ url_for("producto.reactivar_producto", id=producto.id_producto) }}",
+                        "{{ url_for("producto.reactivar_producto", token=serializer.dumps(producto.id_producto)) }}",
                         "Reactivar Producto y su receta",
                         "Sí, Reactivar",
                         "green"

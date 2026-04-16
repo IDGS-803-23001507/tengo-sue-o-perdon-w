@@ -3,7 +3,14 @@ from model import db, Proveedores
 from sqlalchemy.exc import DataError, IntegrityError
 from forms import ProveedorForm, DesactivarForm
 
+from itsdangerous import URLSafeSerializer
+from flask import current_app
+
 proveedor_bp = Blueprint('proveedor', __name__)
+
+
+def get_serializer():
+    return URLSafeSerializer(current_app.config["SECRET_KEY"])
 
 @proveedor_bp.route('/proveedores')
 def proveedores():
@@ -75,15 +82,25 @@ def nuevo_proveedor():
     return render_template('proveedores/nuevo_proveedor.html', form=form)
 
 
-@proveedor_bp.route('/proveedores/detalle/<int:id>')
-def detalle_proveedor(id):
+@proveedor_bp.route('/proveedores/detalle/<token>')
+def detalle_proveedor(token):
 
+    try:
+        id = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("proveedor.proveedores"))
+    
     proveedor = db.get_or_404(Proveedores, id)
     return render_template('proveedores/detalle_proveedor.html', proveedor=proveedor)
 
 
-@proveedor_bp.route('/proveedores/modificar/<int:id>', methods=['GET', 'POST'])
-def modificar_proveedor(id):
+@proveedor_bp.route('/proveedores/modificar/<token>', methods=['GET', 'POST'])
+def modificar_proveedor(token):
+    
+    try:
+        id = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("proveedor.proveedores"))
 
     proveedor = db.get_or_404(Proveedores, id)
     form = ProveedorForm(obj=proveedor)
@@ -120,8 +137,14 @@ def modificar_proveedor(id):
     return render_template('proveedores/modificar_proveedor.html', form=form, proveedor=proveedor)
 
 
-@proveedor_bp.route('/proveedores/eliminar/<int:id>', methods=['POST'])
-def eliminar_proveedor(id):
+@proveedor_bp.route('/proveedores/eliminar/<token>', methods=['POST'])
+def eliminar_proveedor(token):
+    
+    try:
+        id = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("proveedor.proveedores"))
+    
     proveedor = db.get_or_404(Proveedores, id)
     form = DesactivarForm()
 
@@ -139,8 +162,14 @@ def eliminar_proveedor(id):
     return redirect(url_for('proveedor.proveedores'))
     
 
-@proveedor_bp.route('/proveedores/reactivar/<int:id>', methods=['POST'])
-def reactivar_proveedor(id):
+@proveedor_bp.route('/proveedores/reactivar/<token>', methods=['POST'])
+def reactivar_proveedor(token):
+    
+    try:
+        id = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("proveedor.proveedores"))
+    
     proveedor = db.get_or_404(Proveedores, id)
     form = DesactivarForm()
 

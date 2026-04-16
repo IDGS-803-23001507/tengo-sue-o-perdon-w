@@ -84,7 +84,7 @@
                     </td>
 
                     <td class="px-6 py-4 text-right">
-                        <a href="{{ url_for('ventas.ticket', idVenta=venta.id_venta) }}" 
+                        <a href="{{ url_for('ventas.ticket', token=serializer.dumps(venta.id_venta)) }}" 
                            class="inline-flex items-center text-amber-700 hover:text-amber-900 font-bold text-sm">
                             Ver Ticket
                             <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

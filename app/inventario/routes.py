@@ -4,7 +4,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from forms import MateriaPrimaForm, DesactivarForm
 from model import db, MateriaPrima, UnidadMedida 
 
+from itsdangerous import URLSafeSerializer
+from flask import current_app
+
 inventario_bp = Blueprint('inventario', __name__)
+
+def get_serializer():
+    return URLSafeSerializer(current_app.config["SECRET_KEY"])
 
 @inventario_bp.route('/materias_primas')
 def materias_primas():
@@ -50,8 +56,13 @@ def nueva_materia():
 
     return render_template('inventario/nueva_materia.html', mostrar_modal=False, form=form)
 
-@inventario_bp.route('/editar-materia/<int:id>', methods=['GET', 'POST'])
-def editar_materia(id):
+@inventario_bp.route('/editar-materia/<token>', methods=['GET', 'POST'])
+def editar_materia(token):
+    
+    try:
+        id = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("inventario.materias_primas"))
     
     insumo = MateriaPrima.query.get_or_404(id)
     unidades_db = UnidadMedida.query.all()
@@ -83,8 +94,13 @@ def editar_materia(id):
     return render_template('inventario/editar_materia.html', mostrar_modal=False, insumo=insumo, form=form)
 
 
-@inventario_bp.route('/materia-prima/desactivar/<int:id>', methods=['POST'])
-def desactivar_materia(id):
+@inventario_bp.route('/materia-prima/desactivar/<token>', methods=['POST'])
+def desactivar_materia(token):
+    
+    try:
+        id = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("inventario.materias_primas"))
  
     insumo = MateriaPrima.query.get_or_404(id)
     form = DesactivarForm()
@@ -103,8 +119,14 @@ def desactivar_materia(id):
     return redirect(url_for('inventario.materias_primas'))
 
 
-@inventario_bp.route('/materia-prima/reactivar/<int:id>', methods=['POST'])
-def reactivar_materia(id):
+@inventario_bp.route('/materia-prima/reactivar/<token>', methods=['POST'])
+def reactivar_materia(token):
+    
+    try:
+        id = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("inventario.materias_primas"))
+    
     insumo = MateriaPrima.query.get_or_404(id)
     form = DesactivarForm()
 

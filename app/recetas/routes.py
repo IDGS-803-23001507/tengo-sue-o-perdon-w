@@ -10,8 +10,13 @@ from app.auditoria import registrar_auditoria
 from forms import RecetaForm, RecetaLoteForm
 from model import MateriaPrima, Producto, Receta, db
 
+from itsdangerous import URLSafeSerializer
+from flask import current_app
+
 recetas_bp = Blueprint("recetas", __name__, url_prefix="/recetas")
 
+def get_serializer():
+    return URLSafeSerializer(current_app.config["SECRET_KEY"])
 
 def _cargar_formulario_receta(form: RecetaForm) -> None:
     productos = Producto.query.order_by(Producto.estatus.desc(), Producto.nombre.asc()).all()
@@ -320,9 +325,15 @@ def nueva_receta():
         active_page="recetas",
     )
 
-@recetas_bp.route("/<int:id_receta>/editar", methods=["GET", "POST"], endpoint="editar")
+@recetas_bp.route("/<token>/editar", methods=["GET", "POST"], endpoint="editar")
 @requiereRol("Gerente")
-def modificar_receta(id_receta: int):
+def modificar_receta(token):
+    
+    try:
+        id_receta = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("recetas.recetas"))
+    
     receta = Receta.query.get_or_404(id_receta)
     form = RecetaForm(obj=receta)
     _cargar_formulario_receta(form)
@@ -404,8 +415,15 @@ def modificar_receta(id_receta: int):
     )
 
 
-@recetas_bp.route("/producto/<int:id_producto>", methods=["GET"], endpoint="obtener_por_producto")
-def detalle_recetas_producto(id_producto: int):
+@recetas_bp.route("/producto/<token>", methods=["GET"], endpoint="obtener_por_producto")
+def detalle_recetas_producto(token):
+    
+    try:
+        id_producto = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("recetas.recetas"))
+    
+    
     recetas = (
         Receta.query.filter_by(id_producto=id_producto, estado=True)
         .order_by(Receta.id_receta.asc())
@@ -430,7 +448,7 @@ def detalle_recetas_producto(id_producto: int):
     )
 
 
-@recetas_bp.route("/producto/<int:id_producto>", methods=["POST"], endpoint="crear_receta")
+@recetas_bp.route("/producto/<token>", methods=["POST"], endpoint="crear_receta")
 @requiereRol("Gerente")
 def crear_receta_api(id_producto: int):
     payload = request.get_json(silent=True) or {}

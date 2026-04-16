@@ -103,7 +103,7 @@
 
             <div class="bg-gray-50 p-4 grid grid-cols-2 gap-2">
 
-                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='Preparando') }}"
+                <form action="{{ url_for('pedidos.cambiar_estado', token=serializer.dumps(p.id_pedido), estado='Preparando') }}"
                     method="POST">
                     <button type="submit"
                         class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white border border-gray-200 text-gray-600 hover:bg-[#8B5E3C] hover:text-white transition-all">
@@ -111,7 +111,7 @@
                     </button>
                 </form>
 
-                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='Listo') }}"
+                <form action="{{ url_for('pedidos.cambiar_estado', token=serializer.dumps(p.id_pedido), estado='Listo') }}"
                     method="POST">
                     <button type="submit"
                         class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-green-600 text-white hover:bg-green-700 shadow-sm transition-all">
@@ -119,7 +119,7 @@
                     </button>
                 </form>
 
-                <form action="{{ url_for('pedidos.cambiar_estado', idPedido=p.id_pedido, estado='Entregado') }}"
+                <form action="{{ url_for('pedidos.cambiar_estado', token=serializer.dumps(p.id_pedido), estado='Entregado') }}"
                     method="POST" class="col-span-2">
                     <button type="submit"
                         class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-900 text-white hover:bg-black transition-all">

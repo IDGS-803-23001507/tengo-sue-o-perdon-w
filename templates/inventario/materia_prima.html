@@ -87,12 +87,12 @@
                     <td class="px-6 py-4 text-center">
 
                         {% if insumo.estatus %}
-                        <a href="{{ url_for('inventario.editar_materia', id=insumo.id_materia) }}" class="text-blue-600 hover:underline">Editar</a>
+                        <a href="{{ url_for('inventario.editar_materia', token=serializer.dumps(insumo.id_materia)) }}" class="text-blue-600 hover:underline">Editar</a>
                         
                         <button type="button" onclick='abrirModal(
                             {{ insumo.id_materia }},
                             {{ insumo.nombre|tojson }},
-                            "{{ url_for("inventario.desactivar_materia", id=insumo.id_materia) }}",
+                            "{{ url_for("inventario.desactivar_materia", token=serializer.dumps(insumo.id_materia)) }}",
                             "Desactivar Materia Prima",
                             "Sí, Desactivar",
                             "red"
@@ -105,7 +105,7 @@
                     <button type="button" onclick='abrirModal(
                             {{ insumo.id_materia }},
                             {{ insumo.nombre|tojson }},
-                            "{{ url_for("inventario.reactivar_materia", id=insumo.id_materia) }}",
+                            "{{ url_for("inventario.reactivar_materia", token=serializer.dumps(insumo.id_materia)) }}",
                             "Reactivar Materia Prima",
                             "Sí, Reactivar",
                             "green"
