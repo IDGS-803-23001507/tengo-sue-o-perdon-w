@@ -74,7 +74,20 @@ def ventas():
 @ventasBp.route("/fisica", methods=["GET", "POST"])
 def venta_fisica():
     form = VentaForm()
-    productos = Producto.query.filter_by(estatus=True).all()
+    query_productos = text("""
+        SELECT p.*, 
+        CASE 
+            WHEN COALESCE(p.tipo_preparacion, 'materia_prima') = 'stock' THEN
+                CASE WHEN (COALESCE(p.stock, 0) - COALESCE(p.stock_reservado, 0)) > 0 THEN 1 ELSE 0 END
+            WHEN EXISTS (
+                SELECT 1 FROM Recetas r 
+                JOIN Materia_prima mp ON r.id_materia = mp.id_materia 
+                WHERE r.id_producto = p.id_producto AND r.estado = 1 AND mp.stock_actual < r.cantidad
+            ) THEN 0 ELSE 1 
+        END as disponible_stock
+        FROM Producto p WHERE p.estatus = 1
+    """)
+    productos = db.session.execute(query_productos).fetchall()
     
     if request.method == "POST":
         
@@ -221,7 +234,7 @@ def venta_online():
         SELECT p.*, 
         CASE 
             WHEN COALESCE(p.tipo_preparacion, 'materia_prima') = 'stock' THEN
-                CASE WHEN COALESCE(p.stock, 0) > 0 THEN 1 ELSE 0 END
+                CASE WHEN (COALESCE(p.stock, 0) - COALESCE(p.stock_reservado, 0)) > 0 THEN 1 ELSE 0 END
             WHEN EXISTS (
                 SELECT 1 FROM Recetas r 
                 JOIN Materia_prima mp ON r.id_materia = mp.id_materia 
@@ -281,6 +294,11 @@ def venta_online():
             if not carrito:
                 flash("Carrito vacío", "warning")
                 return redirect(url_for("ventas.venta_online"))
+                
+            total_unidades = sum(item.get("cantidad", 1) for item in carrito)
+            if total_unidades > 15:
+                flash("Para pedidos mayores a 15 unidades, por favor contactar a la sucursal.", "warning")
+                return redirect(url_for("ventas.venta_online"))
 
             hora_recogida_raw = request.form.get("hora_recogida")
 
@@ -296,12 +314,64 @@ def venta_online():
                     flash("Lo sentimos, la sucursal está por cerrar. Elige una hora más temprana.", "warning")
                     return redirect(url_for("ventas.venta_online"))
 
-                if hora_pedido < (ahora + timedelta(hours=1)):
-                    flash("Para preparar tu pedido con calidad, requerimos al menos 1 hora de anticipación.", "danger")
+                if hora_pedido < (ahora + timedelta(minutes=15)):
+                    flash("Para preparar tu pedido con calidad, requerimos al menos 15 minutos de anticipación.", "danger")
                     return redirect(url_for("ventas.venta_online"))
 
             except ValueError:
                 flash("El formato de fecha y hora no es correcto.", "danger")
+                return redirect(url_for("ventas.venta_online"))
+                
+            # Lógica de Validación de Stock Agrupada
+            try:
+                from collections import defaultdict
+                cantidades_por_producto = defaultdict(int)
+                for item in carrito:
+                    cantidades_por_producto[item["id_producto"]] += item["cantidad"]
+                
+                consumo_materia = defaultdict(float)
+
+                for p_id, q in cantidades_por_producto.items():
+                    query_prod = text("""
+                        SELECT tipo_preparacion, stock 
+                        FROM Producto 
+                        WHERE id_producto = :pid AND estatus = 1
+                    """)
+                    prod_info = db.session.execute(query_prod, {"pid": p_id}).fetchone()
+                    if not prod_info:
+                        flash("Uno o más productos en el carrito ya no están disponibles. Por favor, actualiza tu orden.", "danger")
+                        return redirect(url_for("ventas.venta_online"))
+                    
+                    tipo, stock_actual = prod_info
+                    
+                    if tipo == "stock":
+                        if int(stock_actual or 0) < q:
+                            flash("Stock insuficiente del producto para completar la venta. Ajuste las cantidades.", "warning")
+                            return redirect(url_for("ventas.venta_online"))
+                    else:
+                        query_receta = text("""
+                            SELECT id_materia, cantidad 
+                            FROM Recetas 
+                            WHERE id_producto = :pid AND estado = 1
+                        """)
+                        recetas = db.session.execute(query_receta, {"pid": p_id}).fetchall()
+                        if not recetas:
+                            flash("Un producto no tiene receta activa y no puede ser preparado. Contacte a la sucursal.", "danger")
+                            return redirect(url_for("ventas.venta_online"))
+                            
+                        for r_materia, r_cantidad in recetas:
+                            consumo_materia[r_materia] += float(r_cantidad * q)
+                
+                for m_id, q_req in consumo_materia.items():
+                    query_mp = text("SELECT stock_actual FROM Materia_prima WHERE id_materia = :mid")
+                    mp_info = db.session.execute(query_mp, {"mid": m_id}).fetchone()
+                    if not mp_info or float(mp_info[0] or 0) < q_req:
+                        flash("No hay suficiente stock de insumos para procesar la orden completa a la vez.", "warning")
+                        return redirect(url_for("ventas.venta_online"))
+
+            except Exception as e:
+                print(f"Error calculado stock pre-pedido: {e}")
+                flash("Ocurrió un error calculando el stock. Intenta de nuevo.", "danger")
                 return redirect(url_for("ventas.venta_online"))
             
             u_id = session.get("usuarioId")

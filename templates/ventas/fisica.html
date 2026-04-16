@@ -25,10 +25,15 @@
                     <div class="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition duration-300 overflow-hidden group">
 
                         <!-- Imagen -->
-                        <div class="overflow-hidden">
+                        <div class="overflow-hidden relative">
+                            {% if producto.disponible_stock == 0 %}
+                            <div class="absolute inset-0 bg-white/60 z-10 flex items-center justify-center">
+                                <span class="bg-red-500 text-white px-3 py-1 text-xs font-black rounded-full uppercase tracking-widest shadow-md">Agotado</span>
+                            </div>
+                            {% endif %}
                             <img 
                                 src="{{ producto.imagen if producto.imagen else url_for('static', filename='img/default.png') }}" 
-                                class="w-full h-44 object-cover transition duration-500 group-hover:scale-105">
+                                class="w-full h-44 object-cover transition duration-500 group-hover:scale-105 {{ 'grayscale opacity-70' if producto.disponible_stock == 0 else '' }}">
                         </div>
 
                         <!-- Info -->
@@ -49,11 +54,19 @@
                             <form method="POST" class="mt-4">
                                 <input type="hidden" name="producto_id" value="{{ producto.id_producto }}">
                                 
+                                {% if producto.disponible_stock == 0 %}
+                                <button type="button" disabled
+                                    class="w-full border border-gray-300 text-gray-400 bg-gray-50 py-2 rounded-lg text-xs font-semibold tracking-wide 
+                                           cursor-not-allowed">
+                                    Agotado
+                                </button>
+                                {% else %}
                                 <button type="submit" name="agregar"
                                     class="w-full border border-[#C27C3A] text-[#C27C3A] py-2 rounded-lg text-xs font-semibold tracking-wide 
                                            hover:bg-[#C27C3A] hover:text-white transition">
                                     Agregar
                                 </button>
+                                {% endif %}
                             </form>
 
                         </div>

@@ -153,7 +153,7 @@ def producto_venta():
         SELECT p.*, 
         CASE 
             WHEN COALESCE(p.tipo_preparacion, 'materia_prima') = 'stock' THEN
-                CASE WHEN COALESCE(p.stock, 0) > 0 THEN 1 ELSE 0 END
+                CASE WHEN (COALESCE(p.stock, 0) - COALESCE(p.stock_reservado, 0)) > 0 THEN 1 ELSE 0 END
             WHEN EXISTS (
                 SELECT 1 FROM Recetas r 
                 JOIN Materia_prima mp ON r.id_materia = mp.id_materia 
