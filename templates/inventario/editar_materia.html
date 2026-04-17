@@ -7,7 +7,7 @@
     <p class="text-gray-500 mt-1">Modifica los datos del insumo seleccionado.</p>
 </div>
 
-<form method="POST" action="{{ url_for('inventario.editar_materia', id=insumo.id_materia) }}" class="bg-white rounded-lg shadow-sm border p-8 max-w-4xl">
+<form method="POST" action="{{ url_for('inventario.editar_materia', token=serializer.dumps(insumo.id_materia)) }}" class="bg-white rounded-lg shadow-sm border p-8 max-w-4xl">
     {{ form.hidden_tag() }}
     
     <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Datos del Insumo</h2>

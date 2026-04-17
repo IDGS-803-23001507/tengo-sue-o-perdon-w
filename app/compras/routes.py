@@ -8,7 +8,13 @@ from decimal import Decimal
 from uuid import uuid4
 import forms
 
+from itsdangerous import URLSafeSerializer
+from flask import current_app
+
 compras_bp = Blueprint('compras', __name__)
+
+def get_serializer():
+    return URLSafeSerializer(current_app.config["SECRET_KEY"])
 
 @compras_bp.route('/compras')
 def compras():
@@ -146,7 +152,7 @@ def nueva_compra():
             db.session.commit()
 
             flash('Compra registrada exitosamente', 'success')
-            return redirect(url_for('compras.detalle_compra', id=compra.id_compra))
+            return redirect(url_for('compras.detalle_compra',  token=get_serializer().dumps(compra.id_compra)))
 
         except (ValueError, SQLAlchemyError) as e:
             db.session.rollback()
@@ -176,14 +182,26 @@ def nueva_compra():
     )
 
 
-@compras_bp.route('/compras/detalle/<int:id>')
-def detalle_compra(id):
+@compras_bp.route('/compras/detalle/<token>')
+def detalle_compra(token):
+    
+    try:
+        id = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("compras.listar_compras"))
+
     compra = Compra.query.get_or_404(id)
     return render_template('compras/detalle_compra.html', compra=compra)
 
 
-@compras_bp.route('/compras/cancelar/<int:id>', methods=['POST'])
-def cancelar_compra(id):
+@compras_bp.route('/compras/cancelar/<token>', methods=['POST'])
+def cancelar_compra(token):
+    
+    try:
+        id = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("compras.listar_compras"))
+    
     compra = Compra.query.get_or_404(id)
 
     try:

@@ -14,7 +14,7 @@
 
 
 <form method="POST"
-      action="{{ url_for('producto.editar_producto', id=producto.id_producto) }}"
+      action="{{ url_for('producto.editar_producto', token=serializer.dumps(producto.id_producto)) }}"
       class="bg-white rounded-lg shadow-sm border p-4 md:p-8 w-full max-w-4xl">
     {{ form.hidden_tag() }}
 
