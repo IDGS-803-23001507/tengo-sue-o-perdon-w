@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 from flask_wtf import FlaskForm
 from wtforms import StringField, FieldList, FormField, DateTimeLocalField, IntegerField, RadioField, TextAreaField, PasswordField, DecimalField, DateField, SelectField, HiddenField, SubmitField
 from wtforms.validators import DataRequired, ValidationError, NumberRange, EqualTo, Length, Email, Optional
@@ -487,8 +488,8 @@ class ProductoTerminadoForm(FlaskForm):
     precio_venta = DecimalField(
         "Precio de Venta",
         validators=[
-            DataRequired(message="El precio es obligatorio"),
-            NumberRange(min=0.01, message="El precio debe ser mayor a 0"),
+            Optional(),
+            NumberRange(min=0, message="El precio no puede ser negativo"),
         ],
         places=2,
     )
@@ -510,6 +511,16 @@ class ProductoTerminadoForm(FlaskForm):
     imageBase64 = HiddenField(
         "Imagen base64",
         validators=[Optional(), Length(max=2000000)],
+    )
+
+    target_food_cost = DecimalField(
+        "Food Cost Objetivo",
+        places=2,
+        default=Decimal('0.30'),
+        validators=[
+            Optional(),
+            NumberRange(min=0.01, max=0.99, message="El Food Cost debe estar entre 0.01 y 0.99"),
+        ],
     )
 
     submit = SubmitField("Guardar Producto")

@@ -2,6 +2,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from sqlalchemy import text
 from forms import ProductoTerminadoForm, ProductoTerminadoEditarForm, DesactivarForm
 from model import db, Producto, Receta
+from app.food_cost_service import recalcular_precio_producto
 
 from itsdangerous import URLSafeSerializer
 from flask import current_app
@@ -59,13 +60,18 @@ def nuevo_producto():
             flash('La imagen es demasiado grande', 'danger')
             return render_template('productos/nuevo_producto.html', mostrar_modal=False, form=form)
 
+        precio = float(form.precio_venta.data) if form.precio_venta.data else None
+        target_fc = float(form.target_food_cost.data) if form.target_food_cost.data else 0.30
+
         nuevo_producto = Producto(
             nombre=form.nombre.data.strip(),
             categoria=form.categoria.data.lower(),
-            precio_venta=float(form.precio_venta.data),
+            precio_venta=precio,
             tipo_preparacion=form.tipo_preparacion.data,
             imagen=imagen_base64,
             descripcion=form.descripcion.data,
+            estado_producto='borrador',
+            target_food_cost=target_fc,
         )
 
         db.session.add(nuevo_producto)
@@ -75,7 +81,7 @@ def nuevo_producto():
         pendientes.add(nuevo_producto.id_producto)
         session['productos_pendientes_receta'] = list(pendientes)
 
-        flash('Producto registrado. Ahora captura su receta.', 'success')
+        flash('Producto registrado en borrador. Ahora captura su receta para activarlo.', 'success')
         return redirect(url_for('recetas.nueva', producto=nuevo_producto.id_producto, nuevo_producto=1))
 
     if request.method == 'POST':
@@ -131,11 +137,25 @@ def editar_producto(token):
     form = ProductoTerminadoEditarForm(obj=producto)
 
     if form.validate_on_submit():
+        old_target = producto.target_food_cost
+        
         producto.nombre = form.nombre.data.strip()
         producto.categoria = form.categoria.data
-        producto.precio_venta = float(form.precio_venta.data)
         producto.tipo_preparacion = form.tipo_preparacion.data
         producto.descripcion = form.descripcion.data
+        
+        new_target = float(form.target_food_cost.data) if form.target_food_cost.data else 0.30
+        producto.target_food_cost = new_target
+        
+        # Decision: If the target changed, we ignore any manual price input and force a recalculation
+        if float(old_target) != float(new_target):
+            recalcular_precio_producto(producto, commit=False)
+            flash('Food Cost re-calculado y actualizado.', 'info')
+        else:
+            # If the user manually edited the price and target did NOT change, respect manual price
+            if form.precio_venta.data is not None:
+                producto.precio_venta = float(form.precio_venta.data)
+                
         db.session.commit()
         
         return render_template('productos/editar_producto.html', mostrar_modal=True, producto=producto, form=form)

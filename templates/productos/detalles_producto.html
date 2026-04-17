@@ -7,7 +7,7 @@
 </div>
 
 <div class="bg-white rounded-lg shadow-sm border max-w-4xl mx-auto overflow-hidden">
-    
+
     <div class="bg-[#059669] px-6 py-8 flex flex-col items-center">
 
         <div class="w-24 h-24 rounded-full bg-white flex items-center justify-center mb-3 overflow-hidden">
@@ -30,10 +30,20 @@
             {{ producto.categoria | capitalize }}
         </p>
 
-        <div class="mt-2">
+        <div class="mt-2 flex gap-2">
+            {% if producto.estado_producto == 'borrador' %}
+                <span class="bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                    Borrador
+                </span>
+            {% elif producto.estado_producto == 'activo' %}
+                <span class="bg-emerald-100 text-emerald-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                    Activo
+                </span>
+            {% endif %}
+
             {% if producto.estatus %}
                 <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                    Activo
+                    Habilitado
                 </span>
             {% else %}
                 <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
@@ -44,12 +54,72 @@
     </div>
 
     <div class="px-6 py-6">
+
+        {% if producto.estado_producto == 'borrador' %}
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <p class="text-sm text-amber-800">
+                <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                <strong>Producto en borrador.</strong> 
+                Asigna una receta válida para que el sistema calcule automáticamente el precio de venta y lo active.
+            </p>
+        </div>
+        {% endif %}
+
+        {% if producto.estado_producto == 'borrador' and producto.costo_unitario() == 0 and producto.recetas|length > 0 %}
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p class="text-sm text-red-800">
+                <i class="fa-solid fa-lock mr-1"></i>
+                <strong>Bloqueo de Precio por Costo Cero ($0.00).</strong> 
+                El producto tiene receta pero la materia prima indica costo $0.00 en inventario. Ve a <a href="{{ url_for('compras.compras') }}" class="underline font-bold">Compras</a> y registra una adquisición de este insumo para desbloquear el precio y activar el producto.
+            </p>
+        </div>
+        {% endif %}
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             <div>
                 <p class="text-sm text-gray-500">Precio de Venta</p>
                 <p class="text-sm text-gray-900 font-semibold">
-                    ${{ producto.precio_venta }}
+                    {% if producto.precio_venta %}
+                        ${{ producto.precio_venta }}
+                    {% else %}
+                        <span class="text-gray-400 italic">Pendiente (se calculará con la receta)</span>
+                    {% endif %}
+                </p>
+            </div>
+
+            <div>
+                <p class="text-sm text-gray-500">Food Cost Objetivo</p>
+                <p class="text-sm text-gray-900">
+                    {{ (producto.target_food_cost * 100)|round(0)|int }}%
+                </p>
+            </div>
+
+            <div>
+                <p class="text-sm text-gray-500">Costo Unitario (Materia Prima)</p>
+                <p class="text-sm text-gray-900">
+                    ${{ "%.2f"|format(producto.costo_unitario()) }}
+                </p>
+            </div>
+
+            <div>
+                <p class="text-sm text-gray-500">Food Cost Real</p>
+                <p class="text-sm font-semibold
+                    {% if producto.food_cost_real() > 0 %}
+                        {% if producto.food_cost_real() <= (producto.target_food_cost * 100) %}
+                            text-emerald-600
+                        {% else %}
+                            text-red-600
+                        {% endif %}
+                    {% else %}
+                        text-gray-400
+                    {% endif %}
+                ">
+                    {% if producto.food_cost_real() > 0 %}
+                        {{ producto.food_cost_real() }}%
+                    {% else %}
+                        —
+                    {% endif %}
                 </p>
             </div>
 
@@ -71,6 +141,16 @@
                 <p class="text-sm text-gray-500">Tipo de Preparación</p>
                 <p class="text-sm text-gray-900">
                     {{ producto.tipo_preparacion | replace('_', ' ') | capitalize }}
+                </p>
+            </div>
+
+            <div>
+                <p class="text-sm text-gray-500">Margen de Ganancia</p>
+                <p class="text-sm text-gray-900">
+                    ${{ "%.2f"|format(producto.margen_ganancia()) }}
+                    {% if producto.margen_porcentaje() > 0 %}
+                        <span class="text-xs text-gray-500">({{ "%.1f"|format(producto.margen_porcentaje()) }}%)</span>
+                    {% endif %}
                 </p>
             </div>
 

@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone, date
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import CheckConstraint, Enum, UniqueConstraint, func
 from sqlalchemy.dialects.mysql import LONGTEXT
 from flask_sqlalchemy import SQLAlchemy
@@ -160,7 +160,7 @@ class MateriaPrima(db.Model):
     stock_minimo = db.Column(db.Numeric(10, 2), default=0.00)
     stock_actual = db.Column(db.Numeric(10, 2), default=0.00)
     estatus = db.Column(db.Boolean, default=True)
-    costo_promedio = db.Column(db.Numeric(10, 2), default=0)
+    costo_promedio = db.Column(db.Numeric(14, 6), default=0)
 
     
     unidad = db.relationship('UnidadMedida', backref='materias_primas')
@@ -211,7 +211,7 @@ class Producto(db.Model):
     id_producto = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nombre = db.Column(db.String(50), nullable=False)
     categoria = db.Column(Enum('bebidas', 'alimentos', name='categoria_enum'), nullable=False)
-    precio_venta = db.Column(db.Numeric(10, 2))
+    precio_venta = db.Column(db.Numeric(10, 2), nullable=True)
     stock = db.Column(db.Integer, nullable=False, default=0)
     stockMinimo = db.Column("stock_minimo", db.Integer, nullable=False, default=0)
     tipo_preparacion = db.Column(
@@ -222,6 +222,17 @@ class Producto(db.Model):
     descripcion = db.Column(db.Text, nullable=False)
     imagen = db.Column(LONGTEXT, nullable=True)
     estatus = db.Column(db.Boolean, default=True)
+    estado_producto = db.Column(
+        Enum('borrador', 'activo', name='estado_producto_enum'),
+        nullable=False,
+        default='borrador',
+        index=True,
+    )
+    target_food_cost = db.Column(
+        db.Numeric(4, 2),
+        nullable=False,
+        default=Decimal('0.30'),
+    )
     
     def costo_unitario(self):
    
@@ -245,6 +256,25 @@ class Producto(db.Model):
         costo = self.costo_unitario()
         if self.precio_venta and self.precio_venta > 0:
             return ((Decimal(str(self.precio_venta)) - costo) / Decimal(str(self.precio_venta))) * 100
+        return Decimal('0')
+
+    def calcular_precio_food_cost(self) -> Decimal:
+        """Precio de Venta = Costo Total Materia Prima / target_food_cost"""
+        costo = self.costo_unitario()
+        if costo <= 0:
+            return Decimal('0')
+        target = Decimal(str(self.target_food_cost or '0.30'))
+        if target <= 0:
+            return Decimal('0')
+        return (costo / target).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    def food_cost_real(self) -> Decimal:
+        """% real de food cost = Costo / Precio * 100"""
+        costo = self.costo_unitario()
+        if self.precio_venta and self.precio_venta > 0:
+            return (costo / Decimal(str(self.precio_venta)) * 100).quantize(
+                Decimal('0.01'), rounding=ROUND_HALF_UP
+            )
         return Decimal('0')
 
     def to_dict_rentabilidad(self):

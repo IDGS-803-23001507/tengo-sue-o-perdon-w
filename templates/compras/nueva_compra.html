@@ -263,6 +263,28 @@
         }
     });
 
+    document.addEventListener('change', function(e) {
+        if (e.target.matches('select[name="materia_id[]"]')) {
+            const materiaId = e.target.value;
+            if (!materiaId) return;
+            const container = e.target.closest('.insumo-item');
+            fetch(`/compras/obtener_materia/${materiaId}`)
+                .then(res => res.json())
+                .then(data => {
+                    const unidadSelect = container.querySelector('select[name="unidad_id[]"]');
+                    const costoInput = container.querySelector('.costo-input');
+                    if (data.unidad_id && unidadSelect.value === '') {
+                        unidadSelect.value = data.unidad_id;
+                    }
+                    if (data.ultimo_costo > 0 && costoInput.value === '') {
+                        costoInput.value = data.ultimo_costo.toFixed(2);
+                        actualizarTotal();
+                    }
+                })
+                .catch(err => console.error("Error obteniendo datos de materia:", err));
+        }
+    });
+
     function actualizarTotal() {
         let total = 0;
         document.querySelectorAll('.insumo-item').forEach(item => {

@@ -36,7 +36,7 @@
             <div class="lg:col-span-2">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
                     {% for p in lista_productos %}
-                    <div class="flex flex-col items-center text-center group {{ 'opacity-50' if p.disponible_stock == 0 }}">
+                    <div id="prod-{{ p.id_producto }}" class="flex flex-col items-center text-center group {{ 'opacity-50' if p.disponible_stock == 0 }}">
                         <div class="overflow-hidden rounded-lg shadow-sm border border-gray-100 w-full relative">
                             {% if p.disponible_stock == 0 %}
                             <div class="absolute inset-0 z-10 flex items-center justify-center bg-black/10 backdrop-blur-[1px]">

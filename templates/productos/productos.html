@@ -124,8 +124,12 @@
                         {{ producto.categoria }}
                     </td>
 
-                    <td class="px-6 py-4 text-center font-semibold text-green-600">
-                        ${{ producto.precio_venta }}
+                    <td class="px-6 py-4 text-center font-semibold">
+                        {% if producto.precio_venta %}
+                        <span class="text-green-600">${{ producto.precio_venta }}</span>
+                        {% else %}
+                        <span class="text-gray-400 italic text-xs">Pendiente</span>
+                        {% endif %}
                     </td>
 
                     {% if mostrar_stock %}
@@ -141,12 +145,18 @@
                     {% endif %}
 
                     <td class="px-6 py-4 text-center">
-                        {% if producto.estatus %}
-                        <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                        {% if producto.estado_producto == 'borrador' %}
+                        <span class="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded">
+                            Borrador
+                        </span>
+                        {% elif producto.estado_producto == 'activo' %}
+                        <span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-1 rounded">
                             Activo
                         </span>
-                        {% else %}
-                        <span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
+                        {% endif %}
+
+                        {% if not producto.estatus %}
+                        <span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded ml-1">
                             Inactivo
                         </span>
                         {% endif %}
