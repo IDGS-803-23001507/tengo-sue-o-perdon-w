@@ -80,37 +80,100 @@ def ventas():
 @ventasBp.route("/fisica", methods=["GET", "POST"])
 def venta_fisica():
     form = VentaForm()
+    # Query base: para productos de tipo stock o sin variantes
     query_productos = text("""
-        SELECT p.*, 
-        CASE 
+        SELECT p.*,
+        CASE
             WHEN COALESCE(p.tipo_preparacion, 'materia_prima') = 'stock' THEN
                 CASE WHEN (COALESCE(p.stock, 0) - COALESCE(p.stock_reservado, 0)) > 0 THEN 1 ELSE 0 END
             WHEN EXISTS (
-                SELECT 1 FROM Recetas r 
-                JOIN Materia_prima mp ON r.id_materia = mp.id_materia 
-                WHERE r.id_producto = p.id_producto AND r.estado = 1 AND mp.stock_actual < r.cantidad
-            ) THEN 0 ELSE 1 
+                SELECT 1 FROM Recetas r
+                JOIN Materia_prima mp ON r.id_materia = mp.id_materia
+                WHERE r.id_producto = p.id_producto AND r.estado = 1
+                  AND mp.stock_actual < r.cantidad
+            ) THEN 0 ELSE 1
         END as disponible_stock
         FROM Producto p WHERE p.estatus = 1
     """)
-    productos = db.session.execute(query_productos).fetchall()
+    productos_raw = db.session.execute(query_productos).fetchall()
 
     # Mapa: id_producto -> lista de insumos para tooltip en el POS
     insumos_por_producto = {}
-    from model import Receta, MateriaPrima
+    # Mapa: id_producto -> lista de variantes {id, nombre, precio_extra}
+    variantes_por_producto = {}
+
+    from model import Receta, MateriaPrima, VarianteReceta
     recetas_activas = (
         Receta.query
         .filter_by(estado=True)
         .join(MateriaPrima, Receta.id_materia == MateriaPrima.id_materia)
         .all()
     )
+    # Mapa: id_variante -> lista de (stock_actual, cantidad_necesaria)
+    stock_por_variante: dict[int, list[tuple]] = {}
+    stock_receta_base: dict[int, list[tuple]] = {}
+    # Mapa: id_producto -> nombre del tamaño de la receta base (ej. "Mediano")
+    nombre_base_producto: dict[int, str] = {}
+    
     for receta in recetas_activas:
         mp = receta.materiaPrima
         if mp:
             label = mp.nombre
-            if mp.tamanio:
-                label += f" ({mp.tamanio})"
-            insumos_por_producto.setdefault(receta.id_producto, []).append(label)
+            if label not in insumos_por_producto.setdefault(receta.id_producto, []):
+                insumos_por_producto[receta.id_producto].append(label)
+            
+            if receta.id_variante is not None:
+                stock_por_variante.setdefault(receta.id_variante, []).append(
+                    (float(mp.stock_actual or 0), float(receta.cantidad))
+                )
+            else:
+                stock_receta_base.setdefault(receta.id_producto, []).append(
+                    (float(mp.stock_actual or 0), float(receta.cantidad))
+                )
+                # Si el insumo tiene tamaño definido, usarlo como nombre de la variante base
+                if mp.tamanio and receta.id_producto not in nombre_base_producto:
+                    nombre_base_producto[receta.id_producto] = mp.tamanio
+
+    variantes = VarianteReceta.query.filter_by(estado=True).order_by(
+        VarianteReceta.id_producto.asc(), VarianteReceta.id_variante.asc()
+    ).all()
+    for v in variantes:
+        insumos_variante = stock_por_variante.get(v.id_variante, [])
+        # Una variante está disponible si TODOS sus insumos tienen stock suficiente
+        variante_ok = all(stock >= cantidad for stock, cantidad in insumos_variante) if insumos_variante else True
+        variantes_por_producto.setdefault(v.id_producto, []).append({
+            "id": v.id_variante,
+            "nombre": v.nombre,
+            "precio_extra": float(v.precio_extra) if v.precio_extra else 0,
+            "disponible": variante_ok,
+        })
+        
+    for id_producto, insumos_base in stock_receta_base.items():
+        if id_producto in variantes_por_producto:
+            # El producto tiene variantes extra. Agregar la receta base como opción
+            # El nombre será el tamaño del insumo (ej. "Mediano") o "Regular" si no hay tamaño
+            base_ok = all(stock >= cant for stock, cant in insumos_base) if insumos_base else True
+            nombre_base = nombre_base_producto.get(id_producto, "Regular")
+            variantes_por_producto[id_producto].insert(0, {
+                "id": "",
+                "nombre": nombre_base,
+                "precio_extra": 0,
+                "disponible": base_ok,
+            })
+
+    # Sobreescribir disponible_stock para productos con variantes usando lógica Python pura
+    productos_con_disponibilidad = []
+    for prod in productos_raw:
+        prod_dict = dict(prod._mapping)
+        variantes_prod = variantes_por_producto.get(prod_dict["id_producto"], [])
+        if variantes_prod:
+            # Disponible si al menos UNA variante tiene insumos
+            prod_dict["disponible_stock"] = 1 if any(v["disponible"] for v in variantes_prod) else 0
+        productos_con_disponibilidad.append(prod_dict)
+
+    # Convertir a objetos con acceso por atributo
+    from types import SimpleNamespace
+    productos = [SimpleNamespace(**d) for d in productos_con_disponibilidad]
     
     if request.method == "POST":
         
@@ -143,11 +206,18 @@ def venta_fisica():
                         session.modified = True
                         return redirect(url_for("ventas.venta_fisica"))
 
+                id_variante = request.form.get("variante_id", type=int)  # None si no hay variantes
+                nombre_variante = request.form.get("variante_nombre", "").strip()
+                precio_extra = request.form.get("variante_precio", 0.0, type=float)
+
+                precio_final = float(prod.precio_venta) + precio_extra
+
                 carrito.append({
                     "id_producto": p_id,
-                    "nombre": prod.nombre,
-                    "precio": float(prod.precio_venta),
-                    "cantidad": 1
+                    "nombre": prod.nombre + (f" ({nombre_variante})" if nombre_variante else ""),
+                    "precio": precio_final,
+                    "cantidad": 1,
+                    "id_variante": id_variante,
                 })
                 session["carrito"] = carrito
                 session.modified = True
@@ -172,14 +242,15 @@ def venta_fisica():
                 id_venta_actual = 0
                 for item in carrito:
                     result = db.session.execute(
-                        text("CALL crear_venta_general(:u, :c, :tipo, :p, :can, :v_id)"),
+                        text("CALL crear_venta_general(:u, :c, :tipo, :p, :can, :v_id, :var_id)"),
                         {
                             "u": session.get("usuarioId"),
                             "c": None,
                             "tipo": "fisica",
                             "p": item["id_producto"],
                             "can": item["cantidad"],
-                            "v_id": id_venta_actual
+                            "v_id": id_venta_actual,
+                            "var_id": item.get("id_variante"),
                         }
                     )
                     row = result.fetchone()
@@ -226,6 +297,7 @@ def venta_fisica():
         total=total,
         modal_solicitud=modal_solicitud,
         insumos_por_producto=insumos_por_producto,
+        variantes_por_producto=variantes_por_producto,
     )
 
 
@@ -258,19 +330,82 @@ def venta_online():
     form = VentaForm()
     
     query_productos = text("""
-        SELECT p.*, 
-        CASE 
+        SELECT p.*,
+        CASE
             WHEN COALESCE(p.tipo_preparacion, 'materia_prima') = 'stock' THEN
                 CASE WHEN (COALESCE(p.stock, 0) - COALESCE(p.stock_reservado, 0)) > 0 THEN 1 ELSE 0 END
             WHEN EXISTS (
-                SELECT 1 FROM Recetas r 
-                JOIN Materia_prima mp ON r.id_materia = mp.id_materia 
-                WHERE r.id_producto = p.id_producto AND r.estado = 1 AND mp.stock_actual < r.cantidad
-            ) THEN 0 ELSE 1 
+                SELECT 1 FROM Recetas r
+                JOIN Materia_prima mp ON r.id_materia = mp.id_materia
+                WHERE r.id_producto = p.id_producto AND r.estado = 1
+                  AND mp.stock_actual < r.cantidad
+            ) THEN 0 ELSE 1
         END as disponible_stock
         FROM Producto p WHERE p.estatus = 1
     """)
-    productos = db.session.execute(query_productos).fetchall()
+    productos_raw = db.session.execute(query_productos).fetchall()
+
+    from model import Receta, MateriaPrima, VarianteReceta
+    recetas_activas = (
+        Receta.query
+        .filter_by(estado=True)
+        .join(MateriaPrima, Receta.id_materia == MateriaPrima.id_materia)
+        .all()
+    )
+    stock_por_variante: dict[int, list[tuple]] = {}
+    stock_receta_base: dict[int, list[tuple]] = {}
+    nombre_base_producto_online: dict[int, str] = {}
+    
+    for receta in recetas_activas:
+        mp = receta.materiaPrima
+        if mp:
+            if receta.id_variante is not None:
+                stock_por_variante.setdefault(receta.id_variante, []).append(
+                    (float(mp.stock_actual or 0), float(receta.cantidad))
+                )
+            else:
+                stock_receta_base.setdefault(receta.id_producto, []).append(
+                    (float(mp.stock_actual or 0), float(receta.cantidad))
+                )
+                if mp.tamanio and receta.id_producto not in nombre_base_producto_online:
+                    nombre_base_producto_online[receta.id_producto] = mp.tamanio
+
+    variantes_por_producto_online = {}
+    variantes = VarianteReceta.query.filter_by(estado=True).order_by(
+        VarianteReceta.id_producto.asc(), VarianteReceta.id_variante.asc()
+    ).all()
+    
+    for v in variantes:
+        insumos_variante = stock_por_variante.get(v.id_variante, [])
+        variante_ok = all(stock >= cantidad for stock, cantidad in insumos_variante) if insumos_variante else True
+        variantes_por_producto_online.setdefault(v.id_producto, []).append({
+            "id": v.id_variante,
+            "nombre": v.nombre,
+            "precio_extra": float(v.precio_extra) if v.precio_extra else 0,
+            "disponible": variante_ok,
+        })
+        
+    for id_producto, insumos_base in stock_receta_base.items():
+        if id_producto in variantes_por_producto_online:
+            base_ok = all(stock >= cant for stock, cant in insumos_base) if insumos_base else True
+            nombre_base = nombre_base_producto_online.get(id_producto, "Regular")
+            variantes_por_producto_online[id_producto].insert(0, {
+                "id": "",
+                "nombre": nombre_base,
+                "precio_extra": 0,
+                "disponible": base_ok,
+            })
+
+    productos_con_disponibilidad = []
+    for prod in productos_raw:
+        prod_dict = dict(prod._mapping)
+        variantes_prod = variantes_por_producto_online.get(prod_dict["id_producto"], [])
+        if variantes_prod:
+            prod_dict["disponible_stock"] = 1 if any(v["disponible"] for v in variantes_prod) else 0
+        productos_con_disponibilidad.append(prod_dict)
+
+    from types import SimpleNamespace
+    productos = [SimpleNamespace(**d) for d in productos_con_disponibilidad]
 
     if request.method == "POST":
         if "quitar" in request.form:
@@ -287,25 +422,31 @@ def venta_online():
             prod_id = request.form.get("producto")
             cant = request.form.get("cantidad", type=int, default=1)
             nombre = request.form.get("nombre_prod")
-            
+            id_variante = request.form.get("variante_id", type=int)  # None si no hay variante
+            nombre_variante = (request.form.get("variante_nombre") or "").strip()
+            precio_extra = request.form.get("variante_precio", 0.0, type=float)
+
             prod_actual = next((p for p in productos if str(p.id_producto) == prod_id), None)
-            
+
             if prod_actual and prod_actual.disponible_stock == 0:
                 flash(f"Lo sentimos, {nombre} se ha agotado.", "danger")
                 return redirect(url_for("ventas.venta_online"))
 
             precio = float(prod_actual.precio_venta) if prod_actual else 0
+            precio_final = precio + precio_extra
+            nombre_display = nombre + (f" ({nombre_variante})" if nombre_variante else "")
 
             carrito = session.get("carrito", [])
             carrito.append({
-                "id_producto": int(prod_id), 
-                "cantidad": cant, 
-                "nombre": nombre,
-                "precio": precio 
+                "id_producto": int(prod_id),
+                "cantidad": cant,
+                "nombre": nombre_display,
+                "precio": precio_final,
+                "id_variante": id_variante,
             })
             session["carrito"] = carrito
             session.modified = True
-            flash(f"¡{nombre} añadido con éxito!", "success")
+            flash(f"¡{nombre_display} añadido con éxito!", "success")
             return redirect(url_for("ventas.venta_online"))
         
         if "terminar" in request.form:
@@ -352,13 +493,14 @@ def venta_online():
             # Lógica de Validación de Stock Agrupada
             try:
                 from collections import defaultdict
-                cantidades_por_producto = defaultdict(int)
-                for item in carrito:
-                    cantidades_por_producto[item["id_producto"]] += item["cantidad"]
-                
                 consumo_materia = defaultdict(float)
+                consumo_stock_directo = defaultdict(int)
 
-                for p_id, q in cantidades_por_producto.items():
+                for item in carrito:
+                    p_id = item["id_producto"]
+                    q = item["cantidad"]
+                    v_id = item.get("id_variante")
+                    
                     query_prod = text("""
                         SELECT tipo_preparacion, stock 
                         FROM Producto 
@@ -372,16 +514,25 @@ def venta_online():
                     tipo, stock_actual = prod_info
                     
                     if tipo == "stock":
-                        if int(stock_actual or 0) < q:
+                        consumo_stock_directo[p_id] += q
+                        if int(stock_actual or 0) < consumo_stock_directo[p_id]:
                             flash("Stock insuficiente del producto para completar la venta. Ajuste las cantidades.", "warning")
                             return redirect(url_for("ventas.venta_online"))
                     else:
-                        query_receta = text("""
-                            SELECT id_materia, cantidad 
-                            FROM Recetas 
-                            WHERE id_producto = :pid AND estado = 1
-                        """)
-                        recetas = db.session.execute(query_receta, {"pid": p_id}).fetchall()
+                        if v_id is None:
+                            query_receta = text("""
+                                SELECT id_materia, cantidad 
+                                FROM Recetas 
+                                WHERE id_producto = :pid AND id_variante IS NULL AND estado = 1
+                            """)
+                        else:
+                            query_receta = text("""
+                                SELECT id_materia, cantidad 
+                                FROM Recetas 
+                                WHERE id_producto = :pid AND id_variante = :vid AND estado = 1
+                            """)
+                            
+                        recetas = db.session.execute(query_receta, {"pid": p_id, "vid": v_id}).fetchall()
                         if not recetas:
                             flash("Un producto no tiene receta activa y no puede ser preparado. Contacte a la sucursal.", "danger")
                             return redirect(url_for("ventas.venta_online"))
@@ -444,13 +595,14 @@ def venta_online():
             try:
                 for item in carrito:
                     result = db.session.execute(
-                        text("CALL crear_venta_online(:u, :c, :h, :n, :p, :can, :v_ex)"),
+                        text("CALL crear_venta_online(:u, :c, :h, :n, :p, :can, :v_ex, :var_id)"),
                         {
-                            "u": u_id, "c": c_id, 
-                            "h": hora_recogida_raw, 
+                            "u": u_id, "c": c_id,
+                            "h": hora_recogida_raw,
                             "n": request.form.get("notas", ""),
-                            "p": item["id_producto"], "can": item["cantidad"], 
-                            "v_ex": id_venta_tracker
+                            "p": item["id_producto"], "can": item["cantidad"],
+                            "v_ex": id_venta_tracker,
+                            "var_id": item.get("id_variante"),
                         }
                     ).fetchone()
                     
@@ -480,7 +632,22 @@ def venta_online():
             
             return redirect(url_for("ventas.venta_online"))
 
-    return render_template("ventas/online.html", form=form, lista_productos=productos)
+    # Construir variantes_por_producto para el template online
+    from model import VarianteReceta as VR
+    variantes_por_producto_online = {}
+    for v in VR.query.filter_by(estado=True).order_by(VR.id_variante.asc()).all():
+        variantes_por_producto_online.setdefault(v.id_producto, []).append({
+            "id": v.id_variante,
+            "nombre": v.nombre,
+            "precio_extra": float(v.precio_extra) if v.precio_extra else 0,
+        })
+
+    return render_template(
+        "ventas/online.html",
+        form=form,
+        lista_productos=productos,
+        variantes_por_producto=variantes_por_producto_online,
+    )
 
 @ventasBp.route("/reporte", methods=["GET"])
 def generar_reporte():
@@ -575,12 +742,13 @@ def ticket(token):
         SELECT 
             v.id_venta, v.creado_en, v.metodo_pago, v.total,
             COALESCE(c.nombre, 'Venta Mostrador') AS cliente_nombre,
-            p.nombre AS producto,
+            COALESCE(CONCAT(p.nombre, ' (', vr.nombre, ')'), p.nombre) AS producto,
             dv.cantidad,
             (dv.cantidad * dv.precio_unitario) AS subtotal
         FROM ventas v
         JOIN detalle_venta dv ON v.id_venta = dv.id_venta
         JOIN Producto p ON dv.id_producto = p.id_producto
+        LEFT JOIN variante_receta vr ON dv.id_variante = vr.id_variante
         LEFT JOIN clientes c ON v.id_cliente = c.id
         WHERE v.id_venta = :idVenta
     """)

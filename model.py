@@ -444,15 +444,33 @@ class DetalleProduccion(db.Model):
     producto = db.relationship("Producto", backref=db.backref("detalles_produccion", lazy=True))
 
 
+class VarianteReceta(db.Model):
+    """Representa una variante de tamaño/presentación de un producto.
+    Ejemplos: 'Chico', 'Mediano', 'Grande', '8oz', '12oz', etc.
+    Las recetas sin variante (id_variante IS NULL) son recetas base.
+    """
+    __tablename__ = "variante_receta"
+
+    id_variante = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id_producto = db.Column(db.Integer, db.ForeignKey("Producto.id_producto"), nullable=False, index=True)
+    nombre = db.Column(db.String(50), nullable=False)
+    precio_extra = db.Column(db.Numeric(10, 2), nullable=True, default=None)
+    estado = db.Column(db.Boolean, nullable=False, default=True)
+
+    producto = db.relationship("Producto", backref=db.backref("variantes", lazy=True))
+    recetas = db.relationship("Receta", backref="variante", lazy=True, cascade="all, delete-orphan")
+
+
 class Receta(db.Model):
     __tablename__ = "Recetas"
     __table_args__ = (
-        UniqueConstraint("id_producto", "id_materia", name="uq_receta_producto_materia"),
+        UniqueConstraint("id_producto", "id_variante", "id_materia", name="uq_receta_producto_variante_materia"),
         CheckConstraint("cantidad > 0", name="chk_receta_cantidad_mayor_cero"),
     )
 
     id_receta = db.Column(db.Integer, primary_key=True, autoincrement=True)
     id_producto = db.Column(db.Integer, db.ForeignKey("Producto.id_producto"), nullable=False, index=True)
+    id_variante = db.Column(db.Integer, db.ForeignKey("variante_receta.id_variante"), nullable=True, index=True)
     id_materia = db.Column(db.Integer, db.ForeignKey("Materia_prima.id_materia"), nullable=False, index=True)
     cantidad = db.Column(db.Numeric(10, 2), nullable=False)
     estado = db.Column(db.Boolean, nullable=False, default=True, index=True)
@@ -512,7 +530,12 @@ class Receta(db.Model):
         )
 
     @classmethod
-    def reemplazar_receta_producto(cls, id_producto: int, insumos: list[dict]) -> list["Receta"]:
+    def reemplazar_receta_producto(
+        cls,
+        id_producto: int,
+        insumos: list[dict],
+        id_variante: int | None = None,
+    ) -> list["Receta"]:
         cls.validar_insumos_no_vacios(insumos)
         cls.validar_insumos_en_inventario(insumos)
 
@@ -520,7 +543,12 @@ class Receta(db.Model):
         if not producto:
             raise ValueError("El producto indicado no existe.")
 
-        recetas_activas = cls.query.filter_by(id_producto=id_producto, estado=True).all()
+        # Sólo revisamos recetas de la variante en curso (None = receta base)
+        recetas_activas = cls.query.filter_by(
+            id_producto=id_producto,
+            id_variante=id_variante,
+            estado=True,
+        ).all()
         mapa_activas = {receta.id_materia: receta for receta in recetas_activas}
 
         mapa_entrada: dict[int, Decimal] = {}
@@ -536,17 +564,22 @@ class Receta(db.Model):
 
             mapa_entrada[id_materia] = cantidad
 
-        if cls.producto_tiene_produccion_finalizada(id_producto):
-            snapshot_actual = {receta.id_materia: Decimal(str(receta.cantidad)) for receta in recetas_activas}
+        # Protección histórica solo para recetas base (sin variante)
+        if id_variante is None and cls.producto_tiene_produccion_finalizada(id_producto):
+            snapshot_actual = {r.id_materia: Decimal(str(r.cantidad)) for r in recetas_activas}
             if snapshot_actual != mapa_entrada:
                 raise ValueError(
-                    "No se puede modificar la receta porque el producto ya tiene producciones finalizadas. "
-                    "Esto protege la persistencia histórica."
+                    "No se puede modificar la receta base porque el producto ya tiene producciones "
+                    "finalizadas. Esto protege la persistencia histórica."
                 )
 
         nuevas_recetas: list[Receta] = []
         for id_materia, cantidad in mapa_entrada.items():
-            receta_existente = cls.query.filter_by(id_producto=id_producto, id_materia=id_materia).first()
+            receta_existente = cls.query.filter_by(
+                id_producto=id_producto,
+                id_variante=id_variante,
+                id_materia=id_materia,
+            ).first()
             if receta_existente:
                 receta_existente.cantidad = cantidad
                 receta_existente.estado = True
@@ -554,6 +587,7 @@ class Receta(db.Model):
             else:
                 nueva = cls(
                     id_producto=id_producto,
+                    id_variante=id_variante,
                     id_materia=id_materia,
                     cantidad=cantidad,
                     estado=True,

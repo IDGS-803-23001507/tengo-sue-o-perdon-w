@@ -18,6 +18,24 @@
             focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", required=true) }}
         </div>
 
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+                Variante / Tamaño
+                <span class="ml-1 text-xs text-gray-400 font-normal">(Opcional)</span>
+            </label>
+            {{ form.nombre_variante(id="campoVariante", class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5") }}
+            <p class="text-xs text-gray-500 mt-1">Se rellena automáticamente si agregas un insumo con tamaño (ej. Vaso — Mediano).</p>
+        </div>
+
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+                Precio de esta variante
+                <span class="ml-1 text-xs text-gray-400 font-normal">(Opcional)</span>
+            </label>
+            {{ form.precio_variante(class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", placeholder="Ej. 45.00") }}
+            <p class="text-xs text-gray-500 mt-1">Si no se define, se usará el precio base del producto.</p>
+        </div>
+
 
 
         <div class="md:col-span-2">
@@ -38,7 +56,7 @@
                             required>
                             <option value="" selected disabled>Selecciona...</option>
                             {% for m in materias %}
-                            <option value="{{ m.id_materia }}">{{ m.nombre }}{% if m.tamanio %} — {{ m.tamanio }}{% endif %}{% if m.unidad %} ({{ m.unidad.abreviacion or m.unidad.nombre }}){% endif %}</option>
+                            <option value="{{ m.id_materia }}" data-tamanio="{{ m.tamanio or '' }}">{{ m.nombre }}{% if m.tamanio %} — {{ m.tamanio }}{% endif %}{% if m.unidad %} ({{ m.unidad.abreviacion or m.unidad.nombre }}){% endif %}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -120,12 +138,36 @@
             if (select.value !== String(idMateria || '')) {
                 select.selectedIndex = 0;
             }
+            select.addEventListener('change', detectarVarianteDesdeInsumos);
         }
         if (inputCantidad) {
             inputCantidad.value = cantidad !== '' ? cantidad : '';
         }
 
         return clon;
+    }
+
+    /** Lee todos los selects de insumo, busca el primero con data-tamanio y rellena el campo variante. */
+    function detectarVarianteDesdeInsumos() {
+        const campoVariante = document.getElementById('campoVariante');
+        if (!campoVariante) return;
+
+        // Solo auto-rellena si el usuario no escribió nada manualmente o si ya era auto
+        const selects = lista.querySelectorAll('select[name="id_materia[]"]');
+        let tamanioEncontrado = '';
+
+        selects.forEach(sel => {
+            if (tamanioEncontrado) return;
+            const opt = sel.options[sel.selectedIndex];
+            const tamanio = opt?.dataset?.tamanio || '';
+            if (tamanio) tamanioEncontrado = tamanio;
+        });
+
+        // Rellena solo si está vacío o si el valor anterior también era auto-detectado
+        campoVariante.value = tamanioEncontrado;
+        campoVariante.placeholder = tamanioEncontrado
+            ? `Detectado: ${tamanioEncontrado}`
+            : 'Ej. Chico, Mediano, Grande, 12oz... (opcional)';
     }
 
     function cargarInsumosPrecargados() {
@@ -135,6 +177,7 @@
             const fila = crearFilaInsumo(insumo.id_materia, insumo.cantidad);
             if (fila) lista.appendChild(fila);
         });
+        detectarVarianteDesdeInsumos();
     }
 
     btnAgregar.addEventListener('click', () => {
@@ -162,6 +205,10 @@
     });
 
     document.addEventListener('DOMContentLoaded', () => {
+        // Escuchar cambios en el select inicial (ya estaba en el DOM)
+        const selectInicial = lista.querySelector('select[name="id_materia[]"]');
+        if (selectInicial) selectInicial.addEventListener('change', detectarVarianteDesdeInsumos);
+
         cargarInsumosPrecargados();
     });
 </script>

@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.usuarios.routes import requiereRol
 from app.auditoria import registrar_auditoria
 from forms import RecetaForm, RecetaLoteForm
-from model import MateriaPrima, Producto, Receta, db
+from model import MateriaPrima, Producto, Receta, VarianteReceta, db
 
 from itsdangerous import URLSafeSerializer
 from flask import current_app
@@ -98,31 +98,55 @@ def recetas():
 
     recetas_db = query.order_by(Producto.nombre.asc(), MateriaPrima.nombre.asc()).all()
 
+    # Agrupar: producto -> variante (None = receta base) -> insumos
     recetas_agrupadas = []
-    agrupadas_por_producto = {}
+    agrupadas_por_producto: dict[int, dict] = {}
+
     for receta in recetas_db:
         id_producto = receta.id_producto
+
         if id_producto not in agrupadas_por_producto:
             agrupadas_por_producto[id_producto] = {
                 "id_producto": id_producto,
                 "producto_nombre": receta.producto.nombre if receta.producto else "-",
                 "estado": True,
-                "insumos": [],
+                "variantes": [],           # lista de grupos {variante_info, insumos}
+                "variantes_map": {},       # id_variante -> index en 'variantes'
             }
             recetas_agrupadas.append(agrupadas_por_producto[id_producto])
 
-        grupo = agrupadas_por_producto[id_producto]
-        grupo["insumos"].append(
-            {
-                "id_receta": receta.id_receta,
-                "nombre_materia": receta.nombre_materia or "-",
-                "tamanio_materia": receta.materiaPrima.tamanio if receta.materiaPrima else None,
-                "cantidad": receta.cantidad,
-                "unidad_materia": receta.unidad_materia or "Sin unidad",
-                "estado": receta.estado,
-            }
-        )
-        grupo["estado"] = bool(grupo["estado"] and receta.estado)
+        grupo_prod = agrupadas_por_producto[id_producto]
+        id_var = receta.id_variante  # None = receta base
+
+        if id_var not in grupo_prod["variantes_map"]:
+            if id_var is None:
+                var_info = {"id_variante": None, "nombre": "Receta base", "precio_extra": None}
+            else:
+                var_obj = receta.variante
+                var_info = {
+                    "id_variante": id_var,
+                    "nombre": var_obj.nombre if var_obj else str(id_var),
+                    "precio_extra": float(var_obj.precio_extra) if (var_obj and var_obj.precio_extra) else None,
+                }
+            grupo_prod["variantes_map"][id_var] = len(grupo_prod["variantes"])
+            grupo_prod["variantes"].append({"variante": var_info, "insumos": [], "estado": True})
+
+        idx = grupo_prod["variantes_map"][id_var]
+        grupo_var = grupo_prod["variantes"][idx]
+        grupo_var["insumos"].append({
+            "id_receta": receta.id_receta,
+            "nombre_materia": receta.nombre_materia or "-",
+            "tamanio_materia": receta.materiaPrima.tamanio if receta.materiaPrima else None,
+            "cantidad": receta.cantidad,
+            "unidad_materia": receta.unidad_materia or "Sin unidad",
+            "estado": receta.estado,
+        })
+        grupo_var["estado"] = bool(grupo_var["estado"] and receta.estado)
+        grupo_prod["estado"] = bool(grupo_prod["estado"] and receta.estado)
+
+    # Limpiar clave interna antes de enviar al template
+    for gp in recetas_agrupadas:
+        gp.pop("variantes_map", None)
 
     return render_template(
         "recetas/recetas.html",
@@ -190,8 +214,6 @@ def nueva_receta():
                     for receta in recetas_producto
                 ]
 
-                form.tamano_vaso.data = _obtener_tamano_vaso_producto(producto_preseleccionado)
-
             es_nuevo_producto = request.args.get("nuevo_producto") == "1"
             pendientes = set(session.get("productos_pendientes_receta", []))
             if es_nuevo_producto and producto_preseleccionado in pendientes:
@@ -205,13 +227,43 @@ def nueva_receta():
             if not producto:
                 raise ValueError("El producto indicado no existe.")
 
-            receta_existente = Receta.query.filter_by(id_producto=id_producto, estado=True).first()
-            if receta_existente and not modo_edicion:
-                raise ValueError(
-                    "Este producto ya tiene receta registrada. Usa la opción Editar para modificarla."
-                )
+            # --- Determinar/crear variante ---
+            nombre_variante = (form.nombre_variante.data or "").strip()
+            precio_variante = form.precio_variante.data  # puede ser None
 
-            tamano_vaso = (form.tamano_vaso.data or "").strip().lower() or None
+            id_variante: int | None = None
+            if nombre_variante:
+                # Buscar si ya existe una variante con ese nombre para el producto
+                var_obj = VarianteReceta.query.filter_by(
+                    id_producto=id_producto,
+                    nombre=nombre_variante,
+                ).first()
+                if var_obj:
+                    # Actualizar precio si cambió
+                    if precio_variante is not None:
+                        var_obj.precio_extra = precio_variante
+                else:
+                    var_obj = VarianteReceta(
+                        id_producto=id_producto,
+                        nombre=nombre_variante,
+                        precio_extra=precio_variante if precio_variante is not None else None,
+                        estado=True,
+                    )
+                    db.session.add(var_obj)
+                    db.session.flush()  # obtener id_variante
+                id_variante = var_obj.id_variante
+
+            # Validar que no exista ya una receta (sin modo edicion)
+            receta_existente = Receta.query.filter_by(
+                id_producto=id_producto,
+                id_variante=id_variante,
+                estado=True,
+            ).first()
+            if receta_existente and not modo_edicion:
+                nombre_var = f"variante '{nombre_variante}'" if nombre_variante else "receta base"
+                raise ValueError(
+                    f"Este producto ya tiene {nombre_var} registrada. Usa Editar para modificarla."
+                )
 
             try:
                 insumos_raw = json.loads(form.insumos_json.data or "[]")
@@ -245,17 +297,17 @@ def nueva_receta():
 
             Receta.reemplazar_receta_producto(
                 id_producto=id_producto,
-                insumos=insumos_payload
+                insumos=insumos_payload,
+                id_variante=id_variante,
             )
-
-            _guardar_tamano_vaso_producto(id_producto=id_producto, tamano_vaso=tamano_vaso or None)
 
             registrar_auditoria(
                 accion="Creación/Actualización de Receta",
                 modulo="Recetas",
                 detalles={
                     "id_producto": id_producto,
-                    "tamano_vaso": tamano_vaso or None,
+                    "id_variante": id_variante,
+                    "nombre_variante": nombre_variante or None,
                     "insumos": [
                         {
                             "id_materia": i["id_materia"],

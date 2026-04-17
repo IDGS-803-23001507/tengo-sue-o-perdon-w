@@ -577,16 +577,16 @@ class RecetaLoteForm(FlaskForm):
         render_kw={"id": "insumos_json"},
     )
 
-    tamano_vaso = SelectField(
-        "Tamaño de vaso",
-        choices=[
-            ("", "Selecciona tamaño..."),
-            ("chico", "Chico"),
-            ("mediano", "Mediano"),
-            ("grande", "Grande"),
-        ],
-        validators=[Optional()],
-        default="",
+    nombre_variante = StringField(
+        "Variante / Tamaño",
+        validators=[Optional(), Length(max=50, message="Máximo 50 caracteres")],
+        render_kw={"placeholder": "Ej. Chico, Mediano, Grande, 12oz... (opcional)"},
+    )
+
+    precio_variante = DecimalField(
+        "Precio de esta variante",
+        places=2,
+        validators=[Optional(), NumberRange(min=0)],
     )
 
     submit = SubmitField("Guardar Receta")
