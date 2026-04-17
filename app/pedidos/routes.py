@@ -27,13 +27,12 @@ def requiereRol(rolRequerido: str):
 def mis_pedidos():
     # 1. Obtener los pedidos del cliente
     query = text("""
-        SELECT p.*, v.codigo_recogida
+        SELECT p.*, v.codigo_recogida, v.total 
         FROM pedidos p
         JOIN ventas v ON p.id_venta = v.id_venta
         WHERE v.id_cliente = :cliente
         ORDER BY p.hora_solicitud DESC
     """)
-    
     result = db.session.execute(query, {"cliente": session.get("clienteId")})
     # Convertimos a lista de diccionarios para poder agregarle la clave 'detalles'
     pedidos = [dict(row._mapping) for row in result]
@@ -106,15 +105,15 @@ def cambiar_estado(idPedido, estado):
         return redirect(url_for("ventas.pagar_venta_gestion", idVenta=venta.id_venta))
 
     return redirect(url_for("pedidos.index"))
-    # Configuración: minutos permitidos para cambios
+    
 MINUTOS_LIMITE_CAMBIO = 10
 
-# Configuración: minutos permitidos para cambios
+
 MINUTOS_LIMITE_CAMBIO = 10
 
 @pedidosBp.route("/cancelar/<int:idPedido>", methods=["POST"])
 def cancelar_pedido(idPedido):
-    # 1. Verificar que el pedido existe y pertenece al cliente
+    
     query_verificar = text("""
         SELECT p.id_pedido, p.hora_solicitud, p.estado 
         FROM pedidos p
@@ -130,19 +129,19 @@ def cancelar_pedido(idPedido):
         flash("Pedido no encontrado.", "danger")
         return redirect(url_for("pedidos.mis_pedidos"))
 
-    # 2. Verificar tiempo transcurrido
+    
     tiempo_transcurrido = datetime.now() - pedido.hora_solicitud
     if tiempo_transcurrido > timedelta(minutes=MINUTOS_LIMITE_CAMBIO):
         flash(f"No puedes cancelar el pedido después de {MINUTOS_LIMITE_CAMBIO} minutos.", "warning")
         return redirect(url_for("pedidos.mis_pedidos"))
 
-    # 3. Verificar estado (No se puede cancelar si ya se está preparando o entregó)
+    
     if pedido.estado.lower() != 'pendiente':
         flash("Solo se pueden cancelar pedidos en estado 'Pendiente'.", "warning")
         return redirect(url_for("pedidos.mis_pedidos"))
 
-    # 4. Ejecutar cancelación (Cambiamos el estado a 'Cancelado')
-    query_cancelar = text("UPDATE pedidos SET estado = 'Cancelado' WHERE id_pedido = :id")
+    
+    query_cancelar = text("UPDATE pedidos SET estado = 'cancelado' WHERE id_pedido = :id")
     db.session.execute(query_cancelar, {"id": idPedido})
     db.session.commit()
 
@@ -152,11 +151,11 @@ def cancelar_pedido(idPedido):
 
 @pedidosBp.route("/editar/<int:idPedido>")
 def editar_pedido(idPedido):
-    # 1. Seguridad básica
+
     if not session.get("inicioSesion"):
         return redirect(url_for("auth.iniciarSesion"))
 
-    # --- DIAGNÓSTICO DE CONSOLA ---
+    
     c_id = session.get("clienteId")
     print(f"\n--- INTENTO DE EDICIÓN ---")
     print(f"Pedido a buscar: {idPedido}")
@@ -196,7 +195,5 @@ def editar_pedido(idPedido):
     session["editando_pedido_id"] = idPedido
     session.modified = True
 
-    # 5. Forzamos la redirección manual por si url_for tiene conflicto de nombres
     print("Redirigiendo a /online...")
-    # Usamos el nombre exacto del endpoint que definiste en ventasBp
-    return redirect("/online")
+    return redirect(url_for("ventas.venta_online", _external=True))

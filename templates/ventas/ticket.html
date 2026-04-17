@@ -1,39 +1,89 @@
 {% extends "layout/layout_produccion.html" %}
 
 {% block container %}
-<section class="bg-[#fdfcfb] min-h-screen flex items-center justify-center px-4">
+<section class="bg-[#fdfcfb] min-h-screen flex items-center justify-center px-4 py-10">
     <div class="bg-white p-8 rounded-2xl shadow-md max-w-md w-full border border-gray-100 text-center">
-        <div class="bg-gray-50 p-6 rounded-xl border border-dashed border-gray-200 text-left mb-6 text-xs">
-            <img src="{{ url_for('static', filename='img/urbanCoffeeLogo.jpeg') }}" class="h-8 mx-auto mb-4 opacity-70">
-            <p class="text-center mb-2 uppercase font-semibold tracking-wide text-gray-600">Urban Coffee</p>
+        <div id="ticket-imprimible" class="bg-gray-50 p-6 rounded-xl border border-dashed border-gray-200 text-left mb-6 text-xs shadow-inner">
+            <img src="{{ url_for('static', filename='img/urbanCoffeeLogo.jpeg') }}" class="h-10 mx-auto mb-4 opacity-80">
+            <p class="text-center mb-1 uppercase font-black tracking-widest text-[#4B3621]">Urban Coffee</p>
+            <p class="text-center text-[9px] text-gray-400 mb-4">¡Gracias por tu preferencia!</p>
             
             <div class="mb-4 text-[10px] text-gray-500 space-y-1 border-b border-gray-200 pb-2">
+                <p><strong>Folio:</strong> UC-{{ ticket[0].id_venta if ticket else '000' }}</p>
                 <p><strong>Fecha:</strong> {{ ticket[0].creado_en.strftime('%d/%m/%Y %H:%M') if ticket else '' }}</p>
-                <p><strong>Cliente:</strong> {{ ticket[0].cliente_nombre if ticket else 'N/A' }}</p>
+                <p><strong>Cliente:</strong> {{ ticket[0].cliente_nombre if ticket else 'Venta Mostrador' }}</p>
                 <p><strong>Método:</strong> {{ ticket[0].metodo_pago if ticket else '' }}</p>
+                
+                {% if term %}
+                <p><strong>Tarjeta:</strong> **** **** **** {{ term }}</p>
+                {% endif %}
             </div>
 
             <div class="space-y-2">
                 {% for item in ticket %}
                 <div class="flex justify-between text-gray-700">
                     <span>{{ item.cantidad }} x {{ item.producto }}</span>
-                    <span>${{ "{:,.2f}".format(item.subtotal or 0) }}</span>
+                    <span class="font-medium">${{ "{:,.2f}".format(item.subtotal or 0) }}</span>
                 </div>
                 {% endfor %}
             </div>
 
             <div class="border-t border-gray-300 my-4"></div>
 
-            <div class="flex justify-between font-bold text-sm text-gray-800">
+            <div class="flex justify-between font-black text-sm text-gray-800 mb-2">
                 <span>TOTAL</span>
                 <span>${{ "{:,.2f}".format(ticket[0].total if ticket else 0) }}</span>
             </div>
 
-            <p class="mt-4 text-[10px] text-gray-400 text-center italic">
-                Atendido por: Sistema Urban Coffee
+            <div class="space-y-1 pt-2 border-t border-gray-100">
+                <div class="flex justify-between text-[10px] text-gray-500">
+                    <span>Monto Recibido:</span>
+                    <span>${{ "{:,.2f}".format(pago) }}</span>
+                </div>
+                <div class="flex justify-between text-[10px] font-bold text-[#8B5E3C]">
+                    <span>Su Cambio:</span>
+                    <span>${{ "{:,.2f}".format(cambio) }}</span>
+                </div>
+            </div>
+
+            <p class="mt-6 text-[9px] text-gray-400 text-center italic">
+                Atendido por: Sistema Urban Coffee<br>
+                Conserve este ticket para cualquier aclaración.
             </p>
         </div>
-        
+
+        <div class="grid grid-cols-1 gap-3">
+            <div class="flex gap-2">
+                <button onclick="window.print();" class="flex-1 bg-gray-800 text-white py-2 rounded-xl text-sm font-bold hover:bg-black transition">
+                    Imprimir
+                </button>
+                <a href="{{ url_for('ventas.venta_fisica') }}" class="flex-1 bg-[#C27C3A] text-white py-2 rounded-xl text-sm font-bold hover:bg-[#A6662E] transition">
+                    Nueva Venta
+                </a>
+            </div>
+            
+            <a href="{{ url_for('pedidos.index') }}" 
+   class="w-full bg-white border-2 border-[#4B3621] text-[#4B3621] py-2 rounded-xl text-sm font-black hover:bg-[#FDF8F3] transition uppercase tracking-tighter">
+    ← Volver a Gestión de Pedidos
+</a>
         </div>
+    </div>
 </section>
+
+<style>
+    @media print {
+        body * { visibility: hidden; }
+        #ticket-imprimible, #ticket-imprimible * { visibility: visible; }
+        #ticket-imprimible { 
+            position: absolute; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            border: none; 
+            box-shadow: none;
+            padding: 0;
+            margin: 0;
+        }
+    }
+</style>
 {% endblock %}

@@ -402,6 +402,8 @@ def requerirLogin():
             "clientes.editar_cliente",
             "clientes.desactivar_cliente",
             "pedidos.mis_pedidos",
+            "pedidos.editar_pedido",      # <--- AGREGA ESTA LÍNEA
+            "pedidos.cancelar_pedido",    # <--- APROVECHA Y AGREGA ESTA TAMBIÉN
             "ventas.venta_online",
             "ventas.pagar_venta_gestion",
             "index",
