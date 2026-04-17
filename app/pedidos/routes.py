@@ -97,8 +97,14 @@ def index():
     return render_template("venta_linea/pedidos.html", pedidos=pedidos, active_page="pedidos")
 
 
-@pedidosBp.route("/<int:idPedido>/estado/<string:estado>", methods=["POST"])
-def cambiar_estado(idPedido, estado):
+@pedidosBp.route("/<token>/estado/<string:estado>", methods=["POST"])
+def cambiar_estado(token, estado):
+    
+    try:
+        idPedido = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("proveedor.proveedores"))
+    
     estado_normalizado = (estado or "").strip().lower()
     estados_validos = {"pendiente", "aceptado", "preparando", "entregado", "cancelado", "rechazado"}
 
@@ -149,9 +155,15 @@ def cambiar_estado(idPedido, estado):
     
 MINUTOS_LIMITE_CAMBIO = 10
 
-@pedidosBp.route("/cancelar/<int:idPedido>", methods=["POST"])
-def cancelar_pedido(idPedido):
+@pedidosBp.route("/cancelar/<token>", methods=["POST"])
+def cancelar_pedido(token):
     
+    try:
+        idPedido = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("proveedor.proveedores"))
+    
+    idPedido
     query_verificar = text("""
         SELECT p.id_pedido, p.hora_solicitud, p.estado 
         FROM pedidos p
@@ -187,8 +199,13 @@ def cancelar_pedido(idPedido):
     return redirect(url_for("pedidos.mis_pedidos"))
 
 
-@pedidosBp.route("/editar/<int:idPedido>")
-def editar_pedido(idPedido):
+@pedidosBp.route("/editar/<token>")
+def editar_pedido(token):
+
+    try:
+        idPedido = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("proveedor.proveedores"))
 
     if not session.get("inicioSesion"):
         return redirect(url_for("auth.iniciarSesion"))
