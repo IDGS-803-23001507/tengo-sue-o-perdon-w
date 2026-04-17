@@ -77,7 +77,7 @@ def _guardar_tamano_vaso_producto(id_producto: int, tamano_vaso: str | None) -> 
 @recetas_bp.route("/", methods=["GET"], endpoint="index")
 def recetas():
     busqueda = (request.args.get("q") or "").strip()
-    estado = (request.args.get("estado") or "todos").strip().lower()
+    estado = (request.args.get("estado") or "activas").strip().lower()
 
     query = Receta.query.join(Producto, Receta.id_producto == Producto.id_producto).join(
         MateriaPrima, Receta.id_materia == MateriaPrima.id_materia
@@ -582,3 +582,37 @@ def editar_receta_api(id_producto: int):
     except SQLAlchemyError:
         db.session.rollback()
         return jsonify({"ok": False, "message": "Error al actualizar la receta."}), 500
+
+
+@recetas_bp.route("/recalcular-precios", methods=["GET", "POST"], endpoint="recalcular_precios")
+@requiereRol("Gerente")
+def recalcular_todos_los_precios():
+    """Recalcula el precio_venta de todos los productos y el precio_extra de todas sus variantes."""
+    if request.method == "POST":
+        productos = Producto.query.all()
+        actualizados = []
+        errores = []
+
+        for producto in productos:
+            try:
+                recalcular_precio_producto(producto, commit=False)
+                actualizados.append(producto.nombre)
+            except Exception as e:
+                errores.append(f"{producto.nombre}: {e}")
+
+        try:
+            db.session.commit()
+            flash(
+                f"✅ Precios actualizados para {len(actualizados)} productos." +
+                (f" ⚠️ Errores: {', '.join(errores)}" if errores else ""),
+                "success"
+            )
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error al guardar: {e}", "danger")
+
+        return redirect(url_for("recetas.recalcular_precios"))
+
+    # GET: mostrar la página de confirmación
+    total = Producto.query.count()
+    return render_template("recetas/recalcular_precios.html", total=total, active_page="recetas")

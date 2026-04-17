@@ -67,8 +67,8 @@ def _credenciales_mysql() -> dict[str, str | int]:
     return {
         "host": current_app.config.get("MYSQL_HOST", "localhost"),
         "port": int(current_app.config.get("MYSQL_PORT", 3306)),
-        "user": current_app.config.get("MYSQL_APP_ADMIN_USER", "app_admin"),
-        "password": current_app.config.get("MYSQL_APP_ADMIN_PASSWORD", ""),
+        "user": current_app.config.get("MYSQL_USER", "root"),
+        "password": current_app.config.get("MYSQL_PASSWORD", ""),
         "database": current_app.config.get("MYSQL_DATABASE", ""),
     }
 
@@ -98,9 +98,29 @@ def _ejecutar_mysqldump() -> bytes:
         str(credenciales["database"]),
     ]
 
+    import shutil
+    
     entorno = os.environ.copy()
     if credenciales["password"]:
         entorno["MYSQL_PWD"] = str(credenciales["password"])
+        
+    # Añadir rutas comunes de MySQL a la variable PATH
+    rutas_comunes = [
+        r"C:\Program Files\MySQL\MySQL Server 8.0\bin",
+        r"C:\Program Files\MySQL\MySQL Server 8.1\bin",
+        r"C:\Program Files\MySQL\MySQL Server 8.2\bin",
+        r"C:\xampp\mysql\bin",
+        r"C:\wamp64\bin\mysql\mysql8.0.31\bin"
+    ]
+    rutas_existentes = [r for r in rutas_comunes if os.path.exists(r)]
+    if rutas_existentes:
+        entorno["PATH"] = os.pathsep.join(rutas_existentes) + os.pathsep + entorno.get("PATH", "")
+
+    executable = shutil.which("mysqldump", path=entorno["PATH"])
+    if not executable:
+        raise RuntimeError("No se encontró el ejecutable 'mysqldump' en el sistema. Asegúrate de tener MySQL instalado y en el PATH.")
+    
+    comando[0] = executable
 
     try:
         proceso = subprocess.run(
@@ -111,7 +131,7 @@ def _ejecutar_mysqldump() -> bytes:
             timeout=_timeout_dump_segundos(),
         )
     except FileNotFoundError as exc:
-        raise RuntimeError("No se encontró el ejecutable 'mysqldump' en el sistema.") from exc
+        raise RuntimeError("No se encontró el ejecutable 'mysqldump' en el sistema. Asegúrate de tener MySQL instalado y en el PATH.") from exc
     except subprocess.TimeoutExpired as exc:
         raise RuntimeError(
             f"El backup excedió el tiempo máximo de ejecución ({_timeout_dump_segundos()}s)."
@@ -142,9 +162,29 @@ def _ejecutar_restore(sql_bytes: bytes) -> None:
         str(credenciales["database"]),
     ]
 
+    import shutil
+
     entorno = os.environ.copy()
     if credenciales["password"]:
         entorno["MYSQL_PWD"] = str(credenciales["password"])
+
+    # Añadir rutas comunes de MySQL a la variable PATH
+    rutas_comunes = [
+        r"C:\Program Files\MySQL\MySQL Server 8.0\bin",
+        r"C:\Program Files\MySQL\MySQL Server 8.1\bin",
+        r"C:\Program Files\MySQL\MySQL Server 8.2\bin",
+        r"C:\xampp\mysql\bin",
+        r"C:\wamp64\bin\mysql\mysql8.0.31\bin"
+    ]
+    rutas_existentes = [r for r in rutas_comunes if os.path.exists(r)]
+    if rutas_existentes:
+        entorno["PATH"] = os.pathsep.join(rutas_existentes) + os.pathsep + entorno.get("PATH", "")
+
+    executable = shutil.which("mysql", path=entorno["PATH"])
+    if not executable:
+        raise RuntimeError("No se encontró el ejecutable 'mysql' en el sistema. Asegúrate de tener MySQL instalado y en el PATH.")
+    
+    comando[0] = executable
 
     try:
         proceso = subprocess.run(
@@ -156,7 +196,7 @@ def _ejecutar_restore(sql_bytes: bytes) -> None:
             timeout=_timeout_restore_segundos(),
         )
     except FileNotFoundError as exc:
-        raise RuntimeError("No se encontró el ejecutable 'mysql' en el sistema.") from exc
+        raise RuntimeError("No se encontró el ejecutable 'mysql' en el sistema. Asegúrate de tener MySQL instalado y en el PATH.") from exc
     except subprocess.TimeoutExpired as exc:
         raise RuntimeError(
             f"La restauración excedió el tiempo máximo de ejecución ({_timeout_restore_segundos()}s)."

@@ -31,15 +31,34 @@ def recalcular_precio_producto(producto: Producto, commit: bool = True) -> None:
     if not tiene_receta_activa:
         return
 
+    # Recalcular precio base del producto (basado solo en la receta base id_variante=None)
     precio_calculado = producto.calcular_precio_food_cost()
 
     if precio_calculado > 0:
         producto.precio_venta = precio_calculado
         producto.estado_producto = "activo"
-    else:
-        # Si por alguna razón el costo es 0, mantener borrador
-        producto.estado_producto = "borrador"
-        producto.precio_venta = None
+    # Si el costo es 0 (sin receta base o costo_promedio=0), NO sobreescribimos el precio existente
+
+    # Recalcular precio de las variantes activas
+    from model import VarianteReceta
+    variantes = VarianteReceta.query.filter_by(id_producto=producto.id_producto, estado=True).all()
+    for var in variantes:
+        precio_var_calc = var.calcular_precio_food_cost()
+        # Solo actualizamos si el cálculo produce un precio real (> 0).
+        # Si costo_promedio es 0 (sin compras registradas), conservamos el precio anterior.
+        if precio_var_calc > 0:
+            var.precio_extra = precio_var_calc
+
+    # Si el producto no tiene receta base pero sí tiene variantes con precios,
+    # usar el precio mínimo de variante como precio_venta del producto (para la tarjeta del POS)
+    if not (precio_calculado > 0):
+        precios_variantes = [
+            var.precio_extra for var in variantes
+            if var.precio_extra and var.precio_extra > 0
+        ]
+        if precios_variantes:
+            producto.precio_venta = min(precios_variantes)
+            producto.estado_producto = "activo"
 
     if commit:
         db.session.commit()

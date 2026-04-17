@@ -48,7 +48,7 @@
                             </h3>
 
                             <p class="text-lg font-semibold text-[#814c59] mt-2">
-                                ${{ "{:,.2f}".format(producto.precio_venta or 0) }}
+                                ${{ "{:,.2f}".format((producto.precio_venta or 0)|float) }}
                             </p>
 
                             {% set insumos = insumos_por_producto.get(producto.id_producto, []) %}
@@ -71,7 +71,7 @@
                             {% if variantes %}
                             {# Producto con variantes: botón abre un modal #}
                             <button type="button"
-                                onclick='abrirModalVariante({{ producto.id_producto }}, {{ producto.nombre|tojson|safe }}, {{ producto.precio_venta }}, {{ variantes|tojson|safe }})'
+                                onclick='abrirModalVariante({{ producto.id_producto }}, {{ producto.nombre|tojson|safe }}, {{ (producto.precio_venta or 0)|float }}, {{ variantes|tojson|safe }})'
                                 {{ 'disabled' if producto.disponible_stock == 0 }}
                                 class="w-full border border-[#C27C3A] text-[#C27C3A] py-2 rounded-lg text-xs font-semibold tracking-wide
                                        hover:bg-[#C27C3A] hover:text-white transition
@@ -262,7 +262,8 @@ function abrirModalVariante(idProducto, nombre, precioBase, variantes) {
     contenedor.innerHTML = '';
 
     variantes.forEach(v => {
-        const precioFinal = precioBase + (v.precio_extra || 0);
+        // Si la variante tiene precio propio calculado, mostrarlo; si no, usar el precio base
+        const precioFinal = (v.precio_extra && v.precio_extra > 0) ? v.precio_extra : precioBase;
         const precioStr = precioFinal.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
         const disponible = v.disponible !== false;  // true por default
 
@@ -277,7 +278,8 @@ function abrirModalVariante(idProducto, nombre, precioBase, variantes) {
             <span class="text-sm ${disponible ? 'text-gray-500' : 'text-gray-300'}">${disponible ? precioStr : 'Agotado'}</span>
         `;
         if (disponible) {
-            btn.onclick = () => confirmarVariante(idProducto, v.id, v.nombre, v.precio_extra || 0);
+            // Pasamos el precio final absoluto de la variante
+            btn.onclick = () => confirmarVariante(idProducto, v.id, v.nombre, precioFinal);
         }
         contenedor.appendChild(btn);
     });

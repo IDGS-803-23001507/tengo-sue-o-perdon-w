@@ -155,13 +155,17 @@ def venta_fisica():
                 insumos_por_producto[receta.id_producto].append(label)
             
             if receta.id_variante is not None:
-                stock_por_variante.setdefault(receta.id_variante, []).append(
-                    (float(mp.stock_actual or 0), float(receta.cantidad))
-                )
+                # Excluir insumos tipo "contenedor" (vasos, tazas) del chequeo de stock:
+                # si tiene tamaño (ej. "12oz") es un vaso/recipiente, no un insumo líquido/sólido
+                if not mp.tamanio:
+                    stock_por_variante.setdefault(receta.id_variante, []).append(
+                        (float(mp.stock_actual or 0), float(receta.cantidad))
+                    )
             else:
-                stock_receta_base.setdefault(receta.id_producto, []).append(
-                    (float(mp.stock_actual or 0), float(receta.cantidad))
-                )
+                if not mp.tamanio:
+                    stock_receta_base.setdefault(receta.id_producto, []).append(
+                        (float(mp.stock_actual or 0), float(receta.cantidad))
+                    )
                 # Si el insumo tiene tamaño definido, usarlo como nombre de la variante base
                 if mp.tamanio and receta.id_producto not in nombre_base_producto:
                     nombre_base_producto[receta.id_producto] = mp.tamanio
@@ -186,10 +190,14 @@ def venta_fisica():
             # El nombre será el tamaño del insumo (ej. "Mediano") o "Regular" si no hay tamaño
             base_ok = all(stock >= cant for stock, cant in insumos_base) if insumos_base else True
             nombre_base = nombre_base_producto.get(id_producto, "Regular")
+            # Buscar el precio_venta del producto para la receta base
+            from model import Producto as ProductoModel
+            prod_obj = ProductoModel.query.get(id_producto)
+            precio_base_val = float(prod_obj.precio_venta) if (prod_obj and prod_obj.precio_venta) else 0
             variantes_por_producto[id_producto].insert(0, {
                 "id": "",
                 "nombre": nombre_base,
-                "precio_extra": 0,
+                "precio_extra": precio_base_val,
                 "disponible": base_ok,
             })
 
@@ -201,6 +209,10 @@ def venta_fisica():
         if variantes_prod:
             # Disponible si al menos UNA variante tiene insumos
             prod_dict["disponible_stock"] = 1 if any(v["disponible"] for v in variantes_prod) else 0
+            # Si el precio del producto es 0 o nulo, usar el precio mínimo de sus variantes
+            precios_variantes = [v["precio_extra"] for v in variantes_prod if v.get("precio_extra", 0) > 0]
+            if precios_variantes and not prod_dict.get("precio_venta"):
+                prod_dict["precio_venta"] = min(precios_variantes)
         productos_con_disponibilidad.append(prod_dict)
 
     # Convertir a objetos con acceso por atributo
@@ -219,9 +231,10 @@ def venta_fisica():
 
                 id_variante = request.form.get("variante_id", type=int)  # None si no hay variantes
                 nombre_variante = request.form.get("variante_nombre", "").strip()
-                precio_extra = request.form.get("variante_precio", 0.0, type=float)
+                precio_variante = request.form.get("variante_precio", 0.0, type=float)
 
-                precio_final = float(prod.precio_venta) + precio_extra
+                # Si viene precio de variante calculado (absoluto), usarlo; si no, el precio base del producto
+                precio_final = precio_variante if precio_variante > 0 else float(prod.precio_venta or 0)
 
                 carrito.append({
                     "id_producto": p_id,
@@ -426,10 +439,13 @@ def venta_online():
         if id_producto in variantes_por_producto_online:
             base_ok = all(stock >= cant for stock, cant in insumos_base) if insumos_base else True
             nombre_base = nombre_base_producto_online.get(id_producto, "Regular")
+            from model import Producto as ProductoModel
+            prod_obj = ProductoModel.query.get(id_producto)
+            precio_base_val = float(prod_obj.precio_venta) if (prod_obj and prod_obj.precio_venta) else 0
             variantes_por_producto_online[id_producto].insert(0, {
                 "id": "",
                 "nombre": nombre_base,
-                "precio_extra": 0,
+                "precio_extra": precio_base_val,
                 "disponible": base_ok,
             })
 
@@ -439,6 +455,10 @@ def venta_online():
         variantes_prod = variantes_por_producto_online.get(prod_dict["id_producto"], [])
         if variantes_prod:
             prod_dict["disponible_stock"] = 1 if any(v["disponible"] for v in variantes_prod) else 0
+            # Si el precio del producto es 0 o nulo, usar el precio mínimo de sus variantes
+            precios_variantes = [v["precio_extra"] for v in variantes_prod if v.get("precio_extra", 0) > 0]
+            if precios_variantes and not prod_dict.get("precio_venta"):
+                prod_dict["precio_venta"] = min(precios_variantes)
         productos_con_disponibilidad.append(prod_dict)
 
     from types import SimpleNamespace
@@ -470,9 +490,10 @@ def venta_online():
             
             id_variante = request.form.get("variante_id", type=int)
             nombre_variante = request.form.get("variante_nombre", "").strip()
-            precio_extra = request.form.get("variante_precio", 0.0, type=float)
+            precio_variante = request.form.get("variante_precio", 0.0, type=float)
             
-            precio_final = precio + precio_extra
+            # Si viene precio de variante (absoluto calculado), usarlo; si no, el precio base
+            precio_final = precio_variante if precio_variante > 0 else precio
             nombre_display = f"{nombre} ({nombre_variante})" if nombre_variante else nombre
             
             carrito = session.get("carrito", [])
@@ -776,13 +797,12 @@ def ticket(idVenta):
         SELECT 
             v.id_venta, v.creado_en, v.metodo_pago, v.total,
             COALESCE(c.nombre, 'Venta Mostrador') AS cliente_nombre,
-            COALESCE(CONCAT(p.nombre, ' (', vr.nombre, ')'), p.nombre) AS producto,
+            p.nombre AS producto,
             dv.cantidad,
             (dv.cantidad * dv.precio_unitario) AS subtotal
         FROM ventas v
         JOIN detalle_venta dv ON v.id_venta = dv.id_venta
         JOIN Producto p ON dv.id_producto = p.id_producto
-        LEFT JOIN variante_receta vr ON dv.id_variante = vr.id_variante
         LEFT JOIN clientes c ON v.id_cliente = c.id
         WHERE v.id_venta = :idVenta
     """)

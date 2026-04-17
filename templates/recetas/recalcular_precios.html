@@ -1,0 +1,56 @@
+{% extends "layout/layout_produccion.html" %}
+
+{% block container %}
+<div class="mb-8">
+    <a href="{{ url_for('recetas.index') }}" class="text-sm text-blue-600 hover:underline flex items-center gap-1 mb-2">
+        &larr; Volver a Recetas
+    </a>
+    <h1 class="text-3xl font-bold text-gray-800">Recalcular Precios</h1>
+    <p class="text-gray-500 mt-1">Actualiza el precio de venta de todos los productos según su receta y food cost.</p>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="mb-6 p-4 rounded-lg border
+                {% if category == 'success' %}bg-green-50 border-green-200 text-green-800
+                {% elif category == 'danger' %}bg-red-50 border-red-200 text-red-800
+                {% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<div class="bg-white rounded-lg shadow-sm border p-8 max-w-xl">
+
+    <div class="flex items-start gap-4 mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+        <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xl mt-0.5"></i>
+        <div>
+            <p class="font-semibold text-amber-800">¿Qué hace esto?</p>
+            <p class="text-sm text-amber-700 mt-1">
+                Recalcula el <strong>precio de venta</strong> de los <strong>{{ total }} productos</strong> registrados
+                usando la fórmula: <code class="bg-amber-100 px-1 rounded">Precio = Costo de receta ÷ Food Cost</code>.
+                También recalcula el precio de cada variante (12oz, 20oz, etc.) con base en sus propios insumos.
+            </p>
+            <p class="text-sm text-amber-700 mt-2">
+                Los productos que no tienen receta activa o cuyos insumos no tienen costo registrado
+                <strong>no se modificarán</strong>.
+            </p>
+        </div>
+    </div>
+
+    <form method="POST">
+        <button type="submit"
+            class="w-full text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300
+                   font-semibold rounded-lg text-sm px-5 py-3 transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-rotate"></i>
+            Recalcular todos los precios ahora
+        </button>
+    </form>
+
+    <p class="text-xs text-gray-400 text-center mt-4">
+        Esta acción es segura y puede ejecutarse cuantas veces necesites.
+    </p>
+</div>
+{% endblock %}

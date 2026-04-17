@@ -21,12 +21,30 @@
         </div>
 
         <div class="bg-white border rounded-xl p-4 shadow-sm">
-            <p class="text-sm text-gray-500">Margen de Utilidad Bruta</p>
+            <p class="text-sm text-gray-500 flex items-center gap-1.5">
+                Margen de Utilidad Bruta
+                <button data-tooltip-target="tooltip-margen" type="button" class="text-gray-400 hover:text-blue-500 focus:outline-none">
+                    <i class="fa-solid fa-circle-question cursor-help"></i>
+                </button>
+            </p>
+            <div id="tooltip-margen" role="tooltip" class="absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-white transition-opacity duration-300 bg-gray-900 rounded-lg shadow-sm opacity-0 tooltip w-64 text-center">
+                Porcentaje de la venta que te queda como ganancia después de pagar SOLO el costo de los insumos (antes de pagar gastos operativos).
+                <div class="tooltip-arrow" data-popper-arrow></div>
+            </div>
             <p class="text-2xl font-bold text-emerald-600 mt-1">{{ '%.2f'|format(margenUtilidadBrutaPct) }}%</p>
         </div>
 
         <div class="bg-white border rounded-xl p-4 shadow-sm">
-            <p class="text-sm text-gray-500">Venta mínima para no perder</p>
+            <p class="text-sm text-gray-500 flex items-center gap-1.5">
+                Venta mínima para no perder
+                <button data-tooltip-target="tooltip-venta-minima" type="button" class="text-gray-400 hover:text-violet-500 focus:outline-none">
+                    <i class="fa-solid fa-circle-question cursor-help"></i>
+                </button>
+            </p>
+            <div id="tooltip-venta-minima" role="tooltip" class="absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-white transition-opacity duration-300 bg-gray-900 rounded-lg shadow-sm opacity-0 tooltip w-64 text-center">
+                Monto que necesitas vender para cubrir exactamente tus insumos y gastos operativos del periodo (Punto de Equilibrio). Ni ganas, ni pierdes.
+                <div class="tooltip-arrow" data-popper-arrow></div>
+            </div>
             {% if puntoEquilibrioPeriodo is not none %}
             <p class="text-2xl font-bold text-violet-700 mt-1">${{ '%.2f'|format(puntoEquilibrioPeriodo) }}</p>
             {% else %}

@@ -50,7 +50,7 @@
                         </div>
 
                         <p class="mt-3 text-lg font-medium text-gray-800">
-                            {{ p.nombre }} - ${{ p.precio_venta }}
+                            {{ p.nombre }} - ${{ "{:,.2f}".format((p.precio_venta or 0)|float) }}
                         </p>
 
                         <p class="text-sm text-gray-500">
@@ -62,7 +62,7 @@
                         {% if variantes %}
                         <div class="flex mt-4 gap-2 justify-center">
                             <button type="button"
-                                onclick='abrirModalVariante({{ p.id_producto }}, {{ p.nombre|tojson|safe }}, {{ p.precio_venta }}, {{ variantes|tojson|safe }})'
+                                onclick='abrirModalVariante({{ p.id_producto }}, {{ p.nombre|tojson|safe }}, {{ (p.precio_venta or 0)|float }}, {{ variantes|tojson|safe }})'
                                 {{ 'disabled' if p.disponible_stock == 0 }}
                                 class="bg-[#C27C3A] text-white px-6 py-2 rounded hover:bg-[#814c59] transition duration-300 uppercase text-xs font-bold tracking-widest disabled:opacity-40">
                                 {% if p.disponible_stock == 0 %}Agotado{% else %}Elegir tamaño{% endif %}
@@ -240,7 +240,8 @@ function abrirModalVariante(idProducto, nombre, precioBase, variantes) {
     contenedor.innerHTML = '';
 
     variantes.forEach(v => {
-        const precioFinal = precioBase + (v.precio_extra || 0);
+        // Si la variante tiene precio propio calculado, usarlo; si no, el precio base
+        const precioFinal = (v.precio_extra && v.precio_extra > 0) ? v.precio_extra : precioBase;
         const precioStr = precioFinal.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
         const disponible = v.disponible !== false;
 
@@ -260,7 +261,8 @@ function abrirModalVariante(idProducto, nombre, precioBase, variantes) {
             btn.onclick = () => {
                 document.getElementById('fvVarianteId').value = v.id;
                 document.getElementById('fvVarianteNombre').value = v.nombre;
-                document.getElementById('fvVariantePrecio').value = v.precio_extra || 0;
+                // Guardamos el precio final absoluto de la variante
+                document.getElementById('fvVariantePrecio').value = precioFinal;
                 document.getElementById('fvSubmit').click();
                 cerrarModalVariante();
             };

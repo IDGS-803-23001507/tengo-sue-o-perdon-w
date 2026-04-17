@@ -28,21 +28,23 @@
                     <button type="button" onclick="toggleFiltroRecetas()" class="flex items-center gap-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 font-medium rounded-lg text-sm px-4 py-2 shadow-sm">
                         <i class="fa-solid fa-filter"></i>
 
-                        {% if estado_actual and estado_actual != 'todos' %}
-                            Filtrar: {{ 'Activas' if estado_actual == 'activas' else 'Inactivas' }}
+                        {% if estado_actual == 'todos' %}
+                            Filtrar: Todos
+                        {% elif estado_actual == 'inactivas' %}
+                            Filtrar: Inactivas
                         {% else %}
-                            Filtrar
+                            Filtrar: Activas
                         {% endif %}
                     </button>
 
                     <div id="filtroMenuRecetas" class="hidden absolute mt-2 w-44 bg-white border rounded-lg shadow z-10">
-                        <button type="button" onclick="setEstadoRecetas('todos')" class="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">Todos</button>
                         <button type="button" onclick="setEstadoRecetas('activas')" class="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">Activas</button>
                         <button type="button" onclick="setEstadoRecetas('inactivas')" class="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">Inactivas</button>
+                        <button type="button" onclick="setEstadoRecetas('todos')" class="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">Todos</button>
                     </div>
                 </div>
 
-                <input type="hidden" name="estado" id="estadoInputRecetas" value="{{ estado_actual or 'todos' }}">
+                <input type="hidden" name="estado" id="estadoInputRecetas" value="{{ estado_actual or 'activas' }}">
 
                 <button type="submit" class="text-white bg-gray-800 hover:bg-gray-900 font-medium rounded-lg text-sm px-4 py-2 transition shadow-sm">
                     Buscar
@@ -100,12 +102,15 @@
                             </div>
                             <ul class="space-y-1">
                                 {% for insumo in grp.insumos %}
-                                <li class="flex items-center gap-1.5">
+                                <li class="flex items-center gap-1.5 {% if not insumo.estado %}opacity-50 line-through{% endif %}">
                                     <span class="font-medium text-gray-800">{{ insumo.nombre_materia }}</span>
                                     {% if insumo.tamanio_materia %}
                                         <span class="bg-blue-50 text-blue-600 text-[10px] font-semibold px-1.5 py-0.5 rounded border border-blue-200">{{ insumo.tamanio_materia }}</span>
                                     {% endif %}
                                     <span class="text-gray-500">&mdash; {{ insumo.cantidad }} {{ insumo.unidad_materia }}</span>
+                                    {% if not insumo.estado %}
+                                        <span class="text-[10px] text-red-500 font-bold ml-1">(Removido)</span>
+                                    {% endif %}
                                 </li>
                                 {% endfor %}
                             </ul>

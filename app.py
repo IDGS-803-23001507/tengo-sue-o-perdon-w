@@ -814,7 +814,7 @@ def dashboard_operador():
 
 @app.route("/dashboard/auditoria")
 def dashboard_auditoria():
-    if session.get("usuarioRol") not in {"Admin General (TI)", "Admin General"}:
+    if session.get("usuarioRol") not in {"Admin General (TI)", "Admin General", "Gerente", "Gerente de Tienda"}:
         abort(403)
 
     logs = obtener_logs_auditoria(limit=300)

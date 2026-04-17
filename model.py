@@ -239,7 +239,7 @@ class Producto(db.Model):
             return Decimal('0')
         total = Decimal('0')
         for receta in self.recetas:
-            if receta.materiaPrima:
+            if receta.estado and receta.id_variante is None and receta.materiaPrima:
                 cantidad = Decimal(str(receta.cantidad))
                 costo = Decimal(str(receta.materiaPrima.costo_promedio or 0))
                 total += cantidad * costo
@@ -440,6 +440,10 @@ class Pedido(db.Model):
 
     estado = db.Column(db.String(20), default="pendiente")
     id_venta = db.Column(db.Integer, db.ForeignKey("ventas.id_venta"), nullable=True)
+    
+    stock_descontado = db.Column(db.Boolean, default=False)
+    stock_descontado_en = db.Column(db.DateTime, nullable=True)
+    version = db.Column(db.Integer, default=0)
 
 
 class SolicitudProduccion(db.Model):
@@ -489,6 +493,27 @@ class VarianteReceta(db.Model):
 
     producto = db.relationship("Producto", backref=db.backref("variantes", lazy=True))
     recetas = db.relationship("Receta", backref="variante", lazy=True, cascade="all, delete-orphan")
+
+    def costo_unitario(self) -> Decimal:
+        if not self.recetas:
+            return Decimal('0')
+        total = Decimal('0')
+        for receta in self.recetas:
+            if receta.estado and receta.materiaPrima:
+                cantidad = Decimal(str(receta.cantidad))
+                costo = Decimal(str(receta.materiaPrima.costo_promedio or 0))
+                total += cantidad * costo
+        return total
+
+    def calcular_precio_food_cost(self) -> Decimal:
+        from decimal import ROUND_HALF_UP
+        costo = self.costo_unitario()
+        if costo <= 0:
+            return Decimal('0')
+        target = Decimal(str(self.producto.target_food_cost or '0.30'))
+        if target <= 0:
+            return Decimal('0')
+        return (costo / target).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
 
 class Receta(db.Model):

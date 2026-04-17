@@ -38,6 +38,7 @@
             </div>
 
             <div class="space-y-1 pt-2 border-t border-gray-100">
+                {% if pago and pago > 0 %}
                 <div class="flex justify-between text-[10px] text-gray-500">
                     <span>Monto Recibido:</span>
                     <span>${{ "{:,.2f}".format(pago) }}</span>
@@ -46,6 +47,12 @@
                     <span>Su Cambio:</span>
                     <span>${{ "{:,.2f}".format(cambio) }}</span>
                 </div>
+                {% else %}
+                <div class="flex justify-between text-[10px] text-gray-500 italic">
+                    <span>Pago completado</span>
+                    <span>{{ ticket[0].metodo_pago if ticket else '' }}</span>
+                </div>
+                {% endif %}
             </div>
 
             <p class="mt-6 text-[9px] text-gray-400 text-center italic">

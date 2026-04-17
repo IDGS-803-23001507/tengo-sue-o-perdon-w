@@ -120,7 +120,7 @@ BEGIN
                         JOIN Recetas r
                             ON r.id_producto = p.id_producto
                            AND r.estado = 1
-                           AND (dv.id_variante IS NULL AND r.id_variante IS NULL OR r.id_variante = dv.id_variante)
+                           AND r.id_variante IS NULL
                         WHERE dv.id_venta = v_id_venta
                           AND COALESCE(p.tipo_preparacion, 'materia_prima') <> 'stock'
                         GROUP BY r.id_materia;

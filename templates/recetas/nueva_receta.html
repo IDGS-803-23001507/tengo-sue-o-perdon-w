@@ -24,9 +24,10 @@
                 <span class="ml-1 text-xs text-gray-400 font-normal">(Opcional)</span>
             </label>
             {{ form.nombre_variante(id="campoVariante", class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5") }}
-            <p class="text-xs text-gray-500 mt-1">Se rellena automáticamente si agregas un insumo con tamaño (ej. Vaso — Mediano).</p>
+            <p class="text-xs text-gray-500 mt-1">Déjalo vacío para que se autodetecte según el insumo, o escribe tu propio tamaño.</p>
         </div>
 
+        {% if modo_edicion %}
         <div>
             <label class="block mb-2 text-sm font-medium text-gray-900">
                 Precio de esta variante
@@ -35,6 +36,7 @@
             {{ form.precio_variante(class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", placeholder="Ej. 45.00") }}
             <p class="text-xs text-gray-500 mt-1">Si no se define, se usará el precio base del producto.</p>
         </div>
+        {% endif %}
 
 
 
@@ -147,12 +149,13 @@
         return clon;
     }
 
+    let valorVarianteAutoDetectado = '';
+
     /** Lee todos los selects de insumo, busca el primero con data-tamanio y rellena el campo variante. */
     function detectarVarianteDesdeInsumos() {
         const campoVariante = document.getElementById('campoVariante');
         if (!campoVariante) return;
 
-        // Solo auto-rellena si el usuario no escribió nada manualmente o si ya era auto
         const selects = lista.querySelectorAll('select[name="id_materia[]"]');
         let tamanioEncontrado = '';
 
@@ -163,8 +166,14 @@
             if (tamanio) tamanioEncontrado = tamanio;
         });
 
-        // Rellena solo si está vacío o si el valor anterior también era auto-detectado
+        // Solo auto-rellena si está vacío o si el valor actual es el que nosotros pusimos antes
+        if (campoVariante.value.trim() !== '' && campoVariante.value !== valorVarianteAutoDetectado) {
+            return; // Respetamos lo que el usuario escribió manualmente
+        }
+
         campoVariante.value = tamanioEncontrado;
+        valorVarianteAutoDetectado = tamanioEncontrado;
+        
         campoVariante.placeholder = tamanioEncontrado
             ? `Detectado: ${tamanioEncontrado}`
             : 'Ej. Chico, Mediano, Grande, 12oz... (opcional)';
