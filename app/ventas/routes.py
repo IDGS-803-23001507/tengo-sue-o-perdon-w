@@ -47,22 +47,26 @@ def tiendaCliente():
 
 @ventasBp.route("/ventas", methods=["GET"])
 def ventas():
-
+    # 1. Obtener la fecha del filtro o la de hoy
     fecha_filtro = request.args.get('fecha') or request.args.get('creado_en')
-    
     if not fecha_filtro:
         fecha_filtro = datetime.now().strftime('%Y-%m-%d')
 
+    # 2. CONSULTA CORREGIDA: Filtramos estrictamente por estado 'Pagado'
+    # Usamos LOWER para evitar problemas si en la DB dice 'PAGADO' o 'pagado'
     query = text("""
         SELECT * FROM ventas 
         WHERE DATE(creado_en) = :f 
+          AND LOWER(estado) = 'pagado'
         ORDER BY creado_en DESC
     """)
     
     ventas = db.session.execute(query, {"f": fecha_filtro}).fetchall()
 
+
     total_efectivo = sum(v.total for v in ventas if v.metodo_pago == 'Efectivo')
     total_tarjeta = sum(v.total for v in ventas if v.metodo_pago == 'Tarjeta')
+    
     total_dia = total_efectivo + total_tarjeta
     num_transacciones = len(ventas)
 
@@ -327,8 +331,10 @@ def solicitar_produccion_desde_pos():
 def venta_online():
     if not session.get("inicioSesion"):
         return redirect(url_for("auth.iniciarSesion"))
+        
     form = VentaForm()
     
+    # Consulta de productos con validación de stock en tiempo real
     query_productos = text("""
         SELECT p.*,
         CASE
@@ -408,6 +414,7 @@ def venta_online():
     productos = [SimpleNamespace(**d) for d in productos_con_disponibilidad]
 
     if request.method == "POST":
+        # --- LÓGICA DEL CARRITO ---
         if "quitar" in request.form:
             index = request.form.get("item_index", type=int)
             carrito = session.get("carrito", [])
@@ -422,10 +429,6 @@ def venta_online():
             prod_id = request.form.get("producto")
             cant = request.form.get("cantidad", type=int, default=1)
             nombre = request.form.get("nombre_prod")
-            id_variante = request.form.get("variante_id", type=int)  # None si no hay variante
-            nombre_variante = (request.form.get("variante_nombre") or "").strip()
-            precio_extra = request.form.get("variante_precio", 0.0, type=float)
-
             prod_actual = next((p for p in productos if str(p.id_producto) == prod_id), None)
 
             if prod_actual and prod_actual.disponible_stock == 0:
@@ -433,9 +436,6 @@ def venta_online():
                 return redirect(url_for("ventas.venta_online"))
 
             precio = float(prod_actual.precio_venta) if prod_actual else 0
-            precio_final = precio + precio_extra
-            nombre_display = nombre + (f" ({nombre_variante})" if nombre_variante else "")
-
             carrito = session.get("carrito", [])
             carrito.append({
                 "id_producto": int(prod_id),
@@ -446,9 +446,10 @@ def venta_online():
             })
             session["carrito"] = carrito
             session.modified = True
-            flash(f"¡{nombre_display} añadido con éxito!", "success")
+            flash(f"¡{nombre} añadido!", "success")
             return redirect(url_for("ventas.venta_online"))
         
+        # --- FINALIZAR PEDIDO (VALIDACIÓN Y REGISTRO PREVIO) ---
         if "terminar" in request.form:
             
             usuario = Usuario.query.get(session.get("usuarioId"))
@@ -474,20 +475,21 @@ def venta_online():
                 hora_pedido = datetime.strptime(hora_recogida_raw, '%Y-%m-%dT%H:%M')
                 ahora = datetime.now()
 
+                # Validaciones de horario de Urban Coffee
                 if hora_pedido.date() != ahora.date():
-                    flash("Los pedidos online solo se pueden realizar para el día de hoy.", "danger")
+                    flash("Los pedidos online son solo para hoy.", "danger")
                     return redirect(url_for("ventas.venta_online"))
 
                 if hora_pedido.hour >= 23:
-                    flash("Lo sentimos, la sucursal está por cerrar. Elige una hora más temprana.", "warning")
+                    flash("La sucursal cierra a las 11 PM. Elige una hora más temprana.", "warning")
                     return redirect(url_for("ventas.venta_online"))
 
-                if hora_pedido < (ahora + timedelta(minutes=15)):
-                    flash("Para preparar tu pedido con calidad, requerimos al menos 15 minutos de anticipación.", "danger")
+                if hora_pedido < (ahora + timedelta(hours=1)):
+                    flash("Requerimos al menos 1 hora de anticipación.", "danger")
                     return redirect(url_for("ventas.venta_online"))
 
             except ValueError:
-                flash("El formato de fecha y hora no es correcto.", "danger")
+                flash("Formato de fecha incorrecto.", "danger")
                 return redirect(url_for("ventas.venta_online"))
                 
             # Lógica de Validación de Stock Agrupada
@@ -555,36 +557,11 @@ def venta_online():
             u_id = session.get("usuarioId")
             c_id = session.get("clienteId")
 
-            if u_id is None:
-                flash("Tu sesión ha expirado. Por favor, vuelve a ingresar.", "danger")
-                return redirect(url_for("auth.iniciarSesion"))
-
-            if c_id is None:
-                cliente = Cliente.query.filter_by(usuarioId=u_id).first()
-                if cliente:
-                    c_id = cliente.id
-                    session["clienteId"] = c_id
-                else:
-                    nombreBase = (session.get("usuarioNombre") or session.get("usuarioCorreo") or "Cliente").split("@")[0].strip() or "Cliente"
-                    cliente = Cliente(
-                        usuarioId=u_id,
-                        nombre=nombreBase,
-                        apellidoPaterno="Pendiente",
-                        apellidoMaterno="",
-                        telefono="",
-                        alias="",
-                    )
-                    db.session.add(cliente)
-                    db.session.commit()
-                    c_id = cliente.id
-                    session["clienteId"] = c_id
-
-       
+            # --- PROCESO DE INSERCIÓN "PENDIENTE DE PAGO" ---
             id_venta_tracker = 0 
             id_pedido_editando = session.get("editando_pedido_id")
 
             if id_pedido_editando:
-  
                 res_venta = db.session.execute(
                     text("SELECT id_venta FROM pedidos WHERE id_pedido = :id"),
                     {"id": id_pedido_editando}
@@ -593,6 +570,8 @@ def venta_online():
                     id_venta_tracker = res_venta[0]
 
             try:
+                # Se llama al Procedure para validar insumos y crear registro
+                # NOTA: La venta se crea pero con metodo_pago = NULL (No contable aún)
                 for item in carrito:
                     result = db.session.execute(
                         text("CALL crear_venta_online(:u, :c, :h, :n, :p, :can, :v_ex, :var_id)"),
@@ -611,24 +590,20 @@ def venta_online():
                 
                 db.session.commit()
                 
-                # Limpiamos carrito y la marca de edición
                 session.pop("carrito", None)
                 session.pop("editando_pedido_id", None)
                 
-                msg = "¡Pedido actualizado con éxito!" if id_pedido_editando else "¡Pedido confirmado! Te esperamos a la hora indicada."
-                flash(msg, "success")
-                return redirect(url_for("pedidos.mis_pedidos") if id_pedido_editando else url_for("ventas.venta_online"))
+                flash("¡Pedido confirmado! Paga al recoger en sucursal.", "success")
+                return redirect(url_for("pedidos.mis_pedidos"))
 
-            except exc.IntegrityError:
-                db.session.rollback()
-                flash("Hubo un problema con tu cuenta de usuario. Contacta a soporte.", "danger")
             except exc.InternalError as e:
                 db.session.rollback()
-                error_msg = str(e.orig).split("'")[1] if "'" in str(e.orig) else "No hay stock suficiente para procesar la orden."
+                # Si el trigger o procedure de SQL lanza error por falta de materia prima
+                error_msg = str(e.orig).split("'")[1] if "'" in str(e.orig) else "Sin stock suficiente."
                 flash(f"Aviso: {error_msg}", "warning")
             except Exception as e:
                 db.session.rollback()
-                flash("Lo sentimos, no pudimos procesar tu pedido en este momento.", "danger")
+                flash("No pudimos procesar tu pedido.", "danger")
             
             return redirect(url_for("ventas.venta_online"))
 
@@ -651,93 +626,83 @@ def venta_online():
 
 @ventasBp.route("/reporte", methods=["GET"])
 def generar_reporte():
+    # Obtenemos la fecha del filtro o la de hoy por defecto
+    fecha_filtro = request.args.get('fecha') or datetime.now().strftime('%Y-%m-%d')
 
-    fecha_filtro = request.args.get('fecha') or request.args.get('creado_en')
-    if not fecha_filtro:
-        fecha_filtro = datetime.now().strftime('%Y-%m-%d')
-
+    # MODIFICACIÓN: Filtramos estrictamente por v.estado = 'Pagado'
+    # Esto excluye pedidos pendientes, cancelados o carritos abandonados.
     query = text("""
-        SELECT v.id_venta, v.creado_en, v.metodo_pago, v.total, v.id_usuario
+        SELECT v.id_venta, v.creado_en, v.metodo_pago, v.total, v.id_usuario, v.estado
         FROM ventas v
         WHERE DATE(v.creado_en) = :f
+          AND LOWER(v.estado) = 'pagado'
     """)
     
     ventas = db.session.execute(query, {"f": fecha_filtro}).fetchall()
 
     si = StringIO()
     cw = csv.writer(si)
-    cw.writerow(['Folio', 'Fecha/Hora', 'Metodo Pago', 'Total', 'Atendio'])
+    # Encabezados del CSV
+    cw.writerow(['Folio', 'Fecha/Hora', 'Metodo Pago', 'Estado', 'Total', 'Atendio'])
     
     total_acumulado = 0
     for v in ventas:
-        cw.writerow([f"UC-{v.id_venta}", v.creado_en, v.metodo_pago, v.total, f"Usuario #{v.id_usuario}"])
+        # Escribimos cada fila de venta pagada
+        cw.writerow([
+            f"UC-{v.id_venta}", 
+            v.creado_en, 
+            v.metodo_pago or 'N/A', 
+            v.estado,
+            v.total, 
+            f"Usuario #{v.id_usuario}"
+        ])
         total_acumulado += v.total
     
+    # Fila de total al final del reporte
     cw.writerow([])
-    cw.writerow(['', '', 'TOTAL DEL DIA:', total_acumulado])
+    cw.writerow(['', '', '', 'TOTAL DEL DIA:', total_acumulado])
 
-   
+    # Generamos la respuesta para descargar el archivo
     output = make_response(si.getvalue())
-    output.headers["Content-Disposition"] = f"attachment; filename=Reporte_{fecha_filtro}.csv"
+    output.headers["Content-Disposition"] = f"attachment; filename=Reporte_Ventas_{fecha_filtro}.csv"
     output.headers["Content-type"] = "text/csv"
     
     return output
 
-@ventasBp.route("/<token>/pagar", methods=["GET", "POST"])
-def pagar_venta_gestion(token): 
-    
-    try:
-        idVenta = get_serializer().loads(token)
-    except Exception:
-        return redirect(url_for("ventas.venta_fisica"))
-
+@ventasBp.route("/<int:idVenta>/pagar", methods=["GET", "POST"])
+def pagar_venta_gestion(idVenta): 
     form = PagoForm()
     
-    if request.method == "GET":
+    if request.method == "POST":
+        metodo = request.form.get("metodo_pago")
+        # Aseguramos que si el campo está vacío, sea "0"
+        monto_recibido = request.form.get("pago_recibido", 0)
+        cambio = request.form.get("cambio_calculado", 0)
+        tarjeta = request.form.get("num_tarjeta", "")[-4:]
+        
         try:
+            db.session.execute(text("CALL pagar_venta(:id, :met)"), {"id": idVenta, "met": metodo})
+            db.session.commit()
             
-            result = db.session.execute(
-                text("SELECT total FROM ventas WHERE id_venta = :id"), 
-                {"id": idVenta}
-            ).fetchone()
-            
-            if not result:
-                flash("La venta no existe", "warning")
-                return redirect(url_for("ventas.venta_fisica"))
-            
-            return render_template("ventas/pagar.html", 
-                                 form=form, 
-                                 idVenta=idVenta, 
-                                 total=result[0])
+            # IMPORTANTE: Enviamos los valores tal cual al ticket
+            return redirect(url_for("ventas.ticket", 
+                                    idVenta=idVenta, 
+                                    pago=monto_recibido, 
+                                    cambio=cambio, 
+                                    term=tarjeta))
         except Exception as e:
-            print(f"Error GET pagar: {e}")
-            return redirect(url_for("ventas.venta_fisica"))
+            db.session.rollback()
+            return f"Error: {e}" # Para debug breve
 
-    metodo = request.form.get("metodo_pago")
-    
-    try:
-        db.session.execute(
-            text("CALL pagar_venta(:id, :met)"), 
-            {"id": idVenta, "met": metodo}
-        )
-        db.session.commit()
-        
-        flash(f"¡Venta #{idVenta} pagada con éxito!", "success")
-        return redirect(url_for("ventas.ticket", token=get_serializer().dumps(idVenta)))
-        
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Error al procesar el pago: {str(e)}", "danger")
-        return redirect(url_for("ventas.venta_fisica"))
-    
-@ventasBp.route("/ticket/<token>", methods=["GET", "POST"], endpoint="ticket")
-def ticket(token):
-    
-    try:
-        idVenta = get_serializer().loads(token)
-    except Exception:
-        return redirect(url_for("ventas.venta_fisica"))
-    
+    result = db.session.execute(text("SELECT total FROM ventas WHERE id_venta = :id"), {"id": idVenta}).fetchone()
+    return render_template("ventas/pagar.html", form=form, idVenta=idVenta, total=result[0])
+@ventasBp.route("/ticket/<int:idVenta>", methods=["GET", "POST"], endpoint="ticket")
+def ticket(idVenta):
+    # Usamos type=float para que Flask convierta la URL directamente
+    pago = request.args.get('pago', default=0.0, type=float)
+    cambio = request.args.get('cambio', default=0.0, type=float)
+    terminacion = request.args.get('term', "")
+
     query = text("""
         SELECT 
             v.id_venta, v.creado_en, v.metodo_pago, v.total,
@@ -754,6 +719,11 @@ def ticket(token):
     """)
     
     resultado = db.session.execute(query, {"idVenta": idVenta}).fetchall()
-    return render_template("ventas/ticket.html", ticket=resultado)
+    
+    return render_template("ventas/ticket.html", 
+                           ticket=resultado, 
+                           pago=pago, 
+                           cambio=cambio, 
+                           term=terminacion)
 
 
