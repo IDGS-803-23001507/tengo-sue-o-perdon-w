@@ -25,6 +25,7 @@ from app.solicitud.routes import solicitud_bp
 from app.recetas.routes import recetas_bp
 from app.utilidad.routes import utilidad_bp
 from app.produccion.routes import produccion_bp
+from app.pedidos_proveedor.routes import pedidoProv_bp
 from app.backups import backups_bp
     
 #Integracion decosas de michelle
@@ -62,10 +63,10 @@ app.register_blueprint(recetas_bp)
 app.register_blueprint(utilidad_bp)
 app.register_blueprint(produccion_bp)
 app.register_blueprint(backups_bp)
-
-#Cosas de michelle
 app.register_blueprint(ventasBp)
 app.register_blueprint(pedidosBp)
+app.register_blueprint(pedidoProv_bp)
+
 
 try:
     with app.app_context():

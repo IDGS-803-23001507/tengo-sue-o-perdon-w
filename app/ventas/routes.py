@@ -414,7 +414,7 @@ def venta_online():
     productos = [SimpleNamespace(**d) for d in productos_con_disponibilidad]
 
     if request.method == "POST":
-        # --- LÓGICA DEL CARRITO ---
+      
         if "quitar" in request.form:
             index = request.form.get("item_index", type=int)
             carrito = session.get("carrito", [])
@@ -725,5 +725,4 @@ def ticket(idVenta):
                            pago=pago, 
                            cambio=cambio, 
                            term=terminacion)
-
 

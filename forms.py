@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from flask_wtf import FlaskForm
-from wtforms import StringField, DateTimeLocalField, IntegerField, RadioField, TextAreaField, PasswordField, DecimalField, DateField, SelectField, HiddenField, SubmitField
+from wtforms import StringField, FieldList, FormField, DateTimeLocalField, IntegerField, RadioField, TextAreaField, PasswordField, DecimalField, DateField, SelectField, HiddenField, SubmitField
 from wtforms.validators import DataRequired, ValidationError, NumberRange, EqualTo, Length, Email, Optional
 
 ROLES_USUARIO = [
@@ -651,3 +651,13 @@ class FechasReporteForm(FlaskForm):
     fecha_fin = DateField('Fecha Fin', format='%Y-%m-%d', validators=[
         DataRequired(message='La fecha de fin es obligatoria')
     ])
+    
+class DetallePedidoProveedorForm(FlaskForm):
+    id_materia = SelectField("Materia Prima", coerce=int, validators=[DataRequired()])
+    cantidad_solicitada = DecimalField("Cantidad", validators=[DataRequired(), NumberRange(min=0.01)])
+    costo_unitario_est = DecimalField("Costo Estimado", validators=[Optional()])
+
+class PedidoProveedorForm(FlaskForm):
+    id_proveedor = SelectField("Proveedor", coerce=int, validators=[DataRequired()])
+    notas = TextAreaField("Notas")
+    detalles = FieldList(FormField(DetallePedidoProveedorForm), min_entries=1)

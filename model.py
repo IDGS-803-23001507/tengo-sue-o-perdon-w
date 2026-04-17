@@ -4,6 +4,7 @@ from sqlalchemy import CheckConstraint, Enum, UniqueConstraint, func
 from sqlalchemy.dialects.mysql import LONGTEXT
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
+import enum
 
 db = SQLAlchemy()
 
@@ -600,3 +601,72 @@ class Receta(db.Model):
                 receta_activa.estado = False
 
         return nuevas_recetas
+    
+class EstadoPedidoProveedor(enum.Enum):
+    PENDIENTE        = "pendiente"
+    CANCELADO        = "cancelado"
+    ENVIADO_A_COMPRA = "enviado_a_compra"
+
+    
+class PedidoProveedor(db.Model):
+    __tablename__ = "pedido_proveedor"
+ 
+    id_pedido_proveedor = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id_proveedor = db.Column(db.Integer, db.ForeignKey("Proveedor.id_proveedor"), nullable=False)
+    id_usuario = db.Column(db.Integer, db.ForeignKey("usuarios.id"),            nullable=False)
+    fecha_solicitud = db.Column(db.DateTime, default=datetime.utcnow,                nullable=False)
+    estado = db.Column(db.Enum(EstadoPedidoProveedor), default=EstadoPedidoProveedor.PENDIENTE,             nullable=False)
+    notas = db.Column(db.Text, nullable=True)
+ 
+    proveedor = db.relationship("Proveedores",  backref="pedidos_proveedor", lazy="joined")
+    usuario   = db.relationship("Usuario",   backref="pedidos_proveedor", lazy="joined")
+    detalles  = db.relationship("PedidoProveedorDetalle",
+                                backref="pedido",
+                                cascade="all, delete-orphan",
+                                lazy="select")
+ 
+    def to_dict(self):
+        return {
+            "id_pedido_proveedor": self.id_pedido_proveedor,
+            "id_proveedor":        self.id_proveedor,
+            "proveedor":           self.proveedor.nombre if self.proveedor else None,
+            "id_usuario":          self.id_usuario,
+            "usuario":             self.usuario.correo  if self.usuario  else None,
+            "fecha_solicitud":     self.fecha_solicitud.strftime("%Y-%m-%d %H:%M:%S"),
+            "estado":              self.estado.value,
+            "notas":               self.notas,
+            "detalles":            [d.to_dict() for d in self.detalles],
+            "total_estimado":      sum(
+                                     (d.cantidad_solicitada * d.costo_unitario_est)
+                                     for d in self.detalles
+                                     if d.costo_unitario_est
+                                   ),
+        }
+ 
+ 
+class PedidoProveedorDetalle(db.Model):
+    __tablename__ = "pedido_proveedor_detalle"
+ 
+    id_detalle              = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id_pedido_proveedor     = db.Column(db.Integer, db.ForeignKey("pedido_proveedor.id_pedido_proveedor",
+                                                                   ondelete="CASCADE"), nullable=False)
+    id_materia              = db.Column(db.Integer, db.ForeignKey("Materia_prima.id_materia"), nullable=False)
+    cantidad_solicitada     = db.Column(db.Numeric(10, 2), nullable=False)
+    cantidad_recibida       = db.Column(db.Numeric(10, 2), nullable=True, default=0)
+    costo_unitario_est      = db.Column(db.Numeric(12, 2), nullable=True)
+ 
+    materia = db.relationship("MateriaPrima", backref="pedidos_detalle", lazy="joined")
+ 
+    def to_dict(self):
+        return {
+            "id_detalle":          self.id_detalle,
+            "id_materia":          self.id_materia,
+            "materia":             self.materia.nombre if self.materia else None,
+            "unidad":              self.materia.unidad if self.materia else None,
+            "cantidad_solicitada": float(self.cantidad_solicitada),
+            "cantidad_recibida":   float(self.cantidad_recibida or 0),
+            "costo_unitario_est":  float(self.costo_unitario_est) if self.costo_unitario_est else None,
+            "subtotal":            float(self.cantidad_solicitada * self.costo_unitario_est)
+                                   if self.costo_unitario_est else None,
+        }
+

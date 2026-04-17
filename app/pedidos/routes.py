@@ -142,92 +142,13 @@ def cambiar_estado(idPedido, estado):
         flash("No puedes rechazar o cancelar un pedido que ya fue enviado o entregado.", "danger")
         return redirect(url_for("pedidos.index"))
 
-<<<<<<< HEAD
-    query_update = text("""
-        UPDATE pedidos
-        SET estado = :estado
-        WHERE id_pedido = :id
-    """)
-    db.session.execute(query_update, {"estado": estado, "id": idPedido})
-
-    # --- Lógica de inventario según transición de estado ---
-    query_detalles = text("SELECT id_producto, cantidad FROM detalle_venta WHERE id_venta = :id_venta")
-    detalles = db.session.execute(query_detalles, {"id_venta": id_venta}).fetchall()
-
-    if estado_nuevo in ['cancelado', 'rechazado'] and estado_actual not in ['cancelado', 'rechazado']:
-        # Liberar reservas y restaurar insumos
-        for id_producto, cantidad in detalles:
-            prod_info = db.session.execute(
-                text("SELECT tipo_preparacion FROM Producto WHERE id_producto = :pid"),
-                {"pid": id_producto}
-            ).fetchone()
-            if prod_info:
-                if prod_info[0] == "stock":
-                    # Solo liberar la reserva; el stock real nunca se tocó
-                    db.session.execute(
-                        text("UPDATE Producto SET stock_reservado = GREATEST(0, stock_reservado - :cant) WHERE id_producto = :pid"),
-                        {"cant": cantidad, "pid": id_producto}
-                    )
-                else:
-                    # materia_prima: devolver insumos que sí se descontaron
-                    recetas = db.session.execute(
-                        text("SELECT id_materia, cantidad FROM Recetas WHERE id_producto = :pid AND estado = 1"),
-                        {"pid": id_producto}
-                    ).fetchall()
-                    for id_materia, c_receta in recetas:
-                        db.session.execute(
-                            text("UPDATE Materia_prima SET stock_actual = stock_actual + :total WHERE id_materia = :mid"),
-                            {"total": c_receta * cantidad, "mid": id_materia}
-                        )
-
-    elif estado_nuevo == 'entregado' and estado_actual not in ['entregado', 'cancelado', 'rechazado']:
-        # Descontar stock real y limpiar reserva para productos tipo stock
-        for id_producto, cantidad in detalles:
-            prod_info = db.session.execute(
-                text("SELECT tipo_preparacion FROM Producto WHERE id_producto = :pid"),
-                {"pid": id_producto}
-            ).fetchone()
-            if prod_info and prod_info[0] == "stock":
-                db.session.execute(
-                    text("""
-                        UPDATE Producto
-                        SET stock          = GREATEST(0, stock - :cant),
-                            stock_reservado = GREATEST(0, stock_reservado - :cant)
-                        WHERE id_producto = :pid
-                    """),
-                    {"cant": cantidad, "pid": id_producto}
-                )
-
-    db.session.commit()
-
-    if estado == 'Entregado' and venta:
-        return redirect(url_for("ventas.pagar_venta_gestion", token=get_serializer().dumps(venta.id_venta)))
-
-    flash(f"Estado actualizado a {estado}.", "success")
-    return redirect(url_for("pedidos.index"))
-   
-MINUTOS_LIMITE_CAMBIO = 10
-
-@pedidosBp.route("/cancelar/<token>", methods=["POST"])
-def cancelar_pedido(token):
-   
-    try:
-        idPedido = get_serializer().loads(token)
-    except Exception:
-        return redirect(url_for("pedidos.index"))
-   
-=======
     return redirect(url_for("pedidos.index"))
     
-MINUTOS_LIMITE_CAMBIO = 10
-
-
 MINUTOS_LIMITE_CAMBIO = 10
 
 @pedidosBp.route("/cancelar/<int:idPedido>", methods=["POST"])
 def cancelar_pedido(idPedido):
     
->>>>>>> features
     query_verificar = text("""
         SELECT p.id_pedido, p.hora_solicitud, p.estado 
         FROM pedidos p
@@ -243,59 +164,20 @@ def cancelar_pedido(idPedido):
         flash("Pedido no encontrado.", "danger")
         return redirect(url_for("pedidos.mis_pedidos"))
 
-<<<<<<< HEAD
-=======
     
->>>>>>> features
     tiempo_transcurrido = datetime.now() - pedido.hora_solicitud
     if tiempo_transcurrido > timedelta(minutes=MINUTOS_LIMITE_CAMBIO):
         flash(f"No puedes cancelar el pedido después de {MINUTOS_LIMITE_CAMBIO} minutos.", "warning")
         return redirect(url_for("pedidos.mis_pedidos"))
 
-<<<<<<< HEAD
-=======
     
->>>>>>> features
     if pedido.estado.lower() != 'pendiente':
         flash("Solo se pueden cancelar pedidos en estado 'Pendiente'.", "warning")
         return redirect(url_for("pedidos.mis_pedidos"))
 
-<<<<<<< HEAD
-    query_cancelar = text("UPDATE pedidos SET estado = 'Cancelado' WHERE id_pedido = :id")
-    db.session.execute(query_cancelar, {"id": idPedido})
-    
-    # 4. Liberar reserva / restaurar insumos según tipo de producto
-    query_detalles = text("SELECT id_producto, cantidad FROM detalle_venta WHERE id_venta = :id_venta")
-    detalles = db.session.execute(query_detalles, {"id_venta": pedido.id_venta}).fetchall()
-    for id_producto, cantidad in detalles:
-        prod_info = db.session.execute(
-            text("SELECT tipo_preparacion FROM Producto WHERE id_producto = :pid"),
-            {"pid": id_producto}
-        ).fetchone()
-        if prod_info:
-            if prod_info[0] == "stock":
-                # Solo liberar la reserva; el stock real nunca se tocó
-                db.session.execute(
-                    text("UPDATE Producto SET stock_reservado = GREATEST(0, stock_reservado - :cant) WHERE id_producto = :pid"),
-                    {"cant": cantidad, "pid": id_producto}
-                )
-            else:
-                # materia_prima: devolver los insumos descontados
-                recetas = db.session.execute(
-                    text("SELECT id_materia, cantidad FROM Recetas WHERE id_producto = :pid AND estado = 1"),
-                    {"pid": id_producto}
-                ).fetchall()
-                for id_materia, c_receta in recetas:
-                    db.session.execute(
-                        text("UPDATE Materia_prima SET stock_actual = stock_actual + :total WHERE id_materia = :mid"),
-                        {"total": c_receta * cantidad, "mid": id_materia}
-                    )
-    
-=======
     
     query_cancelar = text("UPDATE pedidos SET estado = 'cancelado' WHERE id_pedido = :id")
     db.session.execute(query_cancelar, {"id": idPedido})
->>>>>>> features
     db.session.commit()
 
     flash("Pedido cancelado exitosamente.", "success")
@@ -308,22 +190,15 @@ def editar_pedido(idPedido):
     if not session.get("inicioSesion"):
         return redirect(url_for("auth.iniciarSesion"))
 
-<<<<<<< HEAD
-=======
     
->>>>>>> features
     c_id = session.get("clienteId")
     print(f"\n--- INTENTO DE EDICIÓN ---")
     print(f"Pedido a buscar: {idPedido}")
     print(f"ID Cliente en sesión: {c_id}")
-<<<<<<< HEAD
-
-=======
     # ------------------------------
 
     # 2. Query simplificada (Quitamos el JOIN con ventas para ver si ese es el bloqueo)
     # Solo buscamos los detalles que pertenecen a ese pedido
->>>>>>> features
     query_detalles = text("""
         SELECT dv.id_producto, dv.cantidad, p.nombre, p.precio_venta 
         FROM detalle_venta dv
@@ -334,10 +209,7 @@ def editar_pedido(idPedido):
     
     detalles = db.session.execute(query_detalles, {"id": idPedido}).fetchall()
 
-<<<<<<< HEAD
-=======
     # 3. Verificamos qué encontró
->>>>>>> features
     if not detalles:
         print("ERROR: No se encontraron productos para este pedido en la DB.")
         flash("No se encontraron productos en este pedido.", "danger")
@@ -358,12 +230,5 @@ def editar_pedido(idPedido):
     session["editando_pedido_id"] = idPedido
     session.modified = True
 
-<<<<<<< HEAD
-    # 5. Forzamos la redirección manual por si url_for tiene conflicto de nombres
-    print("Redirigiendo a /online...")
-    # Usamos el nombre exacto del endpoint que definiste en ventasBp
-    return redirect("/online")
-=======
     print("Redirigiendo a /online...")
     return redirect(url_for("ventas.venta_online", _external=True))
->>>>>>> features

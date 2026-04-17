@@ -1,0 +1,137 @@
+{% extends "layout/layout_produccion.html" %}
+{% import '_macros.html' as modals %}
+
+{% block container %}
+<div class="flex justify-between items-center mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800">Pedidos a Proveedor</h1>
+        <p class="text-gray-500 mt-1">Gestiona y da seguimiento a tus pedidos</p>
+    </div>
+
+    <a href="{{ url_for('pedido_proveedor.nuevo_pedido') }}"
+        class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 flex items-center gap-2 transition w-fit">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        Nuevo Pedido
+    </a>
+</div>
+
+<section class="rounded-xl border border-gray-200 bg-white shadow-sm">
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                    <th class="px-6 py-4">Proveedor</th>
+                    <th class="px-6 py-4">Fecha</th>
+                    <th class="px-6 py-4">Usuario</th>
+                    <th class="px-6 py-4">Estado</th>
+                    <th class="px-6 py-4 text-right">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody class="divide-y divide-gray-100">
+                {% for pedido in pedidos %}
+                <tr class="hover:bg-gray-50">
+
+                    <td class="px-6 py-4">
+                        <p class="font-semibold text-gray-900">{{ pedido.proveedor.nombre }}</p>
+                    </td>
+
+                    <td class="px-6 py-4 text-gray-600">
+                        {{ pedido.fecha_solicitud.strftime('%Y-%m-%d') }}
+                    </td>
+
+                    <td class="px-6 py-4 text-gray-600">
+                        {{ pedido.usuario.correo }}
+                    </td>
+
+                    <td class="px-6 py-4">
+                        {% if pedido.estado.value == 'pendiente' %}
+                        <span class="rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-semibold text-yellow-700">
+                            Pendiente
+                        </span>
+                        {% elif pedido.estado.value == 'enviado_a_compra' %}
+                        <span class="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                            Procesado
+                        </span>
+                        {% else %}
+                        <span class="rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
+                            Cancelado
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <td class="px-6 py-4">
+                        <div class="flex items-center justify-end gap-4">
+
+                            <a href="{{ url_for('pedido_proveedor.ver_pedido', id=pedido.id_pedido_proveedor) }}"
+                                class="text-gray-700 hover:underline">
+                                Ver
+                            </a>
+
+                            {% if pedido.estado.value == 'pendiente' %}
+
+                            <a href="{{ url_for('pedido_proveedor.generar_compra', id=pedido.id_pedido_proveedor) }}"
+                                class="text-blue-600 hover:underline">
+                                Generar compra
+                            </a>
+
+                            <button onclick="abrirModalAccion(
+                                'Cancelar pedido',
+                                '¿Seguro que deseas cancelar este pedido?',
+                                '{{ url_for("pedido_proveedor.cancelar_pedido", id=pedido.id_pedido_proveedor) }}',
+                                'bg-red-600 hover:bg-red-700',
+                                'Cancelar'
+                            )"
+                            class="text-red-600 hover:underline">
+                                Cancelar
+                            </button>
+
+                            {% endif %}
+
+                        </div>
+                    </td>
+
+                </tr>
+
+                {% else %}
+                <tr>
+                    <td colspan="5" class="px-6 py-12 text-center text-sm text-gray-500">
+                        No hay pedidos registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+{{ modals.alerta_proveedor(form) }}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function abrirModalAccion(titulo, mensaje, actionUrl, claseBoton, textoBoton) {
+    const modal = document.getElementById("modalAccion");
+
+    document.getElementById("tituloModal").innerText = titulo;
+    document.getElementById("mensajeModal").innerText = mensaje;
+    document.getElementById("formModal").action = actionUrl;
+
+    const boton = document.getElementById("botonModal");
+    boton.innerText = textoBoton;
+
+    boton.className = "w-full text-white font-medium rounded-lg text-sm px-5 py-3 transition mb-2 " + claseBoton;
+
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+}
+
+function cerrarModal() {
+    document.getElementById("modalAccion").classList.add("hidden");
+}
+</script>
+{% endblock %}
