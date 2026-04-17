@@ -31,7 +31,17 @@ def tiendaCliente():
         SELECT p.*, 
         CASE 
             WHEN COALESCE(p.tipo_preparacion, 'materia_prima') = 'stock' THEN
-                CASE WHEN COALESCE(p.stock, 0) > 0 THEN 1 ELSE 0 END
+                CASE 
+                    WHEN (COALESCE(p.stock, 0) - COALESCE(p.stock_reservado, 0)) > 0 THEN 1 
+                    WHEN EXISTS (SELECT 1 FROM Recetas r WHERE r.id_producto = p.id_producto AND r.estado = 1) 
+                         AND NOT EXISTS (
+                             SELECT 1 FROM Recetas r
+                             JOIN Materia_prima mp ON r.id_materia = mp.id_materia
+                             WHERE r.id_producto = p.id_producto AND r.estado = 1
+                               AND mp.stock_actual < r.cantidad
+                         ) THEN 1
+                    ELSE 0 
+                END
             WHEN EXISTS (
                 SELECT 1 FROM Recetas r 
                 JOIN Materia_prima mp ON r.id_materia = mp.id_materia 
@@ -89,7 +99,17 @@ def venta_fisica():
         SELECT p.*,
         CASE
             WHEN COALESCE(p.tipo_preparacion, 'materia_prima') = 'stock' THEN
-                CASE WHEN (COALESCE(p.stock, 0) - COALESCE(p.stock_reservado, 0)) > 0 THEN 1 ELSE 0 END
+                CASE 
+                    WHEN (COALESCE(p.stock, 0) - COALESCE(p.stock_reservado, 0)) > 0 THEN 1 
+                    WHEN EXISTS (SELECT 1 FROM Recetas r WHERE r.id_producto = p.id_producto AND r.estado = 1) 
+                         AND NOT EXISTS (
+                             SELECT 1 FROM Recetas r
+                             JOIN Materia_prima mp ON r.id_materia = mp.id_materia
+                             WHERE r.id_producto = p.id_producto AND r.estado = 1
+                               AND mp.stock_actual < r.cantidad
+                         ) THEN 1
+                    ELSE 0 
+                END
             WHEN EXISTS (
                 SELECT 1 FROM Recetas r
                 JOIN Materia_prima mp ON r.id_materia = mp.id_materia
@@ -185,30 +205,9 @@ def venta_fisica():
             p_id = request.form.get("producto_id", type=int)
             prod = Producto.query.get(p_id)
             if prod:
-                if prod.tipo_preparacion == "stock" and int(prod.stock or 0) <= 0:
-                    session["modal_solicitud_produccion"] = {
-                        "id_producto": prod.id_producto,
-                        "nombre": prod.nombre,
-                    }
-                    session.modified = True
-                    return redirect(url_for("ventas.venta_fisica"))
-
                 carrito = session.get("carrito", [])
-
-                if prod.tipo_preparacion == "stock":
-                    cantidad_actual_en_carrito = sum(
-                        item.get("cantidad", 0)
-                        for item in carrito
-                        if item.get("id_producto") == p_id
-                    )
-
-                    if cantidad_actual_en_carrito >= int(prod.stock or 0):
-                        session["modal_solicitud_produccion"] = {
-                            "id_producto": prod.id_producto,
-                            "nombre": prod.nombre,
-                        }
-                        session.modified = True
-                        return redirect(url_for("ventas.venta_fisica"))
+                
+                # Determinamos la variante si la hay
 
                 id_variante = request.form.get("variante_id", type=int)  # None si no hay variantes
                 nombre_variante = request.form.get("variante_nombre", "").strip()
@@ -244,6 +243,8 @@ def venta_fisica():
             
             try:
                 id_venta_actual = 0
+                costo_total_carrito = 0.0
+                
                 for item in carrito:
                     result = db.session.execute(
                         text("CALL crear_venta_general(:u, :c, :tipo, :p, :can, :v_id, :var_id)"),
@@ -260,6 +261,17 @@ def venta_fisica():
                     row = result.fetchone()
                     if row:
                         id_venta_actual = row[0]
+                        
+                    # Extraemos el costo vivo del producto para desplazar el 35% del Store Procedure
+                    prod = Producto.query.get(item["id_producto"])
+                    if prod:
+                        costo_total_carrito += float(prod.costo_unitario()) * int(item["cantidad"])
+
+                if id_venta_actual > 0:
+                    venta = Venta.query.get(id_venta_actual)
+                    if venta:
+                        utilidad_real = float(venta.total) - costo_total_carrito
+                        venta.utilidadBruta = utilidad_real
 
                 db.session.commit()
                 
@@ -267,7 +279,7 @@ def venta_fisica():
                 session.pop("carrito", None) 
                 session.modified = True 
                 
-                return redirect(url_for("ventas.pagar_venta_gestion", token=get_serializer().dumps(id_venta_actual)))
+                return redirect(url_for("ventas.pagar_venta_gestion", idVenta=id_venta_actual))
                 
             except Exception as e:
                 db.session.rollback()
@@ -339,7 +351,17 @@ def venta_online():
         SELECT p.*,
         CASE
             WHEN COALESCE(p.tipo_preparacion, 'materia_prima') = 'stock' THEN
-                CASE WHEN (COALESCE(p.stock, 0) - COALESCE(p.stock_reservado, 0)) > 0 THEN 1 ELSE 0 END
+                CASE 
+                    WHEN (COALESCE(p.stock, 0) - COALESCE(p.stock_reservado, 0)) > 0 THEN 1 
+                    WHEN EXISTS (SELECT 1 FROM Recetas r WHERE r.id_producto = p.id_producto AND r.estado = 1) 
+                         AND NOT EXISTS (
+                             SELECT 1 FROM Recetas r
+                             JOIN Materia_prima mp ON r.id_materia = mp.id_materia
+                             WHERE r.id_producto = p.id_producto AND r.estado = 1
+                               AND mp.stock_actual < r.cantidad
+                         ) THEN 1
+                    ELSE 0 
+                END
             WHEN EXISTS (
                 SELECT 1 FROM Recetas r
                 JOIN Materia_prima mp ON r.id_materia = mp.id_materia
@@ -436,6 +458,14 @@ def venta_online():
                 return redirect(url_for("ventas.venta_online"))
 
             precio = float(prod_actual.precio_venta) if prod_actual else 0
+            
+            id_variante = request.form.get("variante_id", type=int)
+            nombre_variante = request.form.get("variante_nombre", "").strip()
+            precio_extra = request.form.get("variante_precio", 0.0, type=float)
+            
+            precio_final = precio + precio_extra
+            nombre_display = f"{nombre} ({nombre_variante})" if nombre_variante else nombre
+            
             carrito = session.get("carrito", [])
             carrito.append({
                 "id_producto": int(prod_id),
@@ -518,8 +548,24 @@ def venta_online():
                     if tipo == "stock":
                         consumo_stock_directo[p_id] += q
                         if int(stock_actual or 0) < consumo_stock_directo[p_id]:
-                            flash("Stock insuficiente del producto para completar la venta. Ajuste las cantidades.", "warning")
-                            return redirect(url_for("ventas.venta_online"))
+                            # Falta stock físico. Verificamos si tiene receta para descontar insumos en su lugar.
+                            query_receta = text("""
+                                SELECT id_materia, cantidad 
+                                FROM Recetas 
+                                WHERE id_producto = :pid AND (id_variante = :vid OR id_variante IS NULL) AND estado = 1
+                            """)
+                            recetas = db.session.execute(query_receta, {"pid": p_id, "vid": v_id}).fetchall()
+                            if not recetas:
+                                flash(f"Stock físico insuficiente y no tiene receta para preparar el producto '{p_nombre}'.", "warning")
+                                return redirect(url_for("ventas.venta_online"))
+                                
+                            # Si sí tiene receta, agregamos el faltante a consumo de materia prima
+                            faltante = consumo_stock_directo[p_id] - int(stock_actual or 0)
+                            for r_materia, r_cantidad in recetas:
+                                consumo_materia[r_materia] += float(r_cantidad * faltante)
+                            
+                            # Ajustamos el consumo directo de stock al máximo disponible
+                            consumo_stock_directo[p_id] = int(stock_actual or 0)
                     else:
                         if v_id is None:
                             query_receta = text("""
@@ -572,6 +618,8 @@ def venta_online():
             try:
                 # Se llama al Procedure para validar insumos y crear registro
                 # NOTA: La venta se crea pero con metodo_pago = NULL (No contable aún)
+                costo_total_carrito = 0.0
+
                 for item in carrito:
                     result = db.session.execute(
                         text("CALL crear_venta_online(:u, :c, :h, :n, :p, :can, :v_ex, :var_id)"),
@@ -587,6 +635,18 @@ def venta_online():
                     
                     if result:
                         id_venta_tracker = result[0]
+                        
+                    # Extraemos el costo computado real
+                    prod = Producto.query.get(item["id_producto"])
+                    if prod:
+                        costo_total_carrito += float(prod.costo_unitario()) * int(item["cantidad"])
+                        
+                # Sobreescribimos el 35% por default de MySQL
+                if id_venta_tracker > 0:
+                    venta = Venta.query.get(id_venta_tracker)
+                    if venta:
+                        utilidad_real = float(venta.total) - costo_total_carrito
+                        venta.utilidadBruta = utilidad_real
                 
                 db.session.commit()
                 
@@ -603,7 +663,7 @@ def venta_online():
                 flash(f"Aviso: {error_msg}", "warning")
             except Exception as e:
                 db.session.rollback()
-                flash("No pudimos procesar tu pedido.", "danger")
+                flash(f"No pudimos procesar tu pedido. Error: {str(e)}", "danger")
             
             return redirect(url_for("ventas.venta_online"))
 

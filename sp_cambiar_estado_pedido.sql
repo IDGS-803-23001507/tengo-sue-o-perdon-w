@@ -87,7 +87,8 @@ BEGIN
 
                         UPDATE Producto p
                         JOIN tmp_consumo_producto_stock t ON t.id_producto = p.id_producto
-                        SET p.stock = p.stock - t.cantidad_requerida;
+                        SET p.stock = p.stock - t.cantidad_requerida,
+                            p.stock_reservado = GREATEST(0, p.stock_reservado - t.cantidad_requerida);
 
                         IF EXISTS (
                             SELECT 1
@@ -166,6 +167,15 @@ BEGIN
                         SET stock_descontado = 1,
                             stock_descontado_en = NOW()
                         WHERE id_pedido = p_id_pedido;
+                    END IF;
+
+                    IF p_nuevo_estado IN ('cancelado', 'rechazado') THEN
+                        IF v_stock_descontado = 0 THEN
+                            UPDATE Producto p
+                            JOIN detalle_venta dv ON dv.id_producto = p.id_producto
+                            SET p.stock_reservado = GREATEST(0, p.stock_reservado - dv.cantidad)
+                            WHERE dv.id_venta = v_id_venta AND COALESCE(p.tipo_preparacion, 'materia_prima') = 'stock';
+                        END IF;
                     END IF;
 
                     IF p_nuevo_estado IN ('cancelado', 'rechazado')

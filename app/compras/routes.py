@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from app.auditoria import registrar_auditoria
+from app.food_cost_service import recalcular_productos_por_materia
 from model import db, Compra, convertir, DetalleCompra, Proveedores, MateriaPrima, UnidadMedida
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
@@ -84,6 +85,7 @@ def nueva_compra():
                 raise ValueError('Debe agregar al menos un insumo a la compra')
 
             insumos_vistos = set()
+            materias_afectadas = set()
 
             for i in range(len(materias_ids)):
 
@@ -134,6 +136,12 @@ def nueva_compra():
                     if not materia:
                         raise ValueError("Materia prima no encontrada")
 
+                    # --- Actualizar costo promedio de la materia prima ---
+                    # IMPORTANT: Do this BEFORE updating stock_actual to avoid math corruption
+                    costo_por_unidad_base = (costo_unitario * cantidad) / cantidad_convertida if cantidad_convertida > 0 else costo_unitario
+                    materia.actualizar_costo_promedio(float(costo_por_unidad_base), float(cantidad_convertida))
+                    materias_afectadas.add(materia_id)
+
                     materia.stock_actual += cantidad_convertida
 
                     registrar_auditoria(
@@ -150,6 +158,10 @@ def nueva_compra():
                     )
 
             db.session.commit()
+
+            # --- Evento B (Cascada): Recalcular precios de productos afectados ---
+            for id_mat in materias_afectadas:
+                recalcular_productos_por_materia(id_mat)
 
             flash('Compra registrada exitosamente', 'success')
             return redirect(url_for('compras.detalle_compra',  token=get_serializer().dumps(compra.id_compra)))
@@ -238,8 +250,14 @@ def cancelar_compra(token):
 def obtener_materia(materia_id):
 
     materia = MateriaPrima.query.get_or_404(materia_id)
+    
+    ultimo_costo = 0
+    ultimo_detalle = DetalleCompra.query.filter_by(id_materia=materia_id).order_by(DetalleCompra.id_detalle_compra.desc()).first()
+    if ultimo_detalle:
+        ultimo_costo = float(ultimo_detalle.costo_unitario)
 
     return jsonify({ 'id': materia.id_materia, 'nombre': materia.nombre, 
                     'unidad_id': materia.unidad_medida, 
                     'unidad_nombre': materia.unidad.abreviacion if materia.unidad else 'ud', 
-                    'stock_actual': float(materia.stock_actual or 0)})
+                    'stock_actual': float(materia.stock_actual or 0),
+                    'ultimo_costo': ultimo_costo})

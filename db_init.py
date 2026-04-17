@@ -1022,6 +1022,61 @@ def seed_db() -> None:
     db.session.add(empleado_admin)
     db.session.commit()
 
+def asegurar_estado_producto() -> None:
+    """Migración: añade estado_producto y target_food_cost a Producto si no existen.
+    Marca como 'activo' los productos que ya tienen receta activa y precio,
+    y 'borrador' los que no tienen receta.
+    """
+    inspector = inspect(db.engine)
+    tablas = set(inspector.get_table_names())
+
+    if "Producto" not in tablas:
+        return
+
+    columnas = {c["name"] for c in inspector.get_columns("Producto")}
+
+    if "estado_producto" not in columnas:
+        db.session.execute(
+            text(
+                """
+                ALTER TABLE `Producto`
+                ADD COLUMN `estado_producto` ENUM('borrador','activo')
+                NOT NULL DEFAULT 'borrador'
+                """
+            )
+        )
+
+        # Migrar datos existentes: productos con receta activa → activo
+        db.session.execute(
+            text(
+                """
+                UPDATE `Producto` p
+                SET p.estado_producto = 'activo'
+                WHERE p.precio_venta IS NOT NULL
+                  AND p.precio_venta > 0
+                  AND EXISTS (
+                      SELECT 1 FROM `Recetas` r
+                      WHERE r.id_producto = p.id_producto
+                        AND r.estado = 1
+                  )
+                """
+            )
+        )
+
+    if "target_food_cost" not in columnas:
+        db.session.execute(
+            text(
+                """
+                ALTER TABLE `Producto`
+                ADD COLUMN `target_food_cost` DECIMAL(4,2)
+                NOT NULL DEFAULT 0.30
+                """
+            )
+        )
+
+    db.session.commit()
+
+
 def inicializar_db() -> None:
     db.create_all()
     asegurar_esquema_usuarios()
@@ -1031,5 +1086,6 @@ def inicializar_db() -> None:
     asegurar_esquema_variantes()
     asegurar_esquema_productos()
     asegurar_stock_reservado()
+    asegurar_estado_producto()
     asegurar_procedimientos_almacenados()
     seed_db()
