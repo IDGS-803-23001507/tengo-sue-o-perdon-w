@@ -51,6 +51,21 @@
                                 ${{ "{:,.2f}".format(producto.precio_venta or 0) }}
                             </p>
 
+                            {% set insumos = insumos_por_producto.get(producto.id_producto, []) %}
+                            {% if insumos %}
+                            <div class="mt-2 text-left">
+                                <p class="text-[9px] uppercase text-gray-400 font-semibold tracking-widest mb-1">Ingredientes</p>
+                                <ul class="space-y-0.5">
+                                    {% for insumo in insumos %}
+                                    <li class="text-[10px] text-gray-500 flex items-center gap-1">
+                                        <span class="w-1 h-1 rounded-full bg-[#C27C3A] inline-block flex-shrink-0"></span>
+                                        {{ insumo }}
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+
                             <form method="POST" class="mt-4">
                                 <input type="hidden" name="producto_id" value="{{ producto.id_producto }}">
                                 

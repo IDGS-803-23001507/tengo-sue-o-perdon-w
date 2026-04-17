@@ -13,9 +13,16 @@
     <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Datos del Insumo</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         
-        <div class="md:col-span-2">
-            <label class="block mb-2 text-sm font-medium text-gray-900">Nombre de la materia prima *</label>
-            {{ form.nombre_insumo(class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", required=true, maxlength="50") }}
+        <div class="md:col-span-1">
+            <label class="block mb-2 text-sm font-medium text-gray-900">Nombre del insumo *</label>
+            {{ form.nombre_insumo(class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", required=true, maxlength="30") }}
+        </div>
+
+        <div class="md:col-span-1">
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+                Presentación / Tamaño <span class="text-xs text-gray-400 font-normal">(Opcional)</span>
+            </label>
+            {{ form.tamanio(class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", placeholder="Ej. 12oz, Paquete x50", maxlength="20") }}
         </div>
 
         <div class="md:col-span-2">

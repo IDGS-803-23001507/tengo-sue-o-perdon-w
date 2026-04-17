@@ -74,9 +74,12 @@
                     <td class="px-6 py-4">
                         <ul class="space-y-1">
                             {% for insumo in receta.insumos %}
-                                <li>
+                                <li class="flex items-center gap-1.5">
                                     <span class="font-medium text-gray-800">{{ insumo.nombre_materia }}</span>
-                                    <span class="text-gray-500"> — {{ insumo.cantidad }} {{ insumo.unidad_materia }}</span>
+                                    {% if insumo.tamanio_materia %}
+                                        <span class="bg-blue-50 text-blue-600 text-[10px] font-semibold px-1.5 py-0.5 rounded border border-blue-200">{{ insumo.tamanio_materia }}</span>
+                                    {% endif %}
+                                    <span class="text-gray-500">&mdash; {{ insumo.cantidad }} {{ insumo.unidad_materia }}</span>
                                 </li>
                             {% endfor %}
                         </ul>
@@ -85,7 +88,7 @@
                         {{ badge_estado_booleano(receta.estado, 'Activa', 'Inactiva') }}
                     </td>
                     <td class="px-6 py-4 text-center">
-                        <a href="{{ url_for('recetas.nueva', token=serializer.dumps(receta.id_producto), editar=1) }}" class="text-blue-600 hover:underline">Editar</a>
+                        <a href="{{ url_for('recetas.nueva', producto=receta.id_producto, editar=1) }}" class="text-blue-600 hover:underline">Editar</a>
                     </td>
                 </tr>
             {% else %}

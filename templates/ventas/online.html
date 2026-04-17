@@ -8,14 +8,16 @@
             {% if messages %}
                 <div class="mb-6 space-y-3">
                     {% for category, message in messages %}
-                        {% if category == 'danger' %}
-                            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ message }}</div>
-                        {% elif category == 'success' %}
-                            <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ message }}</div>
-                        {% elif category == 'warning' %}
-                            <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">{{ message }}</div>
-                        {% else %}
-                            <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">{{ message }}</div>
+                        {% if 'Faltan insumos' not in message %}
+                            {% if category == 'danger' %}
+                                <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ message }}</div>
+                            {% elif category == 'success' %}
+                                <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ message }}</div>
+                            {% elif category == 'warning' %}
+                                <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">{{ message }}</div>
+                            {% else %}
+                                <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">{{ message }}</div>
+                            {% endif %}
                         {% endif %}
                     {% endfor %}
                 </div>
@@ -158,6 +160,33 @@
         input.value = format(minimo);
     }
     document.addEventListener('DOMContentLoaded', configurarFechaMinima);
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    {% if 'Faltan insumos' in message %}
+                        let msgStr = {{ message | replace('No se pudo finalizar la producción: Faltan insumos: ', '') | replace('Faltan insumos: ', '') | tojson | safe }};
+                        let htmlListItems = msgStr.split(',').map(item => '<li class="ml-4 list-disc">' + item.trim() + '</li>').join('');
+                        let finalHtml = '<p class="text-sm text-gray-600 mb-2">No hay suficientes ingredientes para proceder:</p>' +
+                                        '<div class="text-xs text-left bg-gray-50 p-3 rounded border border-gray-200 mt-2">' +
+                                        '<ul class="space-y-1 text-gray-700">' + htmlListItems + '</ul>' +
+                                        '</div>';
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Inventario Insuficiente',
+                            html: finalHtml,
+                            confirmButtonColor: '#814c59',
+                            confirmButtonText: 'Entendido'
+                        });
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    });
 </script>
 </section>
 {% endblock %}

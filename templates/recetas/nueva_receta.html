@@ -18,11 +18,7 @@
             focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5", required=true) }}
         </div>
 
-        <div id="contenedorTamanoVaso" class="hidden">
-            <label class="block mb-2 text-sm font-medium text-gray-900">Tamaño de vaso *</label>
-            {{ form.tamano_vaso(class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5") }}
-            <p class="text-xs text-gray-500 mt-1">Solo aplica para recetas de bebidas.</p>
-        </div>
+
 
         <div class="md:col-span-2">
             <div class="flex items-center justify-between mb-2">
@@ -42,8 +38,7 @@
                             required>
                             <option value="" selected disabled>Selecciona...</option>
                             {% for m in materias %}
-                            <option value="{{ m.id_materia }}">{{ m.nombre }}{% if m.unidad %} ({{ m.unidad.abreviacion
-                                or m.unidad.nombre }}){% endif %}</option>
+                            <option value="{{ m.id_materia }}">{{ m.nombre }}{% if m.tamanio %} — {{ m.tamanio }}{% endif %}{% if m.unidad %} ({{ m.unidad.abreviacion or m.unidad.nombre }}){% endif %}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -63,6 +58,8 @@
             </div>
         </div>
     </div>
+
+    {{ form.insumos_json(id="insumos_json") }}
 
     <div class="flex justify-end gap-4 pt-4 border-t mt-4">
         <a href="{{ cancel_url or url_for('recetas.index') }}"
@@ -108,59 +105,8 @@
     const btnAgregar = document.getElementById('btnAgregarInsumo');
     const formReceta = document.querySelector('form[action="{{ url_for('recetas.nueva') }}"]');
     const campoInsumosJson = document.getElementById('insumos_json');
-    const selectorProducto = document.getElementById('id_producto');
-    const contenedorTamanoVaso = document.getElementById('contenedorTamanoVaso');
-    const campoTamanoVaso = document.getElementById('tamano_vaso');
-    const productosMeta = {{ (productos_meta or {})|tojson }};
-    const insumosPrecargados = {{ (insumos_precargados or[])| tojson }};
+    const insumosPrecargados = {{ (insumos_precargados or []) | tojson }};
     const filaPlantilla = lista.querySelector('.insumo-row')?.cloneNode(true);
-    const FACTOR_TAMANO_VASO = {
-        chico: 1,
-        mediano: 1.25,
-        grande: 1.5,
-    };
-    let factorTamanoActual = 1;
-
-    function obtenerFactorTamano(valorTamano) {
-        return FACTOR_TAMANO_VASO[(valorTamano || '').toLowerCase()] || 1;
-    }
-
-    function ajustarCantidadesPorTamano(factorNuevo) {
-        if (!factorNuevo || factorNuevo <= 0 || factorTamanoActual <= 0) return;
-
-        const ratio = factorNuevo / factorTamanoActual;
-        const filas = lista.querySelectorAll('.insumo-row');
-
-        filas.forEach((fila) => {
-            const inputCantidad = fila.querySelector('input[name="cantidad[]"]');
-            const valorActual = Number(inputCantidad?.value || 0);
-
-            if (!inputCantidad || !valorActual || valorActual <= 0) return;
-
-            const ajustado = (valorActual * ratio).toFixed(2);
-            inputCantidad.value = Number(ajustado);
-        });
-
-        factorTamanoActual = factorNuevo;
-    }
-
-    function actualizarCampoTamanoVaso() {
-        const idProducto = Number(selectorProducto?.value || 0);
-        const categoria = (productosMeta[idProducto]?.categoria || '').toLowerCase();
-        const esBebida = categoria === 'bebidas';
-
-        contenedorTamanoVaso.classList.toggle('hidden', !esBebida);
-
-        if (esBebida) {
-            campoTamanoVaso.setAttribute('required', 'required');
-            const factorNuevo = obtenerFactorTamano(campoTamanoVaso?.value || 'chico');
-            ajustarCantidadesPorTamano(factorNuevo);
-        } else {
-            campoTamanoVaso.removeAttribute('required');
-            campoTamanoVaso.value = '';
-            factorTamanoActual = 1;
-        }
-    }
 
     function crearFilaInsumo(idMateria = '', cantidad = '') {
         if (!filaPlantilla) return null;
@@ -184,21 +130,16 @@
 
     function cargarInsumosPrecargados() {
         if (!insumosPrecargados.length) return;
-
         lista.innerHTML = '';
         insumosPrecargados.forEach((insumo) => {
             const fila = crearFilaInsumo(insumo.id_materia, insumo.cantidad);
-            if (fila) {
-                lista.appendChild(fila);
-            }
+            if (fila) lista.appendChild(fila);
         });
     }
 
     btnAgregar.addEventListener('click', () => {
         const fila = crearFilaInsumo('', '');
-        if (fila) {
-            lista.appendChild(fila);
-        }
+        if (fila) lista.appendChild(fila);
     });
 
     lista.addEventListener('click', (e) => {
@@ -210,42 +151,18 @@
 
     formReceta.addEventListener('submit', () => {
         const payload = [];
-        const filas = lista.querySelectorAll('.insumo-row');
-
-        filas.forEach((fila) => {
+        lista.querySelectorAll('.insumo-row').forEach((fila) => {
             const idMateria = fila.querySelector('select[name="id_materia[]"]')?.value;
             const cantidad = fila.querySelector('input[name="cantidad[]"]')?.value;
-
-            if (!idMateria || !cantidad) return;
-
-            payload.push({
-                id_materia: Number(idMateria),
-                cantidad: Number(cantidad),
-            });
+            if (idMateria && cantidad) {
+                payload.push({ id_materia: Number(idMateria), cantidad: Number(cantidad) });
+            }
         });
-
         campoInsumosJson.value = JSON.stringify(payload);
     });
 
-    if (selectorProducto) {
-        selectorProducto.addEventListener('change', actualizarCampoTamanoVaso);
-    }
-
-    if (campoTamanoVaso) {
-        campoTamanoVaso.addEventListener('change', () => {
-            const idProducto = Number(selectorProducto?.value || 0);
-            const categoria = (productosMeta[idProducto]?.categoria || '').toLowerCase();
-            if (categoria !== 'bebidas') return;
-
-            const factorNuevo = obtenerFactorTamano(campoTamanoVaso.value || 'chico');
-            ajustarCantidadesPorTamano(factorNuevo);
-        });
-    }
-
     document.addEventListener('DOMContentLoaded', () => {
-        factorTamanoActual = obtenerFactorTamano(campoTamanoVaso?.value || 'chico');
         cargarInsumosPrecargados();
-        actualizarCampoTamanoVaso();
     });
 </script>
 {% endblock %}

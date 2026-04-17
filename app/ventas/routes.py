@@ -94,6 +94,23 @@ def venta_fisica():
         FROM Producto p WHERE p.estatus = 1
     """)
     productos = db.session.execute(query_productos).fetchall()
+
+    # Mapa: id_producto -> lista de insumos para tooltip en el POS
+    insumos_por_producto = {}
+    from model import Receta, MateriaPrima
+    recetas_activas = (
+        Receta.query
+        .filter_by(estado=True)
+        .join(MateriaPrima, Receta.id_materia == MateriaPrima.id_materia)
+        .all()
+    )
+    for receta in recetas_activas:
+        mp = receta.materiaPrima
+        if mp:
+            label = mp.nombre
+            if mp.tamanio:
+                label += f" ({mp.tamanio})"
+            insumos_por_producto.setdefault(receta.id_producto, []).append(label)
     
     if request.method == "POST":
         
@@ -208,6 +225,7 @@ def venta_fisica():
         carrito=carrito,
         total=total,
         modal_solicitud=modal_solicitud,
+        insumos_por_producto=insumos_por_producto,
     )
 
 

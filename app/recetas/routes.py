@@ -116,6 +116,7 @@ def recetas():
             {
                 "id_receta": receta.id_receta,
                 "nombre_materia": receta.nombre_materia or "-",
+                "tamanio_materia": receta.materiaPrima.tamanio if receta.materiaPrima else None,
                 "cantidad": receta.cantidad,
                 "unidad_materia": receta.unidad_materia or "Sin unidad",
                 "estado": receta.estado,
@@ -210,12 +211,7 @@ def nueva_receta():
                     "Este producto ya tiene receta registrada. Usa la opción Editar para modificarla."
                 )
 
-            tamano_vaso = (form.tamano_vaso.data or "").strip().lower()
-            if (producto.categoria or "").lower() == "bebidas":
-                if tamano_vaso not in {"chico", "mediano", "grande"}:
-                    raise ValueError("Selecciona el tamaño de vaso para recetas de bebidas.")
-            else:
-                tamano_vaso = ""
+            tamano_vaso = (form.tamano_vaso.data or "").strip().lower() or None
 
             try:
                 insumos_raw = json.loads(form.insumos_json.data or "[]")

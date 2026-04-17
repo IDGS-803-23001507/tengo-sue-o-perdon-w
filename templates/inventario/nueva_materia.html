@@ -17,16 +17,28 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 
-        <div class="md:col-span-2">
+        <div class="md:col-span-1">
             <label class="block mb-2 text-sm font-medium text-gray-900">
-                Nombre de la materia prima *
+                Nombre del insumo *
             </label>
 
                  {{ form.nombre_insumo(
                      class="bg-gray-50 border border-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
-                     placeholder="Ej. Grano de Café Tostado",
+                     placeholder="Ej. Vaso de plástico",
                      required=true,
-                     maxlength="50"
+                     maxlength="30"
+                 ) }}
+        </div>
+
+        <div class="md:col-span-1">
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+                Presentación / Tamaño <span class="text-xs text-gray-400 font-normal">(Opcional)</span>
+            </label>
+
+                 {{ form.tamanio(
+                     class="bg-gray-50 border border-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
+                     placeholder="Ej. 12oz, 1Kg, Paquete x50",
+                     maxlength="20"
                  ) }}
         </div>
 

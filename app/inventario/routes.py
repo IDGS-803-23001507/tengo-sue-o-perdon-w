@@ -35,6 +35,7 @@ def nueva_materia():
             nuevo_insumo = MateriaPrima(
                 nombre=(form.nombre_insumo.data or "").strip(),
                 descripcion=(form.descripcion.data or "").strip() or None,
+                tamanio=(form.tamanio.data or "").strip() or None,
                 unidad_medida=form.unidad_medida.data,
                 stock_minimo=form.stock_minimo.data,
                 stock_actual=0.0,
@@ -71,11 +72,13 @@ def editar_materia(token):
 
     if request.method == 'GET':
         form.nombre_insumo.data = insumo.nombre
+        form.tamanio.data = insumo.tamanio or ''
 
     if form.validate_on_submit():
         try:
             insumo.nombre = (form.nombre_insumo.data or '').strip()
             insumo.descripcion = (form.descripcion.data or '').strip() or None
+            insumo.tamanio = (form.tamanio.data or '').strip() or None
             insumo.unidad_medida = form.unidad_medida.data
             insumo.stock_minimo = form.stock_minimo.data
             db.session.commit()

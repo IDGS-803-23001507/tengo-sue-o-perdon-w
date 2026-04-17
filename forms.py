@@ -553,7 +553,12 @@ class RecetaForm(FlaskForm):
             if getattr(materia, "unidad", None):
                 unidad = materia.unidad.abreviacion or materia.unidad.nombre or ""
 
-            etiqueta = f"{materia.nombre} ({unidad})" if unidad else materia.nombre
+            tamanio = getattr(materia, "tamanio", None) or ""
+            etiqueta = materia.nombre
+            if tamanio:
+                etiqueta += f" — {tamanio}"
+            if unidad:
+                etiqueta += f" ({unidad})"
             opciones.append((materia.id_materia, etiqueta))
 
         self.id_materia.choices = opciones
@@ -599,7 +604,15 @@ class MateriaPrimaForm(FlaskForm):
         "Nombre de la materia prima",
         validators=[
             DataRequired(message="El nombre es obligatorio"),
-            Length(max=50, message="El nombre no puede exceder 50 caracteres"),
+            Length(max=30, message="El nombre no puede exceder 30 caracteres"),
+        ],
+    )
+
+    tamanio = StringField(
+        "Presentación / Tamaño",
+        validators=[
+            Optional(),
+            Length(max=20, message="El tamaño no puede exceder 20 caracteres"),
         ],
     )
 

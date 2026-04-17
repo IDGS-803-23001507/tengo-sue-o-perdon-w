@@ -204,6 +204,23 @@ def asegurar_esquema_proveedores() -> None:
     db.session.commit()
 
 
+def asegurar_esquema_materias() -> None:
+    inspector = inspect(db.engine)
+    tablas = set(inspector.get_table_names())
+
+    if "Materia_prima" not in tablas:
+        return
+
+    columnas = {columna["name"] for columna in inspector.get_columns("Materia_prima")}
+
+    if "tamanio" not in columnas:
+        db.session.execute(
+            text("ALTER TABLE `Materia_prima` ADD COLUMN `tamanio` VARCHAR(20) NULL AFTER `descripcion`")
+        )
+
+    db.session.commit()
+
+
 def asegurar_esquema_productos() -> None:
     inspector = inspect(db.engine)
     tablas = set(inspector.get_table_names())
@@ -937,6 +954,7 @@ def inicializar_db() -> None:
     asegurar_esquema_usuarios()
     asegurar_esquema_unidades()
     asegurar_esquema_proveedores()
+    asegurar_esquema_materias()
     asegurar_esquema_productos()
     asegurar_stock_reservado()
     asegurar_procedimientos_almacenados()
