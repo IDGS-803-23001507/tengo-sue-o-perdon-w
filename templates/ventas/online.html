@@ -8,14 +8,16 @@
             {% if messages %}
                 <div class="mb-6 space-y-3">
                     {% for category, message in messages %}
-                        {% if category == 'danger' %}
-                            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ message }}</div>
-                        {% elif category == 'success' %}
-                            <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ message }}</div>
-                        {% elif category == 'warning' %}
-                            <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">{{ message }}</div>
-                        {% else %}
-                            <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">{{ message }}</div>
+                        {% if 'Faltan insumos' not in message %}
+                            {% if category == 'danger' %}
+                                <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ message }}</div>
+                            {% elif category == 'success' %}
+                                <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ message }}</div>
+                            {% elif category == 'warning' %}
+                                <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">{{ message }}</div>
+                            {% else %}
+                                <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">{{ message }}</div>
+                            {% endif %}
                         {% endif %}
                     {% endfor %}
                 </div>
@@ -55,6 +57,18 @@
                             {{ p.descripcion }}
                         </p>
 
+                        {% set variantes = variantes_por_producto.get(p.id_producto, []) %}
+
+                        {% if variantes %}
+                        <div class="flex mt-4 gap-2 justify-center">
+                            <button type="button"
+                                onclick='abrirModalVariante({{ p.id_producto }}, {{ p.nombre|tojson|safe }}, {{ p.precio_venta }}, {{ variantes|tojson|safe }})'
+                                {{ 'disabled' if p.disponible_stock == 0 }}
+                                class="bg-[#C27C3A] text-white px-6 py-2 rounded hover:bg-[#814c59] transition duration-300 uppercase text-xs font-bold tracking-widest disabled:opacity-40">
+                                {% if p.disponible_stock == 0 %}Agotado{% else %}Elegir tamaño{% endif %}
+                            </button>
+                        </div>
+                        {% else %}
                         <form method="POST" class="w-full flex flex-col gap-2">
                             {{ form.hidden_tag() }}
                             <input type="hidden" name="producto" value="{{ p.id_producto }}">
@@ -72,6 +86,7 @@
                                 </button>
                             </div>
                         </form>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
@@ -159,5 +174,123 @@
     }
     document.addEventListener('DOMContentLoaded', configurarFechaMinima);
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    {% if 'Faltan insumos' in message %}
+                        let msgStr = {{ message | replace('No se pudo finalizar la producción: Faltan insumos: ', '') | replace('Faltan insumos: ', '') | tojson | safe }};
+                        let htmlListItems = msgStr.split(',').map(item => '<li class="ml-4 list-disc">' + item.trim() + '</li>').join('');
+                        let finalHtml = '<p class="text-sm text-gray-600 mb-2">No hay suficientes ingredientes para proceder:</p>' +
+                                        '<div class="text-xs text-left bg-gray-50 p-3 rounded border border-gray-200 mt-2">' +
+                                        '<ul class="space-y-1 text-gray-700">' + htmlListItems + '</ul>' +
+                                        '</div>';
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Inventario Insuficiente',
+                            html: finalHtml,
+                            confirmButtonColor: '#814c59',
+                            confirmButtonText: 'Entendido'
+                        });
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    });
+</script>
 </section>
+
+<!-- Modal variantes -->
+<div id="modalVariante" class="fixed inset-0 z-[200] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+        <div class="px-6 pt-6 pb-2">
+            <h3 class="text-lg font-bold text-[#814c59]" id="mvTitulo">Elige el tamaño</h3>
+            <p class="text-sm text-gray-500 mt-1">Selecciona una opción para añadir a tu pedido</p>
+        </div>
+        <div id="mvOpciones" class="px-6 py-4 space-y-2"></div>
+        <div class="px-6 pb-6">
+            <button onclick="cerrarModalVariante()"
+                class="w-full border border-gray-200 text-gray-500 py-2.5 rounded-lg text-sm hover:bg-gray-50 transition">
+                Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+
+<form method="POST" id="formVariante" class="hidden">
+    <input type="hidden" name="producto" id="fvProductoId">
+    <input type="hidden" name="nombre_prod" id="fvNombreProd">
+    <input type="hidden" name="variante_id" id="fvVarianteId">
+    <input type="hidden" name="variante_nombre" id="fvVarianteNombre">
+    <input type="hidden" name="variante_precio" id="fvVariantePrecio">
+    <input type="hidden" name="cantidad" value="1">
+    <button type="submit" name="agregar" id="fvSubmit"></button>
+</form>
+
+<script>
+function abrirModalVariante(idProducto, nombre, precioBase, variantes) {
+    document.getElementById('mvTitulo').textContent = nombre;
+    document.getElementById('fvProductoId').value = idProducto;
+    document.getElementById('fvNombreProd').value = nombre;
+
+    const contenedor = document.getElementById('mvOpciones');
+    contenedor.innerHTML = '';
+
+    variantes.forEach(v => {
+        const precioFinal = precioBase + (v.precio_extra || 0);
+        const precioStr = precioFinal.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+        const disponible = v.disponible !== false;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.disabled = !disponible;
+        btn.className = disponible
+            ? 'w-full flex justify-between items-center px-4 py-3 rounded-xl border border-gray-100 hover:border-[#C27C3A] hover:bg-amber-50 transition text-left group'
+            : 'w-full flex justify-between items-center px-4 py-3 rounded-xl border border-gray-100 bg-gray-50 text-left cursor-not-allowed opacity-50';
+            
+        btn.innerHTML = `
+            <span class="font-semibold ${disponible ? 'text-gray-800' : 'text-gray-400'}">${v.nombre}</span>
+            <span class="text-sm ${disponible ? 'text-gray-500' : 'text-gray-300'}">${disponible ? precioStr : 'Agotado'}</span>
+        `;
+        
+        if (disponible) {
+            btn.onclick = () => {
+                document.getElementById('fvVarianteId').value = v.id;
+                document.getElementById('fvVarianteNombre').value = v.nombre;
+                document.getElementById('fvVariantePrecio').value = v.precio_extra || 0;
+                document.getElementById('fvSubmit').click();
+                cerrarModalVariante();
+            };
+        }
+        
+        contenedor.appendChild(btn);
+    });
+
+    const modal = document.getElementById('modalVariante');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function confirmarVariante(idVariante, nombreVariante, precioExtra) {
+    document.getElementById('fvVarianteId').value = idVariante;
+    document.getElementById('fvVarianteNombre').value = nombreVariante;
+    document.getElementById('fvVariantePrecio').value = precioExtra;
+    cerrarModalVariante();
+    document.getElementById('fvSubmit').click();
+}
+
+function cerrarModalVariante() {
+    const modal = document.getElementById('modalVariante');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+document.getElementById('modalVariante').addEventListener('click', function(e) {
+    if (e.target === this) cerrarModalVariante();
+});
+</script>
+
 {% endblock %}

@@ -68,9 +68,11 @@ def index():
 
     for p in pedidos:
         query_detalles = text("""
-            SELECT dv.cantidad, prod.nombre as nombre_producto
+            SELECT dv.cantidad, 
+                   COALESCE(CONCAT(prod.nombre, ' (', vr.nombre, ')'), prod.nombre) as nombre_producto
             FROM detalle_venta dv
             JOIN Producto prod ON dv.id_producto = prod.id_producto
+            LEFT JOIN variante_receta vr ON dv.id_variante = vr.id_variante
             WHERE dv.id_venta = :id_venta
         """)
         detalles_result = db.session.execute(query_detalles, {"id_venta": p['id_venta']})

@@ -51,23 +51,53 @@
                                 ${{ "{:,.2f}".format(producto.precio_venta or 0) }}
                             </p>
 
+                            {% set insumos = insumos_por_producto.get(producto.id_producto, []) %}
+                            {% if insumos %}
+                            <div class="mt-2 text-left">
+                                <p class="text-[9px] uppercase text-gray-400 font-semibold tracking-widest mb-1">Ingredientes</p>
+                                <ul class="space-y-0.5">
+                                    {% for insumo in insumos %}
+                                    <li class="text-[10px] text-gray-500 flex items-center gap-1">
+                                        <span class="w-1 h-1 rounded-full bg-[#C27C3A] inline-block flex-shrink-0"></span>
+                                        {{ insumo }}
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+
+                            {% set variantes = variantes_por_producto.get(producto.id_producto, []) %}
+
+                            {% if variantes %}
+                            {# Producto con variantes: botón abre un modal #}
+                            <button type="button"
+                                onclick='abrirModalVariante({{ producto.id_producto }}, {{ producto.nombre|tojson|safe }}, {{ producto.precio_venta }}, {{ variantes|tojson|safe }})'
+                                {{ 'disabled' if producto.disponible_stock == 0 }}
+                                class="w-full border border-[#C27C3A] text-[#C27C3A] py-2 rounded-lg text-xs font-semibold tracking-wide
+                                       hover:bg-[#C27C3A] hover:text-white transition
+                                       disabled:opacity-40 disabled:cursor-not-allowed mt-4">
+                                {% if producto.disponible_stock == 0 %}
+                                    Agotado
+                                {% else %}
+                                    Elegir tamaño
+                                {% endif %}
+                            </button>
+                            {% else %}
                             <form method="POST" class="mt-4">
                                 <input type="hidden" name="producto_id" value="{{ producto.id_producto }}">
-                                
                                 {% if producto.disponible_stock == 0 %}
                                 <button type="button" disabled
-                                    class="w-full border border-gray-300 text-gray-400 bg-gray-50 py-2 rounded-lg text-xs font-semibold tracking-wide 
-                                           cursor-not-allowed">
+                                    class="w-full border border-gray-300 text-gray-400 bg-gray-50 py-2 rounded-lg text-xs font-semibold tracking-wide cursor-not-allowed">
                                     Agotado
                                 </button>
                                 {% else %}
                                 <button type="submit" name="agregar"
-                                    class="w-full border border-[#C27C3A] text-[#C27C3A] py-2 rounded-lg text-xs font-semibold tracking-wide 
-                                           hover:bg-[#C27C3A] hover:text-white transition">
+                                    class="w-full border border-[#C27C3A] text-[#C27C3A] py-2 rounded-lg text-xs font-semibold tracking-wide hover:bg-[#C27C3A] hover:text-white transition">
                                     Agregar
                                 </button>
                                 {% endif %}
                             </form>
+                            {% endif %}
 
                         </div>
                     </div>
@@ -194,4 +224,87 @@
     </div>
 </div>
 {% endif %}
+
+<!-- ===== MODAL VARIANTES ===== -->
+<div id="modalVariante" class="fixed inset-0 z-[200] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+        <div class="px-6 pt-6 pb-2">
+            <h3 class="text-lg font-bold text-gray-900" id="mvTitulo">Elige el tamaño</h3>
+            <p class="text-sm text-gray-500 mt-1" id="mvSubtitulo">Selecciona una opción para continuar</p>
+        </div>
+        <div id="mvOpciones" class="px-6 py-4 space-y-2"></div>
+        <div class="px-6 pb-6">
+            <button onclick="cerrarModalVariante()"
+                class="w-full border border-gray-200 text-gray-500 py-2.5 rounded-lg text-sm hover:bg-gray-50 transition">
+                Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+
+<form method="POST" id="formVariante" class="hidden">
+    <input type="hidden" name="producto_id" id="fvProductoId">
+    <input type="hidden" name="variante_id" id="fvVarianteId">
+    <input type="hidden" name="variante_nombre" id="fvVarianteNombre">
+    <input type="hidden" name="variante_precio" id="fvVariantePrecio">
+    <button type="submit" name="agregar" id="fvSubmit"></button>
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function abrirModalVariante(idProducto, nombre, precioBase, variantes) {
+    document.getElementById('mvTitulo').textContent = nombre;
+    document.getElementById('mvSubtitulo').textContent = 'Selecciona el tamaño deseado';
+
+    const contenedor = document.getElementById('mvOpciones');
+    contenedor.innerHTML = '';
+
+    variantes.forEach(v => {
+        const precioFinal = precioBase + (v.precio_extra || 0);
+        const precioStr = precioFinal.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+        const disponible = v.disponible !== false;  // true por default
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.disabled = !disponible;
+        btn.className = disponible
+            ? 'w-full flex justify-between items-center px-4 py-3 rounded-xl border border-gray-200 hover:border-[#C27C3A] hover:bg-amber-50 transition text-left group'
+            : 'w-full flex justify-between items-center px-4 py-3 rounded-xl border border-gray-100 bg-gray-50 text-left cursor-not-allowed opacity-50';
+        btn.innerHTML = `
+            <span class="font-semibold ${disponible ? 'text-gray-800' : 'text-gray-400'}">${v.nombre}</span>
+            <span class="text-sm ${disponible ? 'text-gray-500' : 'text-gray-300'}">${disponible ? precioStr : 'Agotado'}</span>
+        `;
+        if (disponible) {
+            btn.onclick = () => confirmarVariante(idProducto, v.id, v.nombre, v.precio_extra || 0);
+        }
+        contenedor.appendChild(btn);
+    });
+
+    const modal = document.getElementById('modalVariante');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function confirmarVariante(idProducto, idVariante, nombreVariante, precioExtra) {
+    document.getElementById('fvProductoId').value = idProducto;
+    document.getElementById('fvVarianteId').value = idVariante;
+    document.getElementById('fvVarianteNombre').value = nombreVariante;
+    document.getElementById('fvVariantePrecio').value = precioExtra;
+    cerrarModalVariante();
+    document.getElementById('fvSubmit').click();
+}
+
+function cerrarModalVariante() {
+    const modal = document.getElementById('modalVariante');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+// Cerrar al hacer clic fuera
+document.getElementById('modalVariante').addEventListener('click', function(e) {
+    if (e.target === this) cerrarModalVariante();
+});
+</script>
 {% endblock %}
