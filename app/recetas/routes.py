@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.usuarios.routes import requiereRol
 from app.auditoria import registrar_auditoria
+from app.food_cost_service import recalcular_precio_producto
 from forms import RecetaForm, RecetaLoteForm
 from model import MateriaPrima, Producto, Receta, VarianteReceta, db
 
@@ -181,18 +182,36 @@ def nueva_receta():
             ids_validos = {pid for pid, _ in (form.id_producto.choices or [])}
             if producto_preseleccionado in ids_validos:
                 form.id_producto.data = producto_preseleccionado
-                recetas_producto = (
-                    Receta.query.filter_by(id_producto=producto_preseleccionado, estado=True)
-                    .order_by(Receta.id_receta.asc())
-                    .all()
-                )
+                
+                query_recetas = Receta.query.filter_by(id_producto=producto_preseleccionado, estado=True)
+                if modo_edicion and 'variante' in request.args:
+                    variante_str = request.args.get("variante", "")
+                    if not variante_str:
+                        query_recetas = query_recetas.filter(Receta.id_variante.is_(None))
+                    else:
+                        query_recetas = query_recetas.filter(Receta.id_variante == int(variante_str))
+                        var_obj = VarianteReceta.query.get(int(variante_str))
+                        if var_obj:
+                            form.nombre_variante.data = var_obj.nombre
+                            form.precio_variante.data = var_obj.precio_extra
+                else:
+                    # Cuando es una "Nueva Variante" no modo edición, solo precargamos la receta base para evitar revolver todos los insumos de todas las variantes
+                    query_recetas = query_recetas.filter(Receta.id_variante.is_(None))
+
+                recetas_producto = query_recetas.order_by(Receta.id_receta.asc()).all()
 
                 if not recetas_producto:
-                    recetas_producto = (
-                        Receta.query.filter_by(id_producto=producto_preseleccionado)
-                        .order_by(Receta.id_receta.asc())
-                        .all()
-                    )
+                    query_recetas = Receta.query.filter_by(id_producto=producto_preseleccionado)
+                    if modo_edicion and 'variante' in request.args:
+                        variante_str = request.args.get("variante", "")
+                        if not variante_str:
+                            query_recetas = query_recetas.filter(Receta.id_variante.is_(None))
+                        else:
+                            query_recetas = query_recetas.filter(Receta.id_variante == int(variante_str))
+                    else:
+                        query_recetas = query_recetas.filter(Receta.id_variante.is_(None))
+                        
+                    recetas_producto = query_recetas.order_by(Receta.id_receta.asc()).all()
 
                 ids_materias_receta = {receta.id_materia for receta in recetas_producto}
                 ids_materias_actuales = {materia.id_materia for materia in materias}
@@ -326,6 +345,9 @@ def nueva_receta():
 
             db.session.commit()
 
+            # --- Evento A: Recalcular precio por Food Cost ---
+            recalcular_precio_producto(producto)
+
             form_limpio = RecetaLoteForm()
             materias, productos = _cargar_formulario_receta_lote(form_limpio)
             productos_meta = {
@@ -434,6 +456,12 @@ def modificar_receta(token):
             )
 
             db.session.commit()
+
+            # --- Evento A: Recalcular precio por Food Cost ---
+            producto_obj = Producto.query.get(id_producto)
+            if producto_obj:
+                recalcular_precio_producto(producto_obj)
+
             return render_template(
                 "recetas/editar_receta.html",
                 form=form,
@@ -511,6 +539,12 @@ def crear_receta_api(id_producto: int):
             commit=False,
         )
         db.session.commit()
+
+        # --- Evento A: Recalcular precio por Food Cost ---
+        producto_obj = Producto.query.get(id_producto)
+        if producto_obj:
+            recalcular_precio_producto(producto_obj)
+
         return jsonify({"ok": True, "message": "Receta creada correctamente."}), 201
     except ValueError as exc:
         db.session.rollback()
@@ -535,6 +569,12 @@ def editar_receta_api(id_producto: int):
             commit=False,
         )
         db.session.commit()
+
+        # --- Evento A: Recalcular precio por Food Cost ---
+        producto_obj = Producto.query.get(id_producto)
+        if producto_obj:
+            recalcular_precio_producto(producto_obj)
+
         return jsonify({"ok": True, "message": "Receta actualizada correctamente."})
     except ValueError as exc:
         db.session.rollback()

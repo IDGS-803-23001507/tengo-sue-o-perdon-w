@@ -19,7 +19,7 @@
                 </h3>
             </div>
 
-            <form method="POST" action="{{ url_for('ventas.pagar_venta_gestion', token=serializer.dumps(idVenta)) }}">
+            <form method="POST" action="{{ url_for('ventas.pagar_venta_gestion', idVenta=idVenta) }}">
                 {{ form.hidden_tag() }}
                 
                 <input type="hidden" name="pago_recibido" id="pago_recibido_hidden" value="0">

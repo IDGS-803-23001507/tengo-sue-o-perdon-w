@@ -65,14 +65,32 @@
 
         <div>
             <label class="block mb-2 text-sm font-medium text-gray-900">
-                Precio de Venta ($) *
+                Precio de Venta ($)
+                <span class="text-gray-400 font-normal">— opcional</span>
             </label>
             {{ form.precio_venta(
                 class="bg-gray-50 border border-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5",
-                placeholder="Ej. 85.50",
-                step="0.01",
-                required=true
+                placeholder="Se calcula con la receta",
+                step="0.01"
             ) }}
+            <p class="text-xs text-gray-400 mt-1">
+                <i class="fa-solid fa-circle-info"></i>
+                Se calculará automáticamente al asignar la receta (Food Cost).
+            </p>
+        </div>
+
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+                Food Cost Objetivo
+            </label>
+            {{ form.target_food_cost(
+                class="bg-gray-50 border border-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5",
+                placeholder="0.30",
+                step="0.01"
+            ) }}
+            <p class="text-xs text-gray-400 mt-1">
+                Ej. 0.30 = 30% del precio será costo de materia prima.
+            </p>
         </div>
 
         <div class="md:col-span-2">
