@@ -1,9 +1,11 @@
 import os
+import shutil
 import subprocess
 import time
 from datetime import datetime
 from functools import wraps
 from io import BytesIO
+from pathlib import Path
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 
@@ -11,6 +13,44 @@ backups_bp = Blueprint("backups", __name__, url_prefix="/backups")
 
 EXTENSIONES_PERMITIDAS = {"sql"}
 TAMANO_MAXIMO_SQL = 10 * 1024 * 1024  # 10 MB
+
+
+def _resolver_binario_mysql(nombre_base: str, env_var: str) -> str:
+    """Resuelve la ruta de ejecutables MySQL en PATH, variables o rutas comunes de Windows."""
+    valor_env = (current_app.config.get(env_var) or os.getenv(env_var) or "").strip()
+    if valor_env and Path(valor_env).is_file():
+        return valor_env
+
+    encontrado = shutil.which(nombre_base)
+    if encontrado:
+        return encontrado
+
+    if os.name == "nt":
+        ejecutable = f"{nombre_base}.exe"
+        candidatos = [
+            Path(r"C:\xampp\mysql\bin") / ejecutable,
+            Path(r"C:\laragon\bin\mysql\bin") / ejecutable,
+            Path(r"C:\Program Files\MySQL\MySQL Server 8.0\bin") / ejecutable,
+            Path(r"C:\Program Files\MySQL\MySQL Server 8.4\bin") / ejecutable,
+            Path(r"C:\Program Files (x86)\MySQL\MySQL Server 8.0\bin") / ejecutable,
+        ]
+
+        # Soporta instalaciones con versión variable: C:\Program Files\MySQL\MySQL Server *\bin
+        candidatos.extend(
+            Path(p)
+            for p in sorted(
+                Path(r"C:\Program Files\MySQL").glob(f"MySQL Server*\\bin\\{ejecutable}")
+            )
+        )
+
+        for candidato in candidatos:
+            if candidato.is_file():
+                return str(candidato)
+
+    raise RuntimeError(
+        f"No se encontró el ejecutable '{nombre_base}'. "
+        f"Agrega su carpeta al PATH o configura {env_var} con la ruta completa."
+    )
 
 
 def _timeout_restore_segundos() -> int:
@@ -73,6 +113,58 @@ def _credenciales_mysql() -> dict[str, str | int]:
     }
 
 
+def _credenciales_mysql_candidatas() -> list[dict[str, str | int]]:
+    """Construye una cadena de credenciales para backup/restore con fallback automático."""
+    host = current_app.config.get("MYSQL_HOST", "localhost")
+    port = int(current_app.config.get("MYSQL_PORT", 3306))
+    database = current_app.config.get("MYSQL_DATABASE", "")
+
+    candidatos = [
+        {
+            "host": host,
+            "port": port,
+            "user": current_app.config.get("BACKUP_MYSQL_USER") or os.getenv("BACKUP_MYSQL_USER", ""),
+            "password": current_app.config.get("BACKUP_MYSQL_PASSWORD") or os.getenv("BACKUP_MYSQL_PASSWORD", ""),
+            "database": database,
+        },
+        {
+            "host": host,
+            "port": port,
+            "user": current_app.config.get("MYSQL_APP_ADMIN_USER", "app_admin"),
+            "password": current_app.config.get("MYSQL_APP_ADMIN_PASSWORD", ""),
+            "database": database,
+        },
+        {
+            "host": host,
+            "port": port,
+            "user": current_app.config.get("MYSQL_USER", "root"),
+            "password": current_app.config.get("MYSQL_PASSWORD", ""),
+            "database": database,
+        },
+    ]
+
+    # Filtrar entradas vacías y duplicadas por (user,password)
+    unicos: list[dict[str, str | int]] = []
+    vistos: set[tuple[str, str]] = set()
+    for c in candidatos:
+        user = str(c.get("user") or "").strip()
+        password = str(c.get("password") or "")
+        if not user:
+            continue
+        firma = (user, password)
+        if firma in vistos:
+            continue
+        vistos.add(firma)
+        unicos.append(c)
+
+    return unicos
+
+
+def _es_error_autenticacion_mysql(detalle: str) -> bool:
+    detalle_min = (detalle or "").lower()
+    return "1045" in detalle_min or "access denied" in detalle_min
+
+
 def _es_peticion_ajax() -> bool:
     return request.headers.get("X-Requested-With", "") == "XMLHttpRequest"
 
@@ -82,46 +174,61 @@ def _ejecutar_mysqldump() -> bytes:
     if not credenciales["database"]:
         raise RuntimeError("No se encontró el nombre de la base de datos en la configuración.")
 
-    comando = [
-        "mysqldump",
-        "--single-transaction",
-        "--routines",
-        "--triggers",
-        "--events",
-        "--default-character-set=utf8mb4",
-        "-h",
-        str(credenciales["host"]),
-        "-P",
-        str(credenciales["port"]),
-        "-u",
-        str(credenciales["user"]),
-        str(credenciales["database"]),
-    ]
+    ejecutable = _resolver_binario_mysql("mysqldump", "BACKUP_MYSQLDUMP_PATH")
+    ultimo_detalle = ""
+    candidatos = _credenciales_mysql_candidatas()
 
-    entorno = os.environ.copy()
-    if credenciales["password"]:
-        entorno["MYSQL_PWD"] = str(credenciales["password"])
+    for idx, candidato in enumerate(candidatos):
+        comando = [
+            ejecutable,
+            "--single-transaction",
+            "--routines",
+            "--triggers",
+            "--events",
+            "--default-character-set=utf8mb4",
+            "-h",
+            str(candidato["host"]),
+            "-P",
+            str(candidato["port"]),
+            "-u",
+            str(candidato["user"]),
+            str(candidato["database"]),
+        ]
 
-    try:
-        proceso = subprocess.run(
-            comando,
-            capture_output=True,
-            env=entorno,
-            check=False,
-            timeout=_timeout_dump_segundos(),
-        )
-    except FileNotFoundError as exc:
-        raise RuntimeError("No se encontró el ejecutable 'mysqldump' en el sistema.") from exc
-    except subprocess.TimeoutExpired as exc:
-        raise RuntimeError(
-            f"El backup excedió el tiempo máximo de ejecución ({_timeout_dump_segundos()}s)."
-        ) from exc
+        entorno = os.environ.copy()
+        if candidato["password"]:
+            entorno["MYSQL_PWD"] = str(candidato["password"])
 
-    if proceso.returncode != 0:
+        try:
+            proceso = subprocess.run(
+                comando,
+                capture_output=True,
+                env=entorno,
+                check=False,
+                timeout=_timeout_dump_segundos(),
+            )
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                "No se encontró el ejecutable 'mysqldump'. "
+                "Configura BACKUP_MYSQLDUMP_PATH o agrega MySQL\\bin al PATH."
+            ) from exc
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(
+                f"El backup excedió el tiempo máximo de ejecución ({_timeout_dump_segundos()}s)."
+            ) from exc
+
+        if proceso.returncode == 0:
+            return proceso.stdout
+
         detalle = (proceso.stderr or b"").decode("utf-8", errors="ignore").strip()
-        raise RuntimeError(detalle or "No fue posible generar el backup.")
+        ultimo_detalle = detalle or "No fue posible generar el backup."
 
-    return proceso.stdout
+        # Si falla por autenticación y hay más credenciales, intentar con la siguiente.
+        if _es_error_autenticacion_mysql(ultimo_detalle) and idx < len(candidatos) - 1:
+            continue
+        break
+
+    raise RuntimeError(ultimo_detalle)
 
 
 def _ejecutar_restore(sql_bytes: bytes) -> None:
@@ -129,42 +236,58 @@ def _ejecutar_restore(sql_bytes: bytes) -> None:
     if not credenciales["database"]:
         raise RuntimeError("No se encontró el nombre de la base de datos en la configuración.")
 
-    comando = [
-        "mysql",
-        "--default-character-set=utf8mb4",
-        "--max_allowed_packet=512M",
-        "-h",
-        str(credenciales["host"]),
-        "-P",
-        str(credenciales["port"]),
-        "-u",
-        str(credenciales["user"]),
-        str(credenciales["database"]),
-    ]
+    ejecutable = _resolver_binario_mysql("mysql", "BACKUP_MYSQL_PATH")
+    ultimo_detalle = ""
+    candidatos = _credenciales_mysql_candidatas()
 
-    entorno = os.environ.copy()
-    if credenciales["password"]:
-        entorno["MYSQL_PWD"] = str(credenciales["password"])
+    for idx, candidato in enumerate(candidatos):
+        comando = [
+            ejecutable,
+            "--default-character-set=utf8mb4",
+            "--max_allowed_packet=512M",
+            "-h",
+            str(candidato["host"]),
+            "-P",
+            str(candidato["port"]),
+            "-u",
+            str(candidato["user"]),
+            str(candidato["database"]),
+        ]
 
-    try:
-        proceso = subprocess.run(
-            comando,
-            input=sql_bytes,
-            capture_output=True,
-            env=entorno,
-            check=False,
-            timeout=_timeout_restore_segundos(),
-        )
-    except FileNotFoundError as exc:
-        raise RuntimeError("No se encontró el ejecutable 'mysql' en el sistema.") from exc
-    except subprocess.TimeoutExpired as exc:
-        raise RuntimeError(
-            f"La restauración excedió el tiempo máximo de ejecución ({_timeout_restore_segundos()}s)."
-        ) from exc
+        entorno = os.environ.copy()
+        if candidato["password"]:
+            entorno["MYSQL_PWD"] = str(candidato["password"])
 
-    if proceso.returncode != 0:
+        try:
+            proceso = subprocess.run(
+                comando,
+                input=sql_bytes,
+                capture_output=True,
+                env=entorno,
+                check=False,
+                timeout=_timeout_restore_segundos(),
+            )
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                "No se encontró el ejecutable 'mysql'. "
+                "Configura BACKUP_MYSQL_PATH o agrega MySQL\\bin al PATH."
+            ) from exc
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(
+                f"La restauración excedió el tiempo máximo de ejecución ({_timeout_restore_segundos()}s)."
+            ) from exc
+
+        if proceso.returncode == 0:
+            return
+
         detalle = (proceso.stderr or b"").decode("utf-8", errors="ignore").strip()
-        raise RuntimeError(detalle or "No fue posible restaurar la base de datos.")
+        ultimo_detalle = detalle or "No fue posible restaurar la base de datos."
+
+        if _es_error_autenticacion_mysql(ultimo_detalle) and idx < len(candidatos) - 1:
+            continue
+        break
+
+    raise RuntimeError(ultimo_detalle)
 
 
 @backups_bp.route("", methods=["GET"], endpoint="index")

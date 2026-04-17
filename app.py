@@ -8,7 +8,7 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 from werkzeug.routing import BuildError
 
 from config import Config
-from db_init import asegurar_base_de_datos, inicializar_db
+from db_init import asegurar_base_de_datos, inicializar_db, asegurar_estado_producto, asegurar_stock_reservado
 from model import Compra, DetalleCompra, DetalleVenta, MateriaPrima, Producto, RegistroSesion, Venta, db
 from app.auditoria import obtener_logs_auditoria
 
@@ -42,6 +42,7 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
 
 _ENGINES_TECNICOS: dict[str, object] = {}
+_ESQUEMA_PRODUCTO_VALIDADO = False
 
 try:
     asegurar_base_de_datos()
@@ -527,6 +528,13 @@ def construirContextoDashboard(periodoDias: int, puedeVerFinanzas: bool) -> dict
 
 @app.before_request
 def requerirLogin():
+    global _ESQUEMA_PRODUCTO_VALIDADO
+
+    if not _ESQUEMA_PRODUCTO_VALIDADO:
+        asegurar_stock_reservado()
+        asegurar_estado_producto()
+        _ESQUEMA_PRODUCTO_VALIDADO = True
+
     def normalizarRol(rol: str) -> str:
         mapa = {
             "Admin General (TI)": "admin_ti",
@@ -807,11 +815,16 @@ def dashboard_operador():
 
 @app.route("/dashboard/auditoria")
 def dashboard_auditoria():
-    if session.get("usuarioRol") not in {"Admin General (TI)", "Admin General"}:
+    if session.get("usuarioRol") not in {
+        "Gerente",
+        "Gerente de Tienda",
+        "Admin General (TI)",
+        "Admin General",
+    }:
         abort(403)
 
     logs = obtener_logs_auditoria(limit=300)
-    return render_template("dashboard/auditoria.html", logs=logs, active_page="dashboard")
+    return render_template("dashboard/auditoria.html", logs=logs, active_page="auditoria")
 
 if __name__ == "__main__":
     app.run(debug=True, port=8080)

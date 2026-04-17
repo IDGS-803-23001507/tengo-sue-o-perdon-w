@@ -1,5 +1,5 @@
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
-from sqlalchemy import text
+from sqlalchemy import text, inspect
 from forms import ProductoTerminadoForm, ProductoTerminadoEditarForm, DesactivarForm
 from model import db, Producto, Receta
 from app.food_cost_service import recalcular_precio_producto
@@ -8,6 +8,12 @@ from itsdangerous import URLSafeSerializer
 from flask import current_app
 
 producto_bp = Blueprint('producto', __name__)
+
+
+def _stock_reservado_expr() -> str:
+    """Devuelve una expresion SQL segura para stock reservado segun el esquema actual."""
+    columnas = {c["name"] for c in inspect(db.engine).get_columns("Producto")}
+    return "COALESCE(p.stock_reservado, 0)" if "stock_reservado" in columnas else "0"
 
 def get_serializer():
     return URLSafeSerializer(current_app.config["SECRET_KEY"])
@@ -194,12 +200,13 @@ def detalle_producto(token):
 def producto_venta():
     busqueda = (request.args.get('q') or '').strip()
     categoria = (request.args.get('categoria') or 'todos').strip()
+    stock_reservado_expr = _stock_reservado_expr()
 
-    query_productos = text("""
+    query_productos = text(f"""
         SELECT p.*, 
         CASE 
             WHEN COALESCE(p.tipo_preparacion, 'materia_prima') = 'stock' THEN
-                CASE WHEN (COALESCE(p.stock, 0) - COALESCE(p.stock_reservado, 0)) > 0 THEN 1 ELSE 0 END
+                CASE WHEN (COALESCE(p.stock, 0) - {stock_reservado_expr}) > 0 THEN 1 ELSE 0 END
             WHEN EXISTS (
                 SELECT 1 FROM Recetas r 
                 JOIN Materia_prima mp ON r.id_materia = mp.id_materia 

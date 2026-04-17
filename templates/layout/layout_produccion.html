@@ -212,9 +212,9 @@
         </a>
         {% endif %}
 
-        {% if session.usuarioRol in ["Admin General (TI)", "Admin General"] %}
+        {% if session.usuarioRol in ["Gerente", "Gerente de Tienda", "Admin General (TI)", "Admin General"] %}
         <a href="{{ url_for('dashboard_auditoria') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-        {% if active_page == 'dashboard' %}
+        {% if active_page == 'auditoria' %}
             bg-gray-100 text-gray-900
         {% else %}
             text-gray-600 hover:bg-gray-100

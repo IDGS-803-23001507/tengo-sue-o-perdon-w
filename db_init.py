@@ -324,13 +324,13 @@ def asegurar_stock_reservado() -> None:
         return
     columnas = {c["name"] for c in inspector.get_columns("Producto")}
     if "stock_reservado" not in columnas:
-        db.session.execute(
-            text(
-                "ALTER TABLE `Producto` "
-                "ADD COLUMN `stock_reservado` INT NOT NULL DEFAULT 0"
+        with db.engine.begin() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE `Producto` "
+                    "ADD COLUMN `stock_reservado` INT NOT NULL DEFAULT 0"
+                )
             )
-        )
-        db.session.commit()
 
 
 def asegurar_procedimientos_almacenados() -> None:
