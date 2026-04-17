@@ -8,7 +8,7 @@
     </div>
     <div class="flex items-center gap-3">
         <a href="{{ url_for('solicitud.index') }}" class="text-sm text-gray-600 hover:text-gray-900 hover:underline">Volver al listado</a>
-        <form method="POST" action="{{ url_for('solicitud.finalizar_solicitud', id=solicitud.id_solicitud) }}">
+        <form method="POST" action="{{ url_for('solicitud.finalizar_solicitud', token=serializer.dumps(solicitud.id_solicitud)) }}">
             <button type="submit"
                 {% if solicitud.estado != 'pendiente' %}disabled{% endif %}
                 class="text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2 transition">
@@ -88,7 +88,7 @@
             <h3 class="mb-2 text-2xl font-bold text-gray-900">¡Producto Añadido!</h3>
             <p class="text-gray-500 mb-6">El producto se agregó correctamente a la solicitud.</p>
             {% endif %}
-            <a href="{{ url_for('solicitud.detalles_solicitud', id=solicitud.id_solicitud) }}" class="text-white bg-green-500 hover:bg-green-600 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-3 text-center transition block w-full">
+            <a href="{{ url_for('solicitud.detalles_solicitud', token=serializer.dumps(solicitud.id_solicitud))}}" class="text-white bg-green-500 hover:bg-green-600 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-3 text-center transition block w-full">
                 Continuar
             </a>
         </div>

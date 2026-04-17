@@ -82,7 +82,14 @@ def nuevo_producto():
         session['productos_pendientes_receta'] = list(pendientes)
 
         flash('Producto registrado en borrador. Ahora captura su receta para activarlo.', 'success')
-        return redirect(url_for('recetas.nueva', producto=nuevo_producto.id_producto, nuevo_producto=1))
+        return redirect(url_for(
+                            'recetas.nueva',
+                            token=get_serializer().dumps({
+                                "idProducto": nuevo_producto.id_producto,
+                                "nuevo": True
+                            })
+                        ))
+
 
     if request.method == 'POST':
         for erroresCampo in form.errors.values():

@@ -339,6 +339,8 @@ def nueva_receta():
             )
 
             pendientes = set(session.get("productos_pendientes_receta", []))
+            
+            
             if id_producto in pendientes:
                 pendientes.discard(id_producto)
                 session["productos_pendientes_receta"] = list(pendientes)
@@ -457,7 +459,7 @@ def modificar_receta(token):
 
             db.session.commit()
 
-            # --- Evento A: Recalcular precio por Food Cost ---
+
             producto_obj = Producto.query.get(id_producto)
             if producto_obj:
                 recalcular_precio_producto(producto_obj)

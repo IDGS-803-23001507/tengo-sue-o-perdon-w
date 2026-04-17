@@ -5,7 +5,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from forms import AgregarDetalleSolicitudForm
 from model import Cliente, DetalleProduccion, Empleado, Producto, Receta, SolicitudProduccion, Usuario, db
 
+from itsdangerous import URLSafeSerializer
+from flask import current_app
+
+
 solicitud_bp = Blueprint("solicitud", __name__, url_prefix="/solicitud")
+
+def get_serializer():
+    return URLSafeSerializer(current_app.config["SECRET_KEY"])
 
 
 @solicitud_bp.route("/", endpoint="index")
@@ -89,7 +96,8 @@ def crear_solicitud():
             db.session.add(primer_detalle)
             db.session.commit()
 
-            return redirect(url_for("solicitud.detalles_solicitud", id=nueva_solicitud.id_solicitud, creado=1))
+            
+            return redirect(url_for("solicitud.detalles_solicitud", token=get_serializer().dumps(nueva_solicitud.id_solicitud), creado=1))
         except ValueError as exc:
             db.session.rollback()
             flash(str(exc), "danger")
@@ -110,8 +118,14 @@ def crear_solicitud():
     )
 
 
-@solicitud_bp.route("/<int:id>/detalles", methods=["GET", "POST"], endpoint="detalles_solicitud")
-def detalles_solicitud(id: int):
+@solicitud_bp.route("/<token>/detalles", methods=["GET", "POST"], endpoint="detalles_solicitud")
+def detalles_solicitud(token):
+    
+    try:
+        id = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("solicitud.index"))
+    
     solicitud = SolicitudProduccion.query.get_or_404(id)
     productos_disponibles = (
         Producto.query
@@ -172,8 +186,14 @@ def detalles_solicitud(id: int):
     )
 
 
-@solicitud_bp.route("/<int:id>/finalizar", methods=["POST"], endpoint="finalizar_solicitud")
-def finalizar_solicitud(id: int):
+@solicitud_bp.route("/<token>/finalizar", methods=["POST"], endpoint="finalizar_solicitud")
+def finalizar_solicitud(token):
+    
+    try:
+        id = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("solicitud.index"))
+    
     solicitud = SolicitudProduccion.query.get_or_404(id)
 
     try:

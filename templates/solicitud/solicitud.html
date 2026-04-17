@@ -94,7 +94,7 @@
 						{{ badge_estado_solicitud(sol.estado) }}
 					</td>
 					<td class="px-6 py-4 text-center">
-						<a href="{{ url_for('solicitud.detalles_solicitud', id=sol.id_solicitud) }}" class="text-blue-600 hover:underline">Ver Detalles</a>
+						<a href="{{ url_for('solicitud.detalles_solicitud', token=serializer.dumps(sol.id_solicitud)) }}" class="text-blue-600 hover:underline">Ver Detalles</a>
 					</td>
 				</tr>
 			{% else %}

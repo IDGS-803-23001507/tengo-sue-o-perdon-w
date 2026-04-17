@@ -57,13 +57,10 @@ def tiendaCliente():
 
 @ventasBp.route("/ventas", methods=["GET"])
 def ventas():
-    # 1. Obtener la fecha del filtro o la de hoy
     fecha_filtro = request.args.get('fecha') or request.args.get('creado_en')
     if not fecha_filtro:
         fecha_filtro = datetime.now().strftime('%Y-%m-%d')
 
-    # 2. CONSULTA CORREGIDA: Filtramos estrictamente por estado 'Pagado'
-    # Usamos LOWER para evitar problemas si en la DB dice 'PAGADO' o 'pagado'
     query = text("""
         SELECT * FROM ventas 
         WHERE DATE(creado_en) = :f 
@@ -94,7 +91,7 @@ def ventas():
 @ventasBp.route("/fisica", methods=["GET", "POST"])
 def venta_fisica():
     form = VentaForm()
-    # Query base: para productos de tipo stock o sin variantes
+    
     query_productos = text("""
         SELECT p.*,
         CASE
@@ -121,9 +118,7 @@ def venta_fisica():
     """)
     productos_raw = db.session.execute(query_productos).fetchall()
 
-    # Mapa: id_producto -> lista de insumos para tooltip en el POS
     insumos_por_producto = {}
-    # Mapa: id_producto -> lista de variantes {id, nombre, precio_extra}
     variantes_por_producto = {}
 
     from model import Receta, MateriaPrima, VarianteReceta
@@ -133,10 +128,10 @@ def venta_fisica():
         .join(MateriaPrima, Receta.id_materia == MateriaPrima.id_materia)
         .all()
     )
-    # Mapa: id_variante -> lista de (stock_actual, cantidad_necesaria)
+    
     stock_por_variante: dict[int, list[tuple]] = {}
     stock_receta_base: dict[int, list[tuple]] = {}
-    # Mapa: id_producto -> nombre del tamaño de la receta base (ej. "Mediano")
+    
     nombre_base_producto: dict[int, str] = {}
     
     for receta in recetas_activas:
@@ -154,7 +149,6 @@ def venta_fisica():
                 stock_receta_base.setdefault(receta.id_producto, []).append(
                     (float(mp.stock_actual or 0), float(receta.cantidad))
                 )
-                # Si el insumo tiene tamaño definido, usarlo como nombre de la variante base
                 if mp.tamanio and receta.id_producto not in nombre_base_producto:
                     nombre_base_producto[receta.id_producto] = mp.tamanio
 
@@ -163,7 +157,7 @@ def venta_fisica():
     ).all()
     for v in variantes:
         insumos_variante = stock_por_variante.get(v.id_variante, [])
-        # Una variante está disponible si TODOS sus insumos tienen stock suficiente
+       
         variante_ok = all(stock >= cantidad for stock, cantidad in insumos_variante) if insumos_variante else True
         variantes_por_producto.setdefault(v.id_producto, []).append({
             "id": v.id_variante,
@@ -174,8 +168,7 @@ def venta_fisica():
         
     for id_producto, insumos_base in stock_receta_base.items():
         if id_producto in variantes_por_producto:
-            # El producto tiene variantes extra. Agregar la receta base como opción
-            # El nombre será el tamaño del insumo (ej. "Mediano") o "Regular" si no hay tamaño
+    
             base_ok = all(stock >= cant for stock, cant in insumos_base) if insumos_base else True
             nombre_base = nombre_base_producto.get(id_producto, "Regular")
             variantes_por_producto[id_producto].insert(0, {
@@ -185,17 +178,15 @@ def venta_fisica():
                 "disponible": base_ok,
             })
 
-    # Sobreescribir disponible_stock para productos con variantes usando lógica Python pura
     productos_con_disponibilidad = []
     for prod in productos_raw:
         prod_dict = dict(prod._mapping)
         variantes_prod = variantes_por_producto.get(prod_dict["id_producto"], [])
         if variantes_prod:
-            # Disponible si al menos UNA variante tiene insumos
+            
             prod_dict["disponible_stock"] = 1 if any(v["disponible"] for v in variantes_prod) else 0
         productos_con_disponibilidad.append(prod_dict)
 
-    # Convertir a objetos con acceso por atributo
     from types import SimpleNamespace
     productos = [SimpleNamespace(**d) for d in productos_con_disponibilidad]
     
@@ -207,7 +198,6 @@ def venta_fisica():
             if prod:
                 carrito = session.get("carrito", [])
                 
-                # Determinamos la variante si la hay
 
                 id_variante = request.form.get("variante_id", type=int)  # None si no hay variantes
                 nombre_variante = request.form.get("variante_nombre", "").strip()
@@ -262,7 +252,6 @@ def venta_fisica():
                     if row:
                         id_venta_actual = row[0]
                         
-                    # Extraemos el costo vivo del producto para desplazar el 35% del Store Procedure
                     prod = Producto.query.get(item["id_producto"])
                     if prod:
                         costo_total_carrito += float(prod.costo_unitario()) * int(item["cantidad"])
@@ -279,7 +268,10 @@ def venta_fisica():
                 session.pop("carrito", None) 
                 session.modified = True 
                 
-                return redirect(url_for("ventas.pagar_venta_gestion", idVenta=id_venta_actual))
+                return redirect(url_for("ventas.pagar_venta_gestion", token=get_serializer().dumps({
+                "idVenta": id_venta_actual
+                    })
+                                        ))
                 
             except Exception as e:
                 db.session.rollback()
@@ -346,7 +338,6 @@ def venta_online():
         
     form = VentaForm()
     
-    # Consulta de productos con validación de stock en tiempo real
     query_productos = text("""
         SELECT p.*,
         CASE
@@ -479,7 +470,6 @@ def venta_online():
             flash(f"¡{nombre} añadido!", "success")
             return redirect(url_for("ventas.venta_online"))
         
-        # --- FINALIZAR PEDIDO (VALIDACIÓN Y REGISTRO PREVIO) ---
         if "terminar" in request.form:
             
             usuario = Usuario.query.get(session.get("usuarioId"))
@@ -505,7 +495,7 @@ def venta_online():
                 hora_pedido = datetime.strptime(hora_recogida_raw, '%Y-%m-%dT%H:%M')
                 ahora = datetime.now()
 
-                # Validaciones de horario de Urban Coffee
+
                 if hora_pedido.date() != ahora.date():
                     flash("Los pedidos online son solo para hoy.", "danger")
                     return redirect(url_for("ventas.venta_online"))
@@ -602,8 +592,7 @@ def venta_online():
             
             u_id = session.get("usuarioId")
             c_id = session.get("clienteId")
-
-            # --- PROCESO DE INSERCIÓN "PENDIENTE DE PAGO" ---
+            
             id_venta_tracker = 0 
             id_pedido_editando = session.get("editando_pedido_id")
 
@@ -616,8 +605,7 @@ def venta_online():
                     id_venta_tracker = res_venta[0]
 
             try:
-                # Se llama al Procedure para validar insumos y crear registro
-                # NOTA: La venta se crea pero con metodo_pago = NULL (No contable aún)
+        
                 costo_total_carrito = 0.0
 
                 for item in carrito:
@@ -636,12 +624,10 @@ def venta_online():
                     if result:
                         id_venta_tracker = result[0]
                         
-                    # Extraemos el costo computado real
                     prod = Producto.query.get(item["id_producto"])
                     if prod:
                         costo_total_carrito += float(prod.costo_unitario()) * int(item["cantidad"])
                         
-                # Sobreescribimos el 35% por default de MySQL
                 if id_venta_tracker > 0:
                     venta = Venta.query.get(id_venta_tracker)
                     if venta:
@@ -658,7 +644,6 @@ def venta_online():
 
             except exc.InternalError as e:
                 db.session.rollback()
-                # Si el trigger o procedure de SQL lanza error por falta de materia prima
                 error_msg = str(e.orig).split("'")[1] if "'" in str(e.orig) else "Sin stock suficiente."
                 flash(f"Aviso: {error_msg}", "warning")
             except Exception as e:
@@ -667,7 +652,6 @@ def venta_online():
             
             return redirect(url_for("ventas.venta_online"))
 
-    # Construir variantes_por_producto para el template online
     from model import VarianteReceta as VR
     variantes_por_producto_online = {}
     for v in VR.query.filter_by(estado=True).order_by(VR.id_variante.asc()).all():
@@ -686,11 +670,9 @@ def venta_online():
 
 @ventasBp.route("/reporte", methods=["GET"])
 def generar_reporte():
-    # Obtenemos la fecha del filtro o la de hoy por defecto
+    
     fecha_filtro = request.args.get('fecha') or datetime.now().strftime('%Y-%m-%d')
 
-    # MODIFICACIÓN: Filtramos estrictamente por v.estado = 'Pagado'
-    # Esto excluye pedidos pendientes, cancelados o carritos abandonados.
     query = text("""
         SELECT v.id_venta, v.creado_en, v.metodo_pago, v.total, v.id_usuario, v.estado
         FROM ventas v
@@ -702,12 +684,12 @@ def generar_reporte():
 
     si = StringIO()
     cw = csv.writer(si)
-    # Encabezados del CSV
+
     cw.writerow(['Folio', 'Fecha/Hora', 'Metodo Pago', 'Estado', 'Total', 'Atendio'])
     
     total_acumulado = 0
     for v in ventas:
-        # Escribimos cada fila de venta pagada
+
         cw.writerow([
             f"UC-{v.id_venta}", 
             v.creado_en, 
@@ -718,24 +700,33 @@ def generar_reporte():
         ])
         total_acumulado += v.total
     
-    # Fila de total al final del reporte
+    
     cw.writerow([])
     cw.writerow(['', '', '', 'TOTAL DEL DIA:', total_acumulado])
 
-    # Generamos la respuesta para descargar el archivo
     output = make_response(si.getvalue())
     output.headers["Content-Disposition"] = f"attachment; filename=Reporte_Ventas_{fecha_filtro}.csv"
     output.headers["Content-type"] = "text/csv"
     
     return output
 
-@ventasBp.route("/<int:idVenta>/pagar", methods=["GET", "POST"])
-def pagar_venta_gestion(idVenta): 
+@ventasBp.route("/<token>/pagar", methods=["GET", "POST"])
+def pagar_venta_gestion(token):
+     
     form = PagoForm()
+    
+    try:
+        data = get_serializer().loads(token)
+        if isinstance(data, int):
+            idVenta = data
+        else:
+            idVenta = data.get("idVenta")
+
+    except Exception:
+        return redirect(url_for("ventas.venta_fisica"))
     
     if request.method == "POST":
         metodo = request.form.get("metodo_pago")
-        # Aseguramos que si el campo está vacío, sea "0"
         monto_recibido = request.form.get("pago_recibido", 0)
         cambio = request.form.get("cambio_calculado", 0)
         tarjeta = request.form.get("num_tarjeta", "")[-4:]
@@ -744,24 +735,42 @@ def pagar_venta_gestion(idVenta):
             db.session.execute(text("CALL pagar_venta(:id, :met)"), {"id": idVenta, "met": metodo})
             db.session.commit()
             
-            # IMPORTANTE: Enviamos los valores tal cual al ticket
-            return redirect(url_for("ventas.ticket", 
-                                    idVenta=idVenta, 
-                                    pago=monto_recibido, 
-                                    cambio=cambio, 
-                                    term=tarjeta))
+            return redirect(url_for("ventas.ticket",
+                                token=get_serializer().dumps({
+                                    "idVenta": idVenta,
+                                    "pago": monto_recibido,
+                                    "cambio": cambio,
+                                    "terminacion": tarjeta
+                                })
+                            ))
+        
         except Exception as e:
             db.session.rollback()
-            return f"Error: {e}" # Para debug breve
+            return f"Error: {e}" 
 
     result = db.session.execute(text("SELECT total FROM ventas WHERE id_venta = :id"), {"id": idVenta}).fetchone()
     return render_template("ventas/pagar.html", form=form, idVenta=idVenta, total=result[0])
-@ventasBp.route("/ticket/<int:idVenta>", methods=["GET", "POST"], endpoint="ticket")
-def ticket(idVenta):
-    # Usamos type=float para que Flask convierta la URL directamente
-    pago = request.args.get('pago', default=0.0, type=float)
-    cambio = request.args.get('cambio', default=0.0, type=float)
-    terminacion = request.args.get('term', "")
+
+@ventasBp.route("/ticket/<token>", methods=["GET", "POST"], endpoint="ticket")
+def ticket(token):
+    
+    try:
+        data = get_serializer().loads(token)
+    except Exception:
+        return redirect(url_for("ventas.venta_fisica"))
+    
+    print(type(data), data)
+
+    if isinstance(data, int):
+        idVenta = data
+        pago = 0.0
+        cambio = 0.0
+        terminacion = ""
+    else:
+        idVenta = data.get("idVenta")
+        pago = float(data.get("pago", 0.0))
+        cambio = float(data.get("cambio", 0.0))
+        terminacion = data.get("terminacion", "")
 
     query = text("""
         SELECT 

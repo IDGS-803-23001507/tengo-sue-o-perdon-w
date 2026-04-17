@@ -113,11 +113,9 @@
                 </div>
             </div>
 
-            <!-- Carrito -->
             <div class="lg:col-span-1">
                 <div class="bg-white rounded-xl border border-gray-100 shadow-md p-6 sticky top-6">
 
-                    <!-- Header carrito -->
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-base font-semibold text-gray-800">
                             Carrito
@@ -231,7 +229,6 @@
 </div>
 {% endif %}
 
-<!-- ===== MODAL VARIANTES ===== -->
 <div id="modalVariante" class="fixed inset-0 z-[200] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm">
         <div class="px-6 pt-6 pb-2">
@@ -270,7 +267,7 @@ function abrirModalVariante(idProducto, nombre, precioBase, variantes) {
     variantes.forEach(v => {
         const precioFinal = precioBase + (v.precio_extra || 0);
         const precioStr = precioFinal.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
-        const disponible = v.disponible !== false;  // true por default
+        const disponible = v.disponible !== false;  
 
         const btn = document.createElement('button');
         btn.type = 'button';

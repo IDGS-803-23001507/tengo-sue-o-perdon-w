@@ -116,7 +116,7 @@
                         {{ badge_estado_booleano(receta.estado, 'Activa', 'Inactiva') }}
                     </td>
                     <td class="px-6 py-4 text-center">
-                        <a href="{{ url_for('recetas.nueva', producto=receta.id_producto) }}" class="text-green-600 hover:underline text-sm font-bold">+ Agregar variante</a>
+                        <a href="{{ url_for('recetas.nueva', data=receta.token_nueva_variante) }}" class="text-green-600 hover:underline text-sm font-bold">+ Agregar variante</a>
                     </td>
                 </tr>
             {% else %}

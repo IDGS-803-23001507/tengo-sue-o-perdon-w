@@ -19,7 +19,7 @@
                 </h3>
             </div>
 
-            <form method="POST" action="{{ url_for('ventas.pagar_venta_gestion', idVenta=idVenta) }}">
+            <form method="POST" action="{{ url_for('ventas.pagar_venta_gestion', token=serializer.dumps(idVenta)) }}">
                 {{ form.hidden_tag() }}
                 
                 <input type="hidden" name="pago_recibido" id="pago_recibido_hidden" value="0">
@@ -92,7 +92,7 @@
 </section>
 
 <script>
-// 1. Definimos todas las constantes correctamente
+
 const inputEfectivo = document.getElementById('efectivoRecibido');
 const montoTotal = parseFloat("{{ total }}") || 0;
 const displayCambio = document.getElementById('montoCambio'); // Faltaba esta
@@ -103,14 +103,12 @@ const cHidden = document.getElementById('cambio_calculado_hidden');
 
 inputEfectivo.addEventListener('input', () => {
     const recibido = parseFloat(inputEfectivo.value) || 0;
-    
-    // Debug en consola para que revises (Presiona F12 en el navegador)
+
     console.log("Recibido:", recibido, "Total:", montoTotal);
 
     if (recibido >= montoTotal && montoTotal > 0) {
         const cambio = recibido - montoTotal;
         
-        // Actualizamos los valores que se enviarán a Python
         if(pHidden) pHidden.value = recibido.toFixed(2);
         if(cHidden) cHidden.value = cambio.toFixed(2);
         
