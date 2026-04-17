@@ -186,7 +186,7 @@ def producto_venta():
         ORDER BY p.nombre ASC
     """)
 
-    productos = db.session.execute(
+    productos_raw = db.session.execute(
         query_productos,
         {
             'busqueda': busqueda,
@@ -194,6 +194,46 @@ def producto_venta():
             'categoria': categoria,
         },
     ).fetchall()
+    
+    from model import Receta, MateriaPrima, VarianteReceta
+    recetas_activas = (
+        Receta.query
+        .filter_by(estado=True)
+        .join(MateriaPrima, Receta.id_materia == MateriaPrima.id_materia)
+        .all()
+    )
+    stock_por_variante = {}
+    stock_receta_base = {}
+    for receta in recetas_activas:
+        mp = receta.materiaPrima
+        if mp:
+            if receta.id_variante is not None:
+                stock_por_variante.setdefault(receta.id_variante, []).append((float(mp.stock_actual or 0), float(receta.cantidad)))
+            else:
+                stock_receta_base.setdefault(receta.id_producto, []).append((float(mp.stock_actual or 0), float(receta.cantidad)))
+
+    variantes_por_producto_online = {}
+    variantes = VarianteReceta.query.filter_by(estado=True).all()
+    for v in variantes:
+        insumos_variante = stock_por_variante.get(v.id_variante, [])
+        variante_ok = all(s >= c for s, c in insumos_variante) if insumos_variante else True
+        variantes_por_producto_online.setdefault(v.id_producto, []).append({"disponible": variante_ok})
+        
+    for id_producto, insumos_base in stock_receta_base.items():
+        if id_producto in variantes_por_producto_online:
+            base_ok = all(s >= c for s, c in insumos_base) if insumos_base else True
+            variantes_por_producto_online[id_producto].append({"disponible": base_ok})
+
+    productos_con_disponibilidad = []
+    for prod in productos_raw:
+        prod_dict = dict(prod._mapping)
+        variantes_prod = variantes_por_producto_online.get(prod_dict["id_producto"], [])
+        if variantes_prod:
+            prod_dict["disponible_stock"] = 1 if any(v["disponible"] for v in variantes_prod) else 0
+        productos_con_disponibilidad.append(prod_dict)
+
+    from types import SimpleNamespace
+    productos = [SimpleNamespace(**d) for d in productos_con_disponibilidad]
 
     return render_template('venta_linea/catalogo_productos.html', productos=productos, busqueda=busqueda, categoria_actual=categoria)
 

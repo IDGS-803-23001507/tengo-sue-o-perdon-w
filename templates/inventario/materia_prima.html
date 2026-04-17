@@ -53,7 +53,12 @@
                 {% set status_critico = insumo.stock_actual <= insumo.stock_minimo %}
                 
                 <tr class="{% if status_critico %}bg-red-50 hover:bg-red-100{% else %}bg-white hover:bg-gray-50{% endif %} border-b transition">
-                    <td class="px-6 py-4 font-medium text-gray-900">{{ insumo.nombre }}</td>
+                    <td class="px-6 py-4 font-medium text-gray-900">
+                        {{ insumo.nombre }}
+                        {% if insumo.tamanio %}
+                            <span class="ml-1.5 bg-blue-50 text-blue-600 text-xs font-medium px-2 py-0.5 rounded border border-blue-200">{{ insumo.tamanio }}</span>
+                        {% endif %}
+                    </td>
                     
                     <td class="px-6 py-4">{{ insumo.unidad.nombre }} ({{ insumo.unidad.abreviacion }})</td>
                     

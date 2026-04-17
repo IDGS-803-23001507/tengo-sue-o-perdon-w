@@ -204,6 +204,81 @@ def asegurar_esquema_proveedores() -> None:
     db.session.commit()
 
 
+def asegurar_esquema_materias() -> None:
+    inspector = inspect(db.engine)
+    tablas = set(inspector.get_table_names())
+
+    if "Materia_prima" not in tablas:
+        return
+
+    columnas = {columna["name"] for columna in inspector.get_columns("Materia_prima")}
+
+    if "tamanio" not in columnas:
+        db.session.execute(
+            text("ALTER TABLE `Materia_prima` ADD COLUMN `tamanio` VARCHAR(20) NULL AFTER `descripcion`")
+        )
+
+    db.session.commit()
+
+
+def asegurar_esquema_variantes() -> None:
+    """Crea la tabla variante_receta y añade id_variante a Recetas si no existen."""
+    inspector = inspect(db.engine)
+    tablas = set(inspector.get_table_names())
+
+    # Crear tabla variante_receta
+    if "variante_receta" not in tablas:
+        db.session.execute(
+            text("""
+                CREATE TABLE `variante_receta` (
+                    `id_variante`  INT          NOT NULL AUTO_INCREMENT,
+                    `id_producto`  INT          NOT NULL,
+                    `nombre`       VARCHAR(50)  NOT NULL,
+                    `precio_extra` DECIMAL(10,2) NULL DEFAULT NULL,
+                    `estado`       TINYINT(1)   NOT NULL DEFAULT 1,
+                    PRIMARY KEY (`id_variante`),
+                    KEY `ix_variante_producto` (`id_producto`),
+                    CONSTRAINT `fk_variante_producto`
+                        FOREIGN KEY (`id_producto`) REFERENCES `Producto`(`id_producto`)
+                        ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+        )
+
+    # Añadir columna id_variante a Recetas si no existe
+    if "Recetas" in tablas:
+        cols_recetas = {c["name"] for c in inspector.get_columns("Recetas")}
+        if "id_variante" not in cols_recetas:
+            db.session.execute(
+                text("ALTER TABLE `Recetas` ADD COLUMN `id_variante` INT NULL AFTER `id_producto`")
+            )
+            db.session.execute(
+                text("""
+                    ALTER TABLE `Recetas`
+                    ADD CONSTRAINT `fk_receta_variante`
+                        FOREIGN KEY (`id_variante`) REFERENCES `variante_receta`(`id_variante`)
+                        ON DELETE CASCADE
+                """)
+            )
+
+        # Eliminar constraint antiguo si existe y crear el nuevo con id_variante
+        constraints = {c["name"] for c in inspector.get_unique_constraints("Recetas")}
+        if "uq_receta_producto_materia" in constraints:
+            db.session.execute(
+                text("ALTER TABLE `Recetas` DROP INDEX `uq_receta_producto_materia`")
+            )
+        if "uq_receta_producto_variante_materia" not in constraints:
+            db.session.execute(
+                text("""
+                    ALTER TABLE `Recetas`
+                    ADD UNIQUE KEY `uq_receta_producto_variante_materia`
+                        (`id_producto`, `id_variante`, `id_materia`)
+                """)
+            )
+
+    db.session.commit()
+
+
 def asegurar_esquema_productos() -> None:
     inspector = inspect(db.engine)
     tablas = set(inspector.get_table_names())
@@ -334,7 +409,8 @@ def asegurar_procedimientos_almacenados() -> None:
                 IN p_tipo VARCHAR(20),
                 IN p_id_producto INT,
                 IN p_cantidad INT,
-                IN p_id_venta_existente INT
+                IN p_id_venta_existente INT,
+                IN p_id_variante INT
             )
             BEGIN
                 DECLARE v_id_venta INT;
@@ -455,6 +531,8 @@ def asegurar_procedimientos_almacenados() -> None:
                     JOIN Recetas r ON r.id_materia = mp.id_materia
                     WHERE r.id_producto = p_id_producto
                       AND r.estado = 1
+                      AND (p_id_variante IS NULL AND r.id_variante IS NULL
+                           OR r.id_variante = p_id_variante)
                       AND mp.stock_actual < (r.cantidad * p_cantidad);
 
                     IF v_faltantes > 0 THEN
@@ -466,6 +544,8 @@ def asegurar_procedimientos_almacenados() -> None:
                             JOIN Recetas r ON r.id_materia = mp.id_materia
                             WHERE r.id_producto = p_id_producto
                               AND r.estado = 1
+                              AND (p_id_variante IS NULL AND r.id_variante IS NULL
+                                   OR r.id_variante = p_id_variante)
                               AND mp.stock_actual < (r.cantidad * p_cantidad);
                             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
                         END;
@@ -475,7 +555,9 @@ def asegurar_procedimientos_almacenados() -> None:
                     JOIN Recetas r ON mp.id_materia = r.id_materia
                     SET mp.stock_actual = mp.stock_actual - (r.cantidad * p_cantidad)
                     WHERE r.id_producto = p_id_producto
-                      AND r.estado = 1;
+                      AND r.estado = 1
+                      AND (p_id_variante IS NULL AND r.id_variante IS NULL
+                           OR r.id_variante = p_id_variante);
                 END IF;
 
                 UPDATE ventas
@@ -509,7 +591,8 @@ def asegurar_procedimientos_almacenados() -> None:
                 IN p_notas VARCHAR(200),
                 IN p_id_producto INT,
                 IN p_cantidad INT,
-                IN p_id_venta_existente INT
+                IN p_id_venta_existente INT,
+                IN p_id_variante INT
             )
             BEGIN
                 DECLARE v_id_venta INT;
@@ -599,7 +682,10 @@ def asegurar_procedimientos_almacenados() -> None:
                     IF (
                         SELECT COUNT(*)
                         FROM Recetas
-                        WHERE id_producto = p_id_producto AND estado = 1
+                        WHERE id_producto = p_id_producto
+                          AND estado = 1
+                          AND (p_id_variante IS NULL AND id_variante IS NULL
+                               OR id_variante = p_id_variante)
                     ) = 0 THEN
                         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Producto sin receta activa';
                     END IF;
@@ -609,6 +695,8 @@ def asegurar_procedimientos_almacenados() -> None:
                     JOIN Recetas r ON r.id_materia = mp.id_materia
                     WHERE r.id_producto = p_id_producto
                       AND r.estado = 1
+                      AND (p_id_variante IS NULL AND r.id_variante IS NULL
+                           OR r.id_variante = p_id_variante)
                       AND mp.stock_actual < (r.cantidad * p_cantidad);
 
                     IF v_faltantes > 0 THEN
@@ -619,7 +707,9 @@ def asegurar_procedimientos_almacenados() -> None:
                     JOIN Recetas r ON mp.id_materia = r.id_materia
                     SET mp.stock_actual = mp.stock_actual - (r.cantidad * p_cantidad)
                     WHERE r.id_producto = p_id_producto
-                      AND r.estado = 1;
+                      AND r.estado = 1
+                      AND (p_id_variante IS NULL AND r.id_variante IS NULL
+                           OR r.id_variante = p_id_variante);
                 END IF;
 
                 UPDATE ventas
@@ -937,6 +1027,8 @@ def inicializar_db() -> None:
     asegurar_esquema_usuarios()
     asegurar_esquema_unidades()
     asegurar_esquema_proveedores()
+    asegurar_esquema_materias()
+    asegurar_esquema_variantes()
     asegurar_esquema_productos()
     asegurar_stock_reservado()
     asegurar_procedimientos_almacenados()

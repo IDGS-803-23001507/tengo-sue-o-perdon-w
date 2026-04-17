@@ -69,23 +69,46 @@
         </thead>
         <tbody>
             {% for receta in recetas %}
-                <tr class="bg-white hover:bg-gray-50 border-b transition">
-                    <td class="px-6 py-4 font-medium text-gray-900">{{ receta.producto_nombre }}</td>
+                <tr class="bg-white hover:bg-gray-50 border-b transition align-top">
+                    <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+                        {{ receta.producto_nombre }}
+                    </td>
                     <td class="px-6 py-4">
-                        <ul class="space-y-1">
-                            {% for insumo in receta.insumos %}
-                                <li>
+                        {% for grp in receta.variantes %}
+                        <div class="{% if not loop.first %}mt-4 pt-3 border-t border-gray-100{% endif %}">
+                            {# Badge de variante #}
+                            {% if grp.variante.id_variante is not none %}
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded border border-amber-200">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10M7 12h6"/></svg>
+                                    {{ grp.variante.nombre }}
+                                </span>
+                                {% if grp.variante.precio_extra %}
+                                <span class="text-xs text-gray-500">+${{ "%.2f"|format(grp.variante.precio_extra) }}</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            <ul class="space-y-1">
+                                {% for insumo in grp.insumos %}
+                                <li class="flex items-center gap-1.5">
                                     <span class="font-medium text-gray-800">{{ insumo.nombre_materia }}</span>
-                                    <span class="text-gray-500"> — {{ insumo.cantidad }} {{ insumo.unidad_materia }}</span>
+                                    {% if insumo.tamanio_materia %}
+                                        <span class="bg-blue-50 text-blue-600 text-[10px] font-semibold px-1.5 py-0.5 rounded border border-blue-200">{{ insumo.tamanio_materia }}</span>
+                                    {% endif %}
+                                    <span class="text-gray-500">&mdash; {{ insumo.cantidad }} {{ insumo.unidad_materia }}</span>
                                 </li>
-                            {% endfor %}
-                        </ul>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endfor %}
                     </td>
                     <td class="px-6 py-4 text-center">
                         {{ badge_estado_booleano(receta.estado, 'Activa', 'Inactiva') }}
                     </td>
                     <td class="px-6 py-4 text-center">
-                        <a href="{{ url_for('recetas.nueva', token=serializer.dumps(receta.id_producto), editar=1) }}" class="text-blue-600 hover:underline">Editar</a>
+                        <a href="{{ url_for('recetas.nueva', producto=receta.id_producto, editar=1) }}" class="text-blue-600 hover:underline text-sm">Editar</a>
+                        <span class="text-gray-300 mx-1">|</span>
+                        <a href="{{ url_for('recetas.nueva', producto=receta.id_producto) }}" class="text-green-600 hover:underline text-sm">+ Variante</a>
                     </td>
                 </tr>
             {% else %}

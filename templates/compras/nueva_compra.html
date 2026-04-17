@@ -61,7 +61,7 @@
                                 required>
                                 <option value="">Seleccione</option>
                                 {% for materia in materias_primas %}
-                                <option value="{{ materia.id_materia }}">{{ materia.nombre }}</option>
+                                <option value="{{ materia.id_materia }}">{{ materia.nombre }}{% if materia.tamanio %} — {{ materia.tamanio }}{% endif %}</option>
                                 {% endfor %}
                             </select>
                         </div>
