@@ -182,7 +182,10 @@ def venta_fisica():
                 error_str = str(e)
                 error_texto = error_str.lower()
 
-                if "stock insuficiente" in error_texto and "insumo" in error_texto:
+                if "faltan insumos:" in error_texto:
+                    error_msg = str(e.orig).split("'")[1] if hasattr(e, 'orig') and "'" in str(e.orig) else str(e)
+                    flash(error_msg, "danger")
+                elif "stock insuficiente" in error_texto and "insumo" in error_texto:
                     flash("No hay suficiente stock de insumos para completar la venta.", "danger")
                 elif "stock insuficiente" in error_texto:
                     flash("No hay suficiente stock del producto para completar la venta.", "danger")
