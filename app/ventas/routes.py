@@ -1,6 +1,6 @@
 from functools import wraps
 from forms import VentaForm, PagoForm
-from sqlalchemy import text, exc
+from sqlalchemy import text, exc, inspect
 from datetime import datetime, timedelta
 from decimal import Decimal
 import csv
@@ -16,6 +16,12 @@ from flask import current_app
 
 ventasBp = Blueprint("ventas", __name__)
 
+
+def _stock_reservado_expr() -> str:
+    """Devuelve una expresion SQL segura para stock reservado segun el esquema actual."""
+    columnas = {c["name"] for c in inspect(db.engine).get_columns("Producto")}
+    return "COALESCE(p.stock_reservado, 0)" if "stock_reservado" in columnas else "0"
+
 def get_serializer():
     return URLSafeSerializer(current_app.config["SECRET_KEY"])
 
@@ -27,12 +33,13 @@ def tiendaCliente():
     if session.get("usuarioRol") != "Cliente":
         return redirect(url_for("index"))
 
-    query_productos = text("""
+    stock_reservado_expr = _stock_reservado_expr()
+    query_productos = text(f"""
         SELECT p.*, 
         CASE 
             WHEN COALESCE(p.tipo_preparacion, 'materia_prima') = 'stock' THEN
                 CASE 
-                    WHEN (COALESCE(p.stock, 0) - COALESCE(p.stock_reservado, 0)) > 0 THEN 1 
+                    WHEN (COALESCE(p.stock, 0) - {stock_reservado_expr}) > 0 THEN 1 
                     WHEN EXISTS (SELECT 1 FROM Recetas r WHERE r.id_producto = p.id_producto AND r.estado = 1) 
                          AND NOT EXISTS (
                              SELECT 1 FROM Recetas r
@@ -94,13 +101,14 @@ def ventas():
 @ventasBp.route("/fisica", methods=["GET", "POST"])
 def venta_fisica():
     form = VentaForm()
+    stock_reservado_expr = _stock_reservado_expr()
     # Query base: para productos de tipo stock o sin variantes
-    query_productos = text("""
+    query_productos = text(f"""
         SELECT p.*,
         CASE
             WHEN COALESCE(p.tipo_preparacion, 'materia_prima') = 'stock' THEN
                 CASE 
-                    WHEN (COALESCE(p.stock, 0) - COALESCE(p.stock_reservado, 0)) > 0 THEN 1 
+                    WHEN (COALESCE(p.stock, 0) - {stock_reservado_expr}) > 0 THEN 1 
                     WHEN EXISTS (SELECT 1 FROM Recetas r WHERE r.id_producto = p.id_producto AND r.estado = 1) 
                          AND NOT EXISTS (
                              SELECT 1 FROM Recetas r
@@ -345,14 +353,15 @@ def venta_online():
         return redirect(url_for("auth.iniciarSesion"))
         
     form = VentaForm()
+    stock_reservado_expr = _stock_reservado_expr()
     
     # Consulta de productos con validación de stock en tiempo real
-    query_productos = text("""
+    query_productos = text(f"""
         SELECT p.*,
         CASE
             WHEN COALESCE(p.tipo_preparacion, 'materia_prima') = 'stock' THEN
                 CASE 
-                    WHEN (COALESCE(p.stock, 0) - COALESCE(p.stock_reservado, 0)) > 0 THEN 1 
+                    WHEN (COALESCE(p.stock, 0) - {stock_reservado_expr}) > 0 THEN 1 
                     WHEN EXISTS (SELECT 1 FROM Recetas r WHERE r.id_producto = p.id_producto AND r.estado = 1) 
                          AND NOT EXISTS (
                              SELECT 1 FROM Recetas r

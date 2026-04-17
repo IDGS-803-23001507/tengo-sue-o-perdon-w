@@ -324,13 +324,13 @@ def asegurar_stock_reservado() -> None:
         return
     columnas = {c["name"] for c in inspector.get_columns("Producto")}
     if "stock_reservado" not in columnas:
-        db.session.execute(
-            text(
-                "ALTER TABLE `Producto` "
-                "ADD COLUMN `stock_reservado` INT NOT NULL DEFAULT 0"
+        with db.engine.begin() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE `Producto` "
+                    "ADD COLUMN `stock_reservado` INT NOT NULL DEFAULT 0"
+                )
             )
-        )
-        db.session.commit()
 
 
 def asegurar_procedimientos_almacenados() -> None:
@@ -1035,46 +1035,45 @@ def asegurar_estado_producto() -> None:
 
     columnas = {c["name"] for c in inspector.get_columns("Producto")}
 
-    if "estado_producto" not in columnas:
-        db.session.execute(
-            text(
-                """
-                ALTER TABLE `Producto`
-                ADD COLUMN `estado_producto` ENUM('borrador','activo')
-                NOT NULL DEFAULT 'borrador'
-                """
+    with db.engine.begin() as conn:
+        if "estado_producto" not in columnas:
+            conn.execute(
+                text(
+                    """
+                    ALTER TABLE `Producto`
+                    ADD COLUMN `estado_producto` ENUM('borrador','activo')
+                    NOT NULL DEFAULT 'borrador'
+                    """
+                )
             )
-        )
 
-        # Migrar datos existentes: productos con receta activa → activo
-        db.session.execute(
-            text(
-                """
-                UPDATE `Producto` p
-                SET p.estado_producto = 'activo'
-                WHERE p.precio_venta IS NOT NULL
-                  AND p.precio_venta > 0
-                  AND EXISTS (
-                      SELECT 1 FROM `Recetas` r
-                      WHERE r.id_producto = p.id_producto
-                        AND r.estado = 1
-                  )
-                """
+            # Migrar datos existentes: productos con receta activa -> activo
+            conn.execute(
+                text(
+                    """
+                    UPDATE `Producto` p
+                    SET p.estado_producto = 'activo'
+                    WHERE p.precio_venta IS NOT NULL
+                      AND p.precio_venta > 0
+                      AND EXISTS (
+                          SELECT 1 FROM `Recetas` r
+                          WHERE r.id_producto = p.id_producto
+                            AND r.estado = 1
+                      )
+                    """
+                )
             )
-        )
 
-    if "target_food_cost" not in columnas:
-        db.session.execute(
-            text(
-                """
-                ALTER TABLE `Producto`
-                ADD COLUMN `target_food_cost` DECIMAL(4,2)
-                NOT NULL DEFAULT 0.30
-                """
+        if "target_food_cost" not in columnas:
+            conn.execute(
+                text(
+                    """
+                    ALTER TABLE `Producto`
+                    ADD COLUMN `target_food_cost` DECIMAL(4,2)
+                    NOT NULL DEFAULT 0.30
+                    """
+                )
             )
-        )
-
-    db.session.commit()
 
 
 def inicializar_db() -> None:
