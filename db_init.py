@@ -458,7 +458,17 @@ def asegurar_procedimientos_almacenados() -> None:
                       AND mp.stock_actual < (r.cantidad * p_cantidad);
 
                     IF v_faltantes > 0 THEN
-                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock insuficiente de insumos para este producto';
+                        BEGIN
+                            DECLARE v_msg TEXT;
+                            SELECT CONCAT('Faltan insumos: ', GROUP_CONCAT(CONCAT(mp.nombre, ' (falta ', ROUND((r.cantidad * p_cantidad) - mp.stock_actual, 2), ')') SEPARATOR ', '))
+                            INTO v_msg
+                            FROM Materia_prima mp
+                            JOIN Recetas r ON r.id_materia = mp.id_materia
+                            WHERE r.id_producto = p_id_producto
+                              AND r.estado = 1
+                              AND mp.stock_actual < (r.cantidad * p_cantidad);
+                            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
+                        END;
                     END IF;
 
                     UPDATE Materia_prima mp
@@ -761,7 +771,15 @@ def asegurar_procedimientos_almacenados() -> None:
                 WHERE m.stock_actual < t.cantidad_requerida;
 
                 IF v_faltantes > 0 THEN
-                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock insuficiente de materias primas';
+                    BEGIN
+                        DECLARE v_msg TEXT;
+                        SELECT CONCAT('Faltan insumos: ', GROUP_CONCAT(CONCAT(m.nombre, ' (falta ', ROUND(t.cantidad_requerida - m.stock_actual, 2), ')') SEPARATOR ', '))
+                        INTO v_msg
+                        FROM Materia_prima m
+                        JOIN tmp_consumo_materia t ON t.id_materia = m.id_materia
+                        WHERE m.stock_actual < t.cantidad_requerida;
+                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
+                    END;
                 END IF;
 
                 UPDATE Materia_prima m

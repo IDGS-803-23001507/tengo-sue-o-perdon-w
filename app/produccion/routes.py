@@ -115,6 +115,8 @@ def finalizar_produccion(id_solicitud: int):
     except SQLAlchemyError as exc:
         db.session.rollback()
         mensaje = str(getattr(exc, "orig", exc))
+        if hasattr(exc, "orig") and "'" in mensaje:
+            mensaje = mensaje.split("'")[1]
         flash(f"No se pudo finalizar la producción: {mensaje}", "danger")
 
     return redirect(url_for("produccion.index"))
