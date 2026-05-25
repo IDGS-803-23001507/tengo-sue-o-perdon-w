@@ -45,6 +45,7 @@ def editar_cliente():
     form = ClientePerfilForm(obj=cliente)
 
     if form.validate_on_submit():
+        print("ENTRÓ AL UPDATE")
         cliente.nombre = form.nombre.data.strip()
         cliente.apellidoPaterno = form.apellidoPaterno.data.strip()
         cliente.apellidoMaterno = (form.apellidoMaterno.data or "").strip() or None

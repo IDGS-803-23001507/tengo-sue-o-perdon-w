@@ -4,7 +4,6 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from sqlalchemy import or_
 
 from forms import  CrearEmpleadoForm, EmpleadoActualizarForm, DesactivarForm
-from app.auditoria import registrar_auditoria
 from model import Rol, Usuario, Empleado, db
 
 from itsdangerous import URLSafeSerializer
@@ -104,40 +103,65 @@ def nuevo():
 @usuariosBp.route("/crear", methods=["GET", "POST"], endpoint="crear")
 @requiereRol("Gerente")
 def crear():
+
     form = CrearEmpleadoForm()
 
     if form.validate_on_submit():
+
         try:
+
             correo = form.correo.data.strip().lower()
             username = form.username.data.strip().lower()
             nombre = form.nombre.data.strip()
-            rol = form.rol.data.strip()
             contrasena = form.contrasenaTemporal.data
 
-            rolRegistro = Rol.query.filter_by(nombre=rol).first()
+            rolRegistro = Rol.query.filter_by(
+                nombre="Gerente"
+            ).first()
+
             if not rolRegistro:
-                flash("El rol seleccionado no existe.", "danger")
-                return render_template("usuarios/nuevo_usuario.html", form=form)
+                flash("El rol configurado no existe.", "danger")
+                return render_template(
+                    "usuarios/nuevo_usuario.html",
+                    form=form
+                )
 
             if Usuario.query.filter_by(correo=correo).first():
-                flash("El correo ya está registrado.", "danger")
-                return render_template("usuarios/nuevo_usuario.html", form=form)
-            
+
+                flash(
+                    "El correo ya está registrado.",
+                    "danger"
+                )
+
+                return render_template(
+                    "usuarios/nuevo_usuario.html",
+                    form=form
+                )
+
             if Empleado.query.filter_by(username=username).first():
-                flash("El usuario ya está registrado.", "danger")
-                return render_template("usuarios/nuevo_usuario.html", form=form)
+
+                flash(
+                    "El usuario ya está registrado.",
+                    "danger"
+                )
+
+                return render_template(
+                    "usuarios/nuevo_usuario.html",
+                    form=form
+                )
 
             usuario = Usuario(
                 correo=correo,
                 rolId=rolRegistro.id,
                 estado="Activo"
             )
+            usuario.establecerContrasena(
+                contrasena
+            )
 
-            usuario.establecerContrasena(contrasena)
             usuario.resetearSeguridad()
-
             db.session.add(usuario)
-            db.session.flush() 
+            db.session.flush()
 
             empleado = Empleado(
                 usuarioId=usuario.id,
@@ -148,22 +172,43 @@ def crear():
             db.session.add(empleado)
             db.session.commit()
 
-            flash("Empleado creado correctamente.", "success")
-            return redirect(url_for("usuarios.index"))
+            flash(
+                "Empleado creado correctamente.",
+                "success"
+            )
+
+            return redirect(
+                url_for("usuarios.index")
+            )
 
         except Exception as e:
+
             db.session.rollback()
-            flash("Error al crear el empleado.", "danger")
+
             print(e)
+
+            flash(
+                "Error al crear el empleado.",
+                "danger"
+            )
 
     if request.method == "POST":
         for erroresCampo in form.errors.values():
             if erroresCampo:
-                flash(erroresCampo[0], "danger")
+
+                flash(
+                    erroresCampo[0],
+                    "danger"
+                )
+
                 break
 
-    return render_template("usuarios/nuevo_usuario.html", active_page='usuarios', form=form)
-
+    return render_template(
+        "usuarios/nuevo_usuario.html",
+        active_page='usuarios',
+        form=form
+    )
+    
 @usuariosBp.route("/<token>/editar", methods=["GET"], endpoint="editar")
 @requiereRol("Gerente")
 def editar(token):
@@ -201,10 +246,11 @@ def actualizar(token):
     correo = form.correo.data.strip().lower()
     username = form.username.data.strip().lower()
     nombre = form.nombre.data.strip()
-    rol = form.rol.data.strip()
+    rolRegistro = Rol.query.filter_by(
+                nombre="Gerente"
+            ).first()    
     contrasenaTemporal = (form.contrasenaTemporal.data or "")
 
-    rolRegistro = Rol.query.filter_by(nombre=rol).first()
     if not rolRegistro:
         flash("El rol seleccionado no existe.", "danger")
         return render_template("usuarios/editar_usuario.html", usuario=usuario, form=form)
@@ -268,12 +314,6 @@ def desactivar(token):
     if form.validate_on_submit():
         usuario.estado = "Inactivo"
         usuario.resetearSeguridad()
-        registrar_auditoria(
-            accion="Cambio de Estado de Usuario",
-            modulo="Usuarios",
-            detalles={"accion": "desactivar", "usuario_objetivo_id": usuario.id, "estado_nuevo": "Inactivo"},
-            commit=False,
-        )
         db.session.commit()
         flash("Usuario desactivado correctamente.", "success")
     
@@ -293,12 +333,6 @@ def reactivar(token):
 
     if form.validate_on_submit():
         usuario.estado = "Activo"
-        registrar_auditoria(
-            accion="Cambio de Estado de Usuario",
-            modulo="Usuarios",
-            detalles={"accion": "reactivar", "usuario_objetivo_id": usuario.id, "estado_nuevo": "Activo"},
-            commit=False,
-        )
         db.session.commit()
         flash("Usuario reactivado correctamente.", "success")
         

@@ -8,61 +8,99 @@ import enum
 
 db = SQLAlchemy()
 
+class TipoProducto(enum.Enum):
+    ALIMENTO = 'ALIMENTO'
+    BEBIDA = 'BEBIDA'
+    COMBO = 'COMBO'
 
-def _normalizar_unidad_texto(texto: str | None) -> str:
-    return (texto or "").strip().lower().replace(".", "").replace(" ", "")
+
+class Productoo(db.Model):
+    __tablename__ = 'Productoo'
+    idProducto = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nombre = db.Column(db.String(50), nullable=False)
+    descripcion = db.Column(db.String(200), nullable=False)
+    foto = db.Column(db.Text) 
+    precio = db.Column(db.Numeric(10, 2))
+    tipo = db.Column(db.Enum(TipoProducto), nullable=False)
+    estatus = db.Column(db.Boolean, default=True)
+
+class Alimento(db.Model):
+    __tablename__ = 'Alimento'
+    idAlimento = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    idProducto = db.Column(db.Integer, db.ForeignKey('Productoo.idProducto'), nullable=False)
+
+class Bebida(db.Model):
+    __tablename__ = 'Bebida'
+    idBebida = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    idProducto = db.Column(db.Integer, db.ForeignKey('Productoo.idProducto'), nullable=False)
+
+class Combo(db.Model):
+    __tablename__ = 'Combo'
+    idCombo = db.Column( db.Integer, primary_key=True, autoincrement=True)
+    idProducto = db.Column(db.Integer, db.ForeignKey('Productoo.idProducto'), nullable=False)
+    producto = db.relationship("Productoo", backref="combo")
+    detalles = db.relationship("DetalleCombo", backref="combo", cascade="all, delete-orphan")
 
 
-def _factor_y_tipo_unidad(unidad) -> tuple[Decimal, str]:
-    abbr = _normalizar_unidad_texto(getattr(unidad, "abreviacion", ""))
-    nombre = _normalizar_unidad_texto(getattr(unidad, "nombre", ""))
-    clave = abbr or nombre
+class DetalleCombo(db.Model):
+    __tablename__ = 'DetalleCombo'
+    idDetalleCombo = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    idCombo = db.Column(db.Integer, db.ForeignKey('Combo.idCombo'), nullable=False)
+    idProducto = db.Column(db.Integer, db.ForeignKey('Productoo.idProducto'), nullable=False)
+    cantidad = db.Column(db.Integer, nullable=False, default=1)
+    producto = db.relationship("Productoo")
+    
+class Pedidoo(db.Model):
+    __tablename__ = "Pedidoo"
+    idPedido = db.Column(db.Integer,primary_key=True, autoincrement=True)
+    
+    idCliente = db.Column(
+        db.Integer,
+        db.ForeignKey("clientes.id"),
+        nullable=False
+    )
+    
+    total = db.Column(db.Numeric(10, 2), nullable=False)
+    notas = db.Column(db.String(300))
+    fecha = db.Column(db.DateTime,default=datetime.utcnow)
+    estado = db.Column(db.String(30),default="Pendiente")
+    cliente = db.relationship("Cliente", backref="pedidos")
+    
+    
+class DetallePedidoo(db.Model):
+    __tablename__ = "DetallePedidoo"
+    idDetallePedido = db.Column( db.Integer, primary_key=True, autoincrement=True)
+    idPedido = db.Column(db.Integer, db.ForeignKey("Pedidoo.idPedido"), nullable=False)
+    idProducto = db.Column(db.Integer, db.ForeignKey("Productoo.idProducto"), nullable=False)
+    cantidad = db.Column( db.Integer, nullable=False)
+    precio = db.Column( db.Numeric(10, 2), nullable=False)
 
-    mapa = {
-        "kg": (Decimal("1000"), "solido"),
-        "kgr": (Decimal("1000"), "solido"),
-        "kilogramo": (Decimal("1000"), "solido"),
-        "kilogramos": (Decimal("1000"), "solido"),
-        "g": (Decimal("1"), "solido"),
-        "gr": (Decimal("1"), "solido"),
-        "grs": (Decimal("1"), "solido"),
-        "gramo": (Decimal("1"), "solido"),
-        "gramos": (Decimal("1"), "solido"),
-        "oz": (Decimal("28.35"), "solido"),
-        "l": (Decimal("1000"), "liquido"),
-        "lt": (Decimal("1000"), "liquido"),
-        "litro": (Decimal("1000"), "liquido"),
-        "litros": (Decimal("1000"), "liquido"),
-        "ml": (Decimal("1"), "liquido"),
-        "mililitro": (Decimal("1"), "liquido"),
-        "mililitros": (Decimal("1"), "liquido"),
-        "pz": (Decimal("1"), "conteo"),
-        "pieza": (Decimal("1"), "conteo"),
-        "piezas": (Decimal("1"), "conteo"),
-        "u": (Decimal("1"), "conteo"),
-        "ud": (Decimal("1"), "conteo"),
-        "unidad": (Decimal("1"), "conteo"),
-        "unidades": (Decimal("1"), "conteo"),
-    }
+class Sucursal(db.Model):
+        __tablename__ = "Sucursal"
+        idSucursal = db.Column(db.Integer, primary_key=True,autoincrement=True)
+        nombre = db.Column(db.String(50),nullable=False)
+        foto = db.Column(LONGTEXT)
+        ciudad = db.Column(db.String(50),nullable=False)
+        calle = db.Column(db.String(50),nullable=False)
+        colonia = db.Column(db.String(50),nullable=False)
+        numInt = db.Column(db.String(10),nullable=False)
+        cp = db.Column(db.String(10),nullable=False)
+        estatus = db.Column(db.Boolean,default=True)
 
-    if clave in mapa:
-        return mapa[clave]
 
-    factor_db = Decimal(str(getattr(unidad, "factor", 1) or 1))
-    tipo_db = str(getattr(unidad, "tipo", "")).strip().lower()
-    return factor_db, tipo_db
+        def to_dict(self):
+            return {
+                "idSucursal": self.idSucursal,
+                "nombre": self.nombre,
+                "foto": self.foto,
+                "ciudad": self.ciudad,
+                "calle": self.calle,
+                "colonia": self.colonia,
+                "numInt": self.numInt,
+                "cp": self.cp,
+                "estatus": self.estatus
+            }
 
-def convertir(cantidad, unidad_origen, unidad_destino):
-    factor_origen, tipo_origen = _factor_y_tipo_unidad(unidad_origen)
-    factor_destino, tipo_destino = _factor_y_tipo_unidad(unidad_destino)
-
-    if tipo_origen != tipo_destino:
-        raise ValueError("Unidades incompatibles")
-
-    cantidad = Decimal(str(cantidad))
-
-    cantidad_base = cantidad * factor_origen
-    return cantidad_base / factor_destino
 
 class Rol(db.Model):
     __tablename__ = "roles"
@@ -138,231 +176,7 @@ class RegistroSesion(db.Model):
     fechaInicio = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     fechaFin = db.Column(db.DateTime(timezone=True), nullable=True)
     activa = db.Column(db.Boolean, nullable=False, default=True)
-    
-
-class UnidadMedida(db.Model):
-    __tablename__ = 'Unidad_medida'
-    id_unidad = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    nombre = db.Column(db.String(10), nullable=False)
-    abreviacion = db.Column(db.String(4), unique=True)
-    tipo = db.Column(Enum("liquido", "solido", "conteo", name="tipo_unidad"), nullable=False)
-    factor = db.Column(db.Numeric(10, 4), nullable=False)
-
-    
-class MateriaPrima(db.Model):
-    __tablename__ = 'Materia_prima' 
-
-    id_materia = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    nombre = db.Column(db.String(30), nullable=False)
-    descripcion = db.Column(db.Text, nullable=True)
-    tamanio = db.Column(db.String(20), nullable=True)
-    unidad_medida = db.Column(db.Integer, db.ForeignKey('Unidad_medida.id_unidad'), nullable=False) 
-    stock_minimo = db.Column(db.Numeric(10, 2), default=0.00)
-    stock_actual = db.Column(db.Numeric(10, 2), default=0.00)
-    estatus = db.Column(db.Boolean, default=True)
-    costo_promedio = db.Column(db.Numeric(14, 6), default=0)
-
-    
-    unidad = db.relationship('UnidadMedida', backref='materias_primas')
-    detalles_compra = db.relationship('DetalleCompra', backref='materia_prima', lazy=True)
-
-    def actualizar_costo_promedio(self, nuevo_costo, cantidad):
-        nuevo_costo_dec = Decimal(str(nuevo_costo))
-        cantidad_dec = Decimal(str(cantidad))
-
-        if self.stock_actual and self.stock_actual > 0:
-            stock_actual_dec = Decimal(str(self.stock_actual))
-            costo_actual_dec = Decimal(str(self.costo_promedio or 0))
-            costo_anterior = costo_actual_dec * stock_actual_dec
-            costo_nuevo = nuevo_costo_dec * cantidad_dec
-            total_costo = costo_anterior + costo_nuevo
-            total_stock = stock_actual_dec + cantidad_dec
-            if total_stock > 0:
-                self.costo_promedio = float(total_costo / total_stock)
-        else:
-            self.costo_promedio = float(nuevo_costo_dec)
-
-
-    def actualizar_stock(self, cantidad):
-
-        if cantidad <= 0:
-            raise ValueError("La cantidad debe ser mayor a 0")
-
-        cantidad_dec     = Decimal(str(cantidad))
-        stock_actual_dec = Decimal(str(self.stock_actual or 0))
-
-        self.stock_actual = stock_actual_dec + cantidad_dec
-
-    def revertir_stock(self, cantidad):
         
-        if cantidad <= 0:
-            raise ValueError("La cantidad debe ser mayor a 0")
-
-        cantidad_dec     = Decimal(str(cantidad))
-        stock_actual_dec = Decimal(str(self.stock_actual or 0))
-
-        nuevo_stock = stock_actual_dec - cantidad_dec
-
-        self.stock_actual = max(nuevo_stock, Decimal('0'))
-
-class Producto(db.Model):
-    __tablename__ = 'Producto'
-
-    id_producto = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    nombre = db.Column(db.String(50), nullable=False)
-    categoria = db.Column(Enum('bebidas', 'alimentos', name='categoria_enum'), nullable=False)
-    precio_venta = db.Column(db.Numeric(10, 2), nullable=True)
-    stock = db.Column(db.Integer, nullable=False, default=0)
-    stockMinimo = db.Column("stock_minimo", db.Integer, nullable=False, default=0)
-    tipo_preparacion = db.Column(
-        Enum('materia_prima', 'stock', name='tipo_preparacion_enum'),
-        nullable=False,
-        default='materia_prima',
-    )
-    descripcion = db.Column(db.Text, nullable=False)
-    imagen = db.Column(LONGTEXT, nullable=True)
-    estatus = db.Column(db.Boolean, default=True)
-    estado_producto = db.Column(
-        Enum('borrador', 'activo', name='estado_producto_enum'),
-        nullable=False,
-        default='borrador',
-        index=True,
-    )
-    target_food_cost = db.Column(
-        db.Numeric(4, 2),
-        nullable=False,
-        default=Decimal('0.30'),
-    )
-    
-    def costo_unitario(self):
-   
-        if not self.recetas:
-            return Decimal('0')
-        total = Decimal('0')
-        for receta in self.recetas:
-            if receta.materiaPrima:
-                cantidad = Decimal(str(receta.cantidad))
-                costo = Decimal(str(receta.materiaPrima.costo_promedio or 0))
-                total += cantidad * costo
-        return total
-    
-    def margen_ganancia(self):
-        costo = self.costo_unitario()
-        if self.precio_venta:
-            return Decimal(str(self.precio_venta)) - costo
-        return Decimal('0')
-
-    def margen_porcentaje(self):
-        costo = self.costo_unitario()
-        if self.precio_venta and self.precio_venta > 0:
-            return ((Decimal(str(self.precio_venta)) - costo) / Decimal(str(self.precio_venta))) * 100
-        return Decimal('0')
-
-    def calcular_precio_food_cost(self) -> Decimal:
-        """Precio de Venta = Costo Total Materia Prima / target_food_cost"""
-        costo = self.costo_unitario()
-        if costo <= 0:
-            return Decimal('0')
-        target = Decimal(str(self.target_food_cost or '0.30'))
-        if target <= 0:
-            return Decimal('0')
-        return (costo / target).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-
-    def food_cost_real(self) -> Decimal:
-        """% real de food cost = Costo / Precio * 100"""
-        costo = self.costo_unitario()
-        if self.precio_venta and self.precio_venta > 0:
-            return (costo / Decimal(str(self.precio_venta)) * 100).quantize(
-                Decimal('0.01'), rounding=ROUND_HALF_UP
-            )
-        return Decimal('0')
-
-    def to_dict_rentabilidad(self):
-        return {
-            'id': self.id_producto,
-            'nombre': self.nombre,
-            'precio': float(self.precio_venta) if self.precio_venta else 0,
-            'costo': float(self.costo_unitario()),
-            'margen': float(self.margen_ganancia()),
-            'porcentaje': float(self.margen_porcentaje())
-        }
-
-    
-class Proveedores(db.Model):
-    __tablename__ = 'Proveedor'
-
-    id  = db.Column('id_proveedor', db.Integer, primary_key=True, autoincrement=True)
-    rfc = db.Column('RFC',    db.String(13),  unique=True, nullable=False)
-    nombre = db.Column(          db.String(100), nullable=False)
-    email = db.Column('correo', db.String(50),  nullable=True)
-    telefono = db.Column(          db.String(15),  nullable=True)
-    colonia = db.Column(db.String(100), nullable=True)
-    calle = db.Column(db.String(100), nullable=True)
-    num_exterior = db.Column(db.String(10), nullable=True)
-    estado = db.Column('estatus',db.Boolean,     default=True)
-
-    compras = db.relationship('Compra', backref='proveedor', lazy=True)
-
-
-class Merma(db.Model):
-    id_merma = db.Column(db.Integer, primary_key=True)
-    cantidad = db.Column(db.Numeric(10, 2), nullable = False)
-    fecha = db.Column( db.Date , default=date.today, nullable = False)
-    motivo = db.Column(Enum(
-                            "Error en preparación",
-                            "Derrame o caída",
-                            "Insumo en mal estado",
-                            "Producto caducado",
-                            "Sobrante de producción diaria",
-                            "Falla de refrigeración/almacenaje",
-                            "Muestra o degustación",
-                            "Pérdida no identificada",
-                            "Devolución por cliente", 
-      name='merma_enum'  
-    ), nullable = False)
-    
-    materia_id = db.Column(db.Integer, db.ForeignKey('Materia_prima.id_materia'), nullable=False)
-    materia = db.relationship('MateriaPrima', backref='mermas')
-    
-    usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
-    usuario = db.relationship('Usuario', backref='mermas_registradas')
-    
-
-class Compra(db.Model):
-    __tablename__ = 'compra'
-
-    id_compra = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    id_proveedor = db.Column(db.Integer, db.ForeignKey('Proveedor.id_proveedor'), nullable=False)
-    fecha = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-
-    detalles = db.relationship('DetalleCompra',
-        backref='compra', lazy=True, cascade='all, delete-orphan'
-    )
-    
-    @property
-    def precio_total(self):
-
-        return sum((detalle.cantidad * detalle.costo_unitario)
-            for detalle in self.detalles
-        )
-    
-    
-class DetalleCompra(db.Model):
-    __tablename__ = 'detalle_compra'
-
-    id_detalle_compra = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    id_compra = db.Column(db.Integer, db.ForeignKey('compra.id_compra'), nullable=False)
-    id_materia = db.Column(db.Integer, db.ForeignKey('Materia_prima.id_materia'), nullable=False)
-    cantidad = db.Column(db.Numeric(10, 2), nullable=False)
-    unidad = db.Column(db.Integer, db.ForeignKey('Unidad_medida.id_unidad'), nullable=False)
-    costo_unitario = db.Column(db.Numeric(10, 2), nullable=False)
-
-    unidad_medida = db.relationship('UnidadMedida', backref='detalles_compra')
-    
-    @property
-    def subtotal(self):    
-        return self.cantidad * self.costo_unitario
-    
 
 class Cliente(db.Model):
     __tablename__ = "clientes"
@@ -391,312 +205,3 @@ class Empleado(db.Model):
     fechaIngreso = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     estado = db.Column(db.Boolean, default=True)
     usuario = db.relationship("Usuario", backref=db.backref("empleado", uselist=False), lazy="joined")
-
-class Venta(db.Model):
-    __tablename__ = "ventas"
-
-    id_venta = db.Column(db.Integer, primary_key=True)
-    id_usuario = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
-    id_cliente = db.Column(db.Integer, db.ForeignKey("clientes.id"), nullable=True)
-    
-    total = db.Column(db.Numeric(10, 2), nullable=False, default=0)
-    utilidadBruta = db.Column("utilidad_bruta", db.Numeric(10, 2), nullable=False, default=0)
-    estatus = db.Column(db.Boolean, nullable=False, default=False)
-    estado = db.Column(db.String(20), default='entregado')
-    fecha = db.Column("creado_en", db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
-    tipo_venta = db.Column(Enum('fisica','en_linea', name="tipo_venta"), nullable=False)  
-    metodo_pago = db.Column(db.String(30), nullable=True)
-    codigo_recogida = db.Column(db.String(10), nullable=True)
-    
-    cliente = db.relationship("Cliente", backref="ventas")
-    usuario = db.relationship("Usuario", backref="ventas_realizadas")
-
-
-'''Tabla Detalles de Venta'''
-class DetalleVenta(db.Model):
-    __tablename__ = "detalle_venta"
-
-    id_detalle = db.Column(db.Integer, primary_key=True)
-    id_venta = db.Column(db.Integer, db.ForeignKey("ventas.id_venta"), nullable=False, index=True)
-    id_producto = db.Column(db.Integer, db.ForeignKey("Producto.id_producto"), nullable=False, index=True)
-    
-    cantidad = db.Column(db.Integer, nullable=False, default=1)
-    precio_unitario = db.Column(db.Numeric(10, 2), nullable=False, default = 0)
-    tipo_descuento = db.Column(Enum('monto','porcentaje', name="tipo_descuento"), default = 'monto')  
-    descuento = db.Column(db.Numeric(10, 2), default=0.00)
-
-    venta = db.relationship("Venta", backref="detalles")
-    producto = db.relationship("Producto")
-
-'''Tabla Pedidos'''
-class Pedido(db.Model):
-    __tablename__ = "pedidos"
-
-    id_pedido = db.Column(db.Integer, primary_key=True)
-    fecha = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    hora_solicitud = db.Column(db.DateTime, nullable=False, server_default=func.now())
-    hora_recogida = db.Column(db.DateTime, nullable=False)
-    notas = db.Column(db.String(200))
-
-    estado = db.Column(db.String(20), default="pendiente")
-    id_venta = db.Column(db.Integer, db.ForeignKey("ventas.id_venta"), nullable=True)
-
-
-class SolicitudProduccion(db.Model):
-    __tablename__ = "Solicitud_produccion"
-
-    id_solicitud = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    id_usuario = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
-    fecha = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    estado = db.Column(
-        Enum("pendiente", "en_proceso", "finalizado", "cancelado", name="estado_solicitud_enum"),
-        nullable=False,
-        default="pendiente",
-    )
-
-    usuario = db.relationship("Usuario", backref=db.backref("solicitudes_produccion", lazy=True))
-    detalles = db.relationship(
-        "DetalleProduccion",
-        backref="solicitud",
-        lazy=True,
-        cascade="all, delete-orphan",
-    )
-
-
-class DetalleProduccion(db.Model):
-    __tablename__ = "Detalle_produccion"
-
-    id_detalle = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    id_solicitud = db.Column(db.Integer, db.ForeignKey("Solicitud_produccion.id_solicitud"), nullable=False, index=True)
-    id_producto = db.Column(db.Integer, db.ForeignKey("Producto.id_producto"), nullable=False, index=True)
-    cantidad = db.Column(db.Integer, nullable=False)
-
-    producto = db.relationship("Producto", backref=db.backref("detalles_produccion", lazy=True))
-
-
-class VarianteReceta(db.Model):
-    """Representa una variante de tamaño/presentación de un producto.
-    Ejemplos: 'Chico', 'Mediano', 'Grande', '8oz', '12oz', etc.
-    Las recetas sin variante (id_variante IS NULL) son recetas base.
-    """
-    __tablename__ = "variante_receta"
-
-    id_variante = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    id_producto = db.Column(db.Integer, db.ForeignKey("Producto.id_producto"), nullable=False, index=True)
-    nombre = db.Column(db.String(50), nullable=False)
-    precio_extra = db.Column(db.Numeric(10, 2), nullable=True, default=None)
-    estado = db.Column(db.Boolean, nullable=False, default=True)
-
-    producto = db.relationship("Producto", backref=db.backref("variantes", lazy=True))
-    recetas = db.relationship("Receta", backref="variante", lazy=True, cascade="all, delete-orphan")
-
-
-class Receta(db.Model):
-    __tablename__ = "Recetas"
-    __table_args__ = (
-        UniqueConstraint("id_producto", "id_variante", "id_materia", name="uq_receta_producto_variante_materia"),
-        CheckConstraint("cantidad > 0", name="chk_receta_cantidad_mayor_cero"),
-    )
-
-    id_receta = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    id_producto = db.Column(db.Integer, db.ForeignKey("Producto.id_producto"), nullable=False, index=True)
-    id_variante = db.Column(db.Integer, db.ForeignKey("variante_receta.id_variante"), nullable=True, index=True)
-    id_materia = db.Column(db.Integer, db.ForeignKey("Materia_prima.id_materia"), nullable=False, index=True)
-    cantidad = db.Column(db.Numeric(10, 2), nullable=False)
-    estado = db.Column(db.Boolean, nullable=False, default=True, index=True)
-
-    producto = db.relationship("Producto", backref=db.backref("recetas", lazy=True))
-    materiaPrima = db.relationship("MateriaPrima", backref=db.backref("recetas", lazy=True))
-
-    @property
-    def nombre_materia(self) -> str:
-        return self.materiaPrima.nombre if self.materiaPrima else ""
-
-    @property
-    def unidad_materia(self) -> str:
-        if not self.materiaPrima or not self.materiaPrima.unidad:
-            return ""
-        return self.materiaPrima.unidad.abreviacion or self.materiaPrima.unidad.nombre
-
-    @classmethod
-    def validar_insumos_no_vacios(cls, insumos: list[dict]) -> None:
-        if not insumos:
-            raise ValueError("No se puede registrar una receta sin insumos.")
-
-    @classmethod
-    def validar_insumos_en_inventario(cls, insumos: list[dict]) -> None:
-        ids_materia = [int(insumo.get("id_materia", 0)) for insumo in insumos]
-        if any(id_materia <= 0 for id_materia in ids_materia):
-            raise ValueError("Todos los insumos deben tener un id_materia válido.")
-
-        materias = MateriaPrima.query.filter(
-            MateriaPrima.id_materia.in_(ids_materia),
-            MateriaPrima.estatus.is_(True),
-        ).all()
-
-        ids_disponibles = {m.id_materia for m in materias}
-        ids_faltantes = [id_materia for id_materia in ids_materia if id_materia not in ids_disponibles]
-
-        if ids_faltantes:
-            raise ValueError("Hay insumos que no existen en inventario o están inactivos.")
-
-    @classmethod
-    def validar_activa_para_produccion(cls, id_producto: int) -> None:
-        existe_activa = cls.query.filter_by(id_producto=id_producto, estado=True).first()
-        if not existe_activa:
-            raise ValueError("La receta del producto está inactiva o no existe.")
-
-    @classmethod
-    def producto_tiene_produccion_finalizada(cls, id_producto: int) -> bool:
-        return (
-            db.session.query(DetalleProduccion.id_detalle)
-            .join(SolicitudProduccion, DetalleProduccion.id_solicitud == SolicitudProduccion.id_solicitud)
-            .filter(
-                DetalleProduccion.id_producto == id_producto,
-                SolicitudProduccion.estado == "finalizado",
-            )
-            .first()
-            is not None
-        )
-
-    @classmethod
-    def reemplazar_receta_producto(
-        cls,
-        id_producto: int,
-        insumos: list[dict],
-        id_variante: int | None = None,
-    ) -> list["Receta"]:
-        cls.validar_insumos_no_vacios(insumos)
-        cls.validar_insumos_en_inventario(insumos)
-
-        producto = Producto.query.get(id_producto)
-        if not producto:
-            raise ValueError("El producto indicado no existe.")
-
-        # Sólo revisamos recetas de la variante en curso (None = receta base)
-        recetas_activas = cls.query.filter_by(
-            id_producto=id_producto,
-            id_variante=id_variante,
-            estado=True,
-        ).all()
-        mapa_activas = {receta.id_materia: receta for receta in recetas_activas}
-
-        mapa_entrada: dict[int, Decimal] = {}
-        for insumo in insumos:
-            id_materia = int(insumo.get("id_materia", 0))
-            cantidad = Decimal(str(insumo.get("cantidad", 0)))
-
-            if cantidad <= 0:
-                raise ValueError("La cantidad de cada insumo debe ser mayor a cero.")
-
-            if id_materia in mapa_entrada:
-                raise ValueError("No se puede repetir el mismo insumo en la receta del producto.")
-
-            mapa_entrada[id_materia] = cantidad
-
-        # Protección histórica solo para recetas base (sin variante)
-        if id_variante is None and cls.producto_tiene_produccion_finalizada(id_producto):
-            snapshot_actual = {r.id_materia: Decimal(str(r.cantidad)) for r in recetas_activas}
-            if snapshot_actual != mapa_entrada:
-                raise ValueError(
-                    "No se puede modificar la receta base porque el producto ya tiene producciones "
-                    "finalizadas. Esto protege la persistencia histórica."
-                )
-
-        nuevas_recetas: list[Receta] = []
-        for id_materia, cantidad in mapa_entrada.items():
-            receta_existente = cls.query.filter_by(
-                id_producto=id_producto,
-                id_variante=id_variante,
-                id_materia=id_materia,
-            ).first()
-            if receta_existente:
-                receta_existente.cantidad = cantidad
-                receta_existente.estado = True
-                nuevas_recetas.append(receta_existente)
-            else:
-                nueva = cls(
-                    id_producto=id_producto,
-                    id_variante=id_variante,
-                    id_materia=id_materia,
-                    cantidad=cantidad,
-                    estado=True,
-                )
-                db.session.add(nueva)
-                nuevas_recetas.append(nueva)
-
-        for id_materia, receta_activa in mapa_activas.items():
-            if id_materia not in mapa_entrada:
-                receta_activa.estado = False
-
-        return nuevas_recetas
-    
-class EstadoPedidoProveedor(enum.Enum):
-    PENDIENTE        = "pendiente"
-    CANCELADO        = "cancelado"
-    ENVIADO_A_COMPRA = "enviado_a_compra"
-
-    
-class PedidoProveedor(db.Model):
-    __tablename__ = "pedido_proveedor"
- 
-    id_pedido_proveedor = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    id_proveedor = db.Column(db.Integer, db.ForeignKey("Proveedor.id_proveedor"), nullable=False)
-    id_usuario = db.Column(db.Integer, db.ForeignKey("usuarios.id"),            nullable=False)
-    fecha_solicitud = db.Column(db.DateTime, default=datetime.utcnow,                nullable=False)
-    estado = db.Column(db.Enum(EstadoPedidoProveedor), default=EstadoPedidoProveedor.PENDIENTE,             nullable=False)
-    notas = db.Column(db.Text, nullable=True)
- 
-    proveedor = db.relationship("Proveedores",  backref="pedidos_proveedor", lazy="joined")
-    usuario   = db.relationship("Usuario",   backref="pedidos_proveedor", lazy="joined")
-    detalles  = db.relationship("PedidoProveedorDetalle",
-                                backref="pedido",
-                                cascade="all, delete-orphan",
-                                lazy="select")
- 
-    def to_dict(self):
-        return {
-            "id_pedido_proveedor": self.id_pedido_proveedor,
-            "id_proveedor":        self.id_proveedor,
-            "proveedor":           self.proveedor.nombre if self.proveedor else None,
-            "id_usuario":          self.id_usuario,
-            "usuario":             self.usuario.correo  if self.usuario  else None,
-            "fecha_solicitud":     self.fecha_solicitud.strftime("%Y-%m-%d %H:%M:%S"),
-            "estado":              self.estado.value,
-            "notas":               self.notas,
-            "detalles":            [d.to_dict() for d in self.detalles],
-            "total_estimado":      sum(
-                                     (d.cantidad_solicitada * d.costo_unitario_est)
-                                     for d in self.detalles
-                                     if d.costo_unitario_est
-                                   ),
-        }
- 
- 
-class PedidoProveedorDetalle(db.Model):
-    __tablename__ = "pedido_proveedor_detalle"
- 
-    id_detalle              = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    id_pedido_proveedor     = db.Column(db.Integer, db.ForeignKey("pedido_proveedor.id_pedido_proveedor",
-                                                                   ondelete="CASCADE"), nullable=False)
-    id_materia              = db.Column(db.Integer, db.ForeignKey("Materia_prima.id_materia"), nullable=False)
-    cantidad_solicitada     = db.Column(db.Numeric(10, 2), nullable=False)
-    cantidad_recibida       = db.Column(db.Numeric(10, 2), nullable=True, default=0)
-    costo_unitario_est      = db.Column(db.Numeric(12, 2), nullable=True)
- 
-    materia = db.relationship("MateriaPrima", backref="pedidos_detalle", lazy="joined")
- 
-    def to_dict(self):
-        return {
-            "id_detalle":          self.id_detalle,
-            "id_materia":          self.id_materia,
-            "materia":             self.materia.nombre if self.materia else None,
-            "unidad":              self.materia.unidad if self.materia else None,
-            "cantidad_solicitada": float(self.cantidad_solicitada),
-            "cantidad_recibida":   float(self.cantidad_recibida or 0),
-            "costo_unitario_est":  float(self.costo_unitario_est) if self.costo_unitario_est else None,
-            "subtotal":            float(self.cantidad_solicitada * self.costo_unitario_est)
-                                   if self.costo_unitario_est else None,
-        }
-

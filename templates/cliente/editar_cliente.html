@@ -1,10 +1,15 @@
 {% extends "layout/layout.html" %}
 
 {% block container %}
-<div class="max-w-3xl mx-auto my-12 p-8 bg-white border border-gray-100 shadow-xl rounded-2xl"
-    style="font-family: 'Montserrat', sans-serif;">
+<div class="flex-grow flex items-center justify-center bg-cover bg-center bg-no-repeat"
+    style="background-image: url('{{ url_for('static', filename='src/imagenes/home/bg_section.jpg') }}'); min-height: 80vh;">
 
-    <div class="flex items-center gap-6 pb-8 border-b border-gray-100 mb-8">
+    <div class="absolute inset-0 bg-black/30"></div>
+
+    <div class="relative z-10 max-w-3xl mx-auto bg-white my-12 p-8 border border-gray-100 shadow-xl rounded-2xl"
+        style="font-family: 'Montserrat', sans-serif;">
+
+    <div class="flex items-center bg-white gap-6 pb-8 border-b border-gray-100 mb-8">
         <div
             class="w-20 h-20 bg-amber-100 text-amber-800 rounded-full flex items-center justify-center text-3xl font-bold border-2 border-amber-200">
             {{ cliente.nombre[0] }}{{ cliente.apellidoPaterno[0] }}
@@ -15,8 +20,9 @@
         </div>
     </div>
 
-    <form method="POST" action="#" class="space-y-6">
+    <form id="editarForm"  method="POST" class="space-y-6">
         {{ form.hidden_tag() }}
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="flex flex-col gap-1.5">
                 <label class="text-[11px] uppercase tracking-wider text-gray-400 font-bold ml-1">Nombre(s)</label>
@@ -109,24 +115,35 @@
     </div>
 
 </div>
-
-
+</div>
 <script>
-    const form = document.querySelector("form");
-    const modal = document.getElementById("modalConfirmacion");
-
-    function abrirModalConfirmacion() {
-        modal.classList.remove("hidden");
-    }
-
-    function cerrarModalConfirmacion() {
-        modal.classList.add("hidden");
-    }
-
-    function confirmarEnvio() {
-        form.submit();
-    }
-</script>
-
+    document.addEventListener("DOMContentLoaded", () => {
+    
+        const form = document.getElementById("editarForm");
+        const modal = document.getElementById("modalConfirmacion");
+    
+        console.log("FORM:", form);
+    
+        window.abrirModalConfirmacion = function () {
+            modal.classList.remove("hidden");
+        }
+    
+        window.cerrarModalConfirmacion = function () {
+            modal.classList.add("hidden");
+        }
+    
+        window.confirmarEnvio = function () {
+    
+            console.log("ENVIANDO FORM");
+    
+            if(form){
+                form.requestSubmit();
+            } else {
+                console.log("NO EXISTE EL FORM");
+            }
+        }
+    
+    });
+    </script>
 
 {% endblock %}

@@ -1,0 +1,367 @@
+{% extends "layout/layout_produccion.html" %}
+
+{% block container %}
+
+<div class="mb-8">
+
+    <h1 class="text-3xl font-bold text-gray-800">
+        Editar Sucursal
+    </h1>
+
+    <p class="text-gray-500 mt-1">
+        Actualiza la información de la sucursal.
+    </p>
+
+</div>
+
+
+<form method="POST"
+      enctype="multipart/form-data"
+      action="{{ url_for('sucursales.actualizar', id=sucursal.idSucursal) }}"
+      class="bg-white rounded-lg shadow-sm border p-6 md:p-8 max-w-5xl mx-auto"
+      novalidate>
+
+    {{ form.hidden_tag() }}
+
+
+    <!-- INFORMACION GENERAL -->
+    <h2 class="text-xl font-semibold mb-6 text-gray-800 border-b pb-2">
+
+        Información General
+
+    </h2>
+
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+        <!-- NOMBRE -->
+        <div>
+
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+
+                Nombre *
+
+            </label>
+
+            {{ form.nombre(
+                value=sucursal.nombre,
+                class="bg-gray-50 border border-gray-300 text-sm rounded-lg
+                focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
+                placeholder="Sucursal Centro"
+            ) }}
+
+            {% for error in form.nombre.errors %}
+            <p class="mt-1 text-sm text-red-600">
+                {{ error }}
+            </p>
+            {% endfor %}
+
+        </div>
+
+
+        <!-- FOTO -->
+        <div>
+
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+
+                Imagen de la Sucursal
+
+            </label>
+
+            {{ form.foto(
+                class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
+            ) }}
+
+            <p class="mt-1 text-xs text-gray-500">
+                PNG, JPG o WEBP
+            </p>
+
+            {% for error in form.foto.errors %}
+            <p class="mt-1 text-sm text-red-600">
+                {{ error }}
+            </p>
+            {% endfor %}
+
+        </div>
+
+
+        <!-- PREVIEW -->
+        {% if sucursal.foto %}
+
+        <div class="md:col-span-2">
+
+            <label class="block mb-3 text-sm font-medium text-gray-900">
+
+                Imagen Actual
+
+            </label>
+
+            <div class="w-full h-64 rounded-xl overflow-hidden border bg-gray-100">
+
+                <img
+                    src="{{ sucursal.foto }}"
+                    class="w-full h-full object-cover"
+                >
+
+            </div>
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+
+
+    <!-- DIRECCION -->
+    <h2 class="text-xl font-semibold mb-6 text-gray-800 border-b pb-2">
+
+        Dirección
+
+    </h2>
+
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+
+        <!-- CIUDAD -->
+        <div>
+
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+
+                Ciudad *
+
+            </label>
+
+            {{ form.ciudad(
+                value=sucursal.ciudad,
+                class="bg-gray-50 border border-gray-300 text-sm rounded-lg
+                focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
+                placeholder="León"
+            ) }}
+
+            {% for error in form.ciudad.errors %}
+            <p class="mt-1 text-sm text-red-600">
+                {{ error }}
+            </p>
+            {% endfor %}
+
+        </div>
+
+
+        <!-- CP -->
+        <div>
+
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+
+                Código Postal *
+
+            </label>
+
+            {{ form.cp(
+                value=sucursal.cp,
+                class="bg-gray-50 border border-gray-300 text-sm rounded-lg
+                focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
+                placeholder="37000"
+            ) }}
+
+            {% for error in form.cp.errors %}
+            <p class="mt-1 text-sm text-red-600">
+                {{ error }}
+            </p>
+            {% endfor %}
+
+        </div>
+
+
+        <!-- CALLE -->
+        <div>
+
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+
+                Calle *
+
+            </label>
+
+            {{ form.calle(
+                value=sucursal.calle,
+                class="bg-gray-50 border border-gray-300 text-sm rounded-lg
+                focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
+                placeholder="Av. Madero"
+            ) }}
+
+            {% for error in form.calle.errors %}
+            <p class="mt-1 text-sm text-red-600">
+                {{ error }}
+            </p>
+            {% endfor %}
+
+        </div>
+
+
+        <!-- COLONIA -->
+        <div>
+
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+
+                Colonia *
+
+            </label>
+
+            {{ form.colonia(
+                value=sucursal.colonia,
+                class="bg-gray-50 border border-gray-300 text-sm rounded-lg
+                focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
+                placeholder="Centro"
+            ) }}
+
+            {% for error in form.colonia.errors %}
+            <p class="mt-1 text-sm text-red-600">
+                {{ error }}
+            </p>
+            {% endfor %}
+
+        </div>
+
+
+        <!-- NUMERO -->
+        <div class="md:col-span-2">
+
+            <label class="block mb-2 text-sm font-medium text-gray-900">
+
+                Número Interior *
+
+            </label>
+
+            {{ form.numInt(
+                value=sucursal.numInt,
+                class="bg-gray-50 border border-gray-300 text-sm rounded-lg
+                focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
+                placeholder="102A"
+            ) }}
+
+            {% for error in form.numInt.errors %}
+            <p class="mt-1 text-sm text-red-600">
+                {{ error }}
+            </p>
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+
+    <!-- BOTONES -->
+    <div class="flex flex-col md:flex-row justify-end gap-3 pt-4 border-t mt-4">
+
+        <a href="{{ url_for('sucursales.index') }}"
+           class="text-gray-700 bg-gray-200 hover:bg-gray-300 
+                  font-medium rounded-lg text-sm px-5 py-2.5 transition">
+
+            Cancelar
+
+        </a>
+
+
+        <button type="button"
+                onclick="abrirModalConfirmacion()"
+                class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 
+                       font-medium rounded-lg text-sm px-5 py-2.5 transition">
+
+            Guardar Cambios
+
+        </button>
+
+    </div>
+
+</form>
+
+
+
+<!-- MODAL -->
+<div id="modalConfirmacion"
+     class="hidden fixed inset-0 z-[100] flex justify-center items-center bg-gray-900 bg-opacity-50 p-4">
+
+    <div class="w-full max-w-md">
+
+        <div class="bg-white rounded-2xl shadow p-6 md:p-8 text-center">
+
+            <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
+
+                <i class="fa-solid fa-pen text-blue-500 text-xl"></i>
+
+            </div>
+
+            <h3 class="mb-2 text-xl md:text-2xl font-bold text-gray-900">
+
+                Confirmar Cambios
+
+            </h3>
+
+            <p class="text-gray-500 mb-6 text-sm md:text-base">
+
+                ¿Deseas actualizar la información de esta sucursal?
+
+            </p>
+
+            <div class="flex flex-col gap-3">
+
+                <button onclick="enviarFormulario()"
+                        class="text-white bg-blue-600 hover:bg-blue-700 
+                               font-medium rounded-lg text-sm px-5 py-3 transition">
+
+                    Sí, actualizar
+
+                </button>
+
+                <button onclick="cerrarModalConfirmacion()"
+                        class="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 
+                               font-medium rounded-lg text-sm px-5 py-3 transition">
+
+                    Cancelar
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+
+{% block scripts %}
+
+<script>
+
+function abrirModalConfirmacion() {
+
+    document.getElementById("modalConfirmacion")
+        .classList.remove("hidden");
+
+    document.getElementById("modalConfirmacion")
+        .classList.add("flex");
+
+}
+
+
+function cerrarModalConfirmacion() {
+
+    document.getElementById("modalConfirmacion")
+        .classList.add("hidden");
+
+}
+
+
+function enviarFormulario() {
+
+    document.querySelector("form").submit();
+
+}
+
+</script>
+
+{% endblock %}

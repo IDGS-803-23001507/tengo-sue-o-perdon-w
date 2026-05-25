@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <script src="https://cdn.tailwindcss.com"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Urban Coffee</title>
+  <title>El Zarape</title>
   <link rel="icon" type="image/png" href="{{url_for('static',filename='src/logo_blanco.png')}}">
   <link rel="stylesheet" href="{{url_for('static',filename='dist/output.css')}}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -15,157 +15,220 @@
 <body class="min-h-screen flex flex-col">
 
   <nav class="bg-neutral-primary fixed w-full z-20 top-0 start-0 border-b border-default shadow-md">
-    <div class="max-w-screen-xl flex items-center justify-between mx-auto p-4 gap-6">
-  
-      <a href="{{url_for('index')}}" class="flex items-center space-x-3 rtl:space-x-reverse">
-        <img src="{{url_for('static',filename='src/imagenes/otros/logo.png')}}" class="h-14 w-14"
-          alt="Urban Coffee Logo" />
-        <span class="self-center text-[1.30rem] font-medium tracking-[0.2em] uppercase text-[#4B3621]"
-          style="font-family: 'Cormorant Garamond', serif;">
-          Urban Coffee
-        </span>
-      </a>
-  
-      <div class="hidden md:flex flex-1 justify-center pl-6">
-        <form action="{{ url_for('producto.producto_venta') }}" method="GET" class="w-full max-w-md">
-          <div class="relative">
-            <input type="text" name="q" placeholder="Buscar productos..."
-              class="w-full py-2 pl-10 pr-4 text-sm border border-gray-300 rounded-full focus:ring-2 focus:ring-green-500 focus:outline-none"
-              value="{{ request.args.get('q', '') }}">
-            <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-          </div>
-        </form>
-      </div>
-  
-   
-      <div class="flex items-center md:order-2 gap-4 relative">
-  
-        {% if session.get("usuarioRol") == "Cliente" %}
-        <a href="{{ url_for('pedidos.mis_pedidos') }}" class="relative text-gray-600">
-          <i class="fa-solid fa-cart-shopping text-sm"></i>
-  
-          {% if session.get("carritoCantidad", 0) > 0 %}
-          <span
-            class="absolute -top-2 -right-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-            {{ session.get("carritoCantidad") }}
-          </span>
-          {% endif %}
-        </a>
-        {% endif %}
-  
-        <button type="button"
-          class="flex text-sm bg-neutral-primary rounded-full focus:ring-4 focus:ring-neutral-tertiary"
-          id="user-menu-button" aria-expanded="false" data-dropdown-toggle="user-dropdown"
-          data-dropdown-placement="bottom">
-          <span class="sr-only">Open user menu</span>
-  
-          <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-            <i class="fas fa-user text-gray-600 text-sm"></i>
-          </div>
-        </button>
 
-        <div id="user-dropdown"
-          class="hidden absolute right-0 mt-3 z-50 w-44 bg-neutral-primary-medium border border-default-medium rounded-base shadow-lg">
-  
-          {% if session.get("inicioSesion") %}
-  
-          <div class="px-4 py-4 border-b border-gray-100">
-            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2">
-              Cliente
-            </p>
-            <div class="flex flex-col gap-0.5">
-              <span class="text-sm font-semibold text-gray-500 block truncate">
-                {{ session.get("usuarioNombre") }}
-              </span>
-              <span class="text-xs text-gray-500 block truncate">
-                {{ session.get("usuarioCorreo") }}
-              </span>
-            </div>
-          </div>
-  
-          <ul class="p-1.5 text-sm" aria-labelledby="user-menu-button">
-            <li>
-              <a href="{{url_for('clientes.detalle_cliente')}}"
-                class="flex items-center w-full px-3 py-2 text-gray-700 hover:bg-green-50 rounded-md transition-colors duration-200 group">
-                <span class="font-medium">Cuenta</span>
-              </a>
-            </li>
-            <li>
-              <a href="{{ url_for('auth.cerrarSesion') }}"
-                class="flex items-center w-full px-3 py-2 text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors duration-200 group">
-                <svg class="w-4 h-4 mr-3 text-gray-400 group-hover:text-red-500" fill="none" stroke="currentColor"
-                  viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                <span class="font-medium">Cerrar sesión</span>
-              </a>
-            </li>
-          </ul>
-  
-          {% else %}
-  
-          <ul class="p-2 space-y-1" style="font-family: 'Montserrat', sans-serif;">
-            <li>
-              <a href="{{ url_for('auth.iniciarSesion') }}"
-                class="flex items-center w-full px-3 py-2.5 text-sm font-medium text-gray-700 hover:text-[#07A607] hover:bg-green-50 rounded-lg transition-all duration-200 group">
-                <svg class="w-4 h-4 mr-3 text-gray-400 group-hover:text-[#07A607]" fill="none" stroke="currentColor"
-                  viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                Iniciar sesión
-              </a>
-            </li>
-  
-            <li>
-              <a href="{{ url_for('auth.registrarUsuario') }}"
-                class="flex items-center w-full px-3 py-2.5 text-sm font-medium text-gray-700 hover:text-[#07A607] hover:bg-green-50 rounded-lg transition-all duration-200 group">
-                <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
-                Registrarse
-              </a>
-            </li>
-          </ul>
-          {% endif %}
+    <div class="max-w-screen-xl flex items-center justify-between mx-auto p-4 md:p-6 gap-4 md:gap-6">
+
+        <a href="{{ url_for('index') }}"
+            class="flex items-center space-x-2 md:space-x-3 rtl:space-x-reverse flex-shrink-0">
+
+            <img
+                src="{{ url_for('static', filename='src/imagenes/otros/Logoo.png') }}"
+                class="h-12 w-12 md:h-16 md:w-16"
+                alt="Urban Coffee Logo"
+            />
+
+            <span
+                class="hidden sm:block self-center text-[1.2rem] md:text-[1.75rem] font-medium tracking-[0.2em] uppercase text-[#4B3621]"
+                style="font-family: 'Cormorant Garamond', serif;">
+                El Zarape
+            </span>
+        </a>
+        <div class="hidden lg:flex flex-1 justify-center pl-6">
+
+            <form action="#" method="GET" class="w-full max-w-md">
+
+                <div class="relative">
+
+                    <input
+                        type="text"
+                        name="q"
+                        placeholder="Buscar productos..."
+                        value="{{ request.args.get('q', '') }}"
+                        class="w-[400px] py-2 pl-10 pr-4 text-sm border border-gray-300 rounded-full focus:ring-2 focus:ring-green-500 focus:outline-none"
+                    >
+
+                    <i class="fa mt-2 fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                </div>
+            </form>
         </div>
-  
-        <button data-collapse-toggle="navbar-user" type="button"
-          class="inline-flex items-center justify-center w-10 h-10 text-sm text-body rounded-base md:hidden hover:bg-neutral-secondary-soft hover:text-heading focus:outline-none focus:ring-2 focus:ring-neutral-tertiary"
-          aria-controls="navbar-user" aria-expanded="false">
-          <span class="sr-only">Open main menu</span>
-          <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg"
-            fill="none" viewBox="0 0 24 24">
-            <path stroke="currentColor" stroke-linecap="round" stroke-width="2"
-              d="M5 7h14M5 12h14M5 17h14" />
-          </svg>
-        </button>
-  
-      </div>
-  
-      <div class="items-center justify-between hidden w-full md:flex md:w-auto md:order-1" id="navbar-user">
-        <ul class="flex items-center gap-6">
-          <li>
-            <a href="{{ url_for('index') }}"
-              class="inline-block pt-2 px-2 pb-2 text-[0.85rem] font-medium tracking-[0.1em] uppercase text-[#4B3621] hover:text-[#07A607] border-b-[3px] border-transparent hover:border-[#07A607] transition-all duration-75"
-              style="font-family: 'Montserrat', sans-serif;">
-              Home
+
+        <div class="flex items-center md:order-2 gap-3 md:gap-4 relative">
+
+            {% if session.get("usuarioRol") == "Cliente" %}
+            <a href="{{ url_for('pedidos.mis_pedidos') }}"
+                class="relative text-gray-600">
+                <i class="fa-solid fa-cart-shopping text-sm"></i>
+                {% if session.get("carritoCantidad", 0) > 0 %}
+                <span
+                    class="absolute -top-2 -right-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                    {{ session.get("carritoCantidad") }}
+                </span>
+                {% endif %}
             </a>
-          </li>
-          <li>
-            <a href="{{ url_for('producto.producto_venta') }}"
-              class="inline-block pt-2 px-2 pb-2 text-[0.8rem] font-medium tracking-[0.1em] uppercase text-[#4B3621] hover:text-[#07A607] border-b-[3px] border-transparent hover:border-[#07A607] transition-all duration-75"
-              style="font-family: 'Montserrat', sans-serif;">
-              Productos
+            {% endif %}
+            {% if session.get("inicioSesion") %}
+            
+            <button type="button"
+                id="user-menu-button"
+                class="flex text-sm bg-neutral-primary rounded-full focus:ring-4 focus:ring-neutral-tertiary">
+            
+                <span class="sr-only">Open user menu</span>
+            
+                <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                    <i class="fas fa-user text-gray-600 text-sm"></i>
+                </div>
+            
+            </button>
+            
+            <div id="user-dropdown"
+                class="hidden absolute right-0 top-14 z-50 w-56 bg-white border border-default-medium rounded-xl shadow-lg overflow-hidden">
+                <div class="px-4 py-4 border-b border-gray-100">
+            
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2">
+                        Cliente
+                    </p>
+            
+                    <div class="flex flex-col gap-0.5">
+            
+                        <span class="text-sm font-semibold text-gray-500 block truncate">
+                            {{ session.get("usuarioNombre") }}
+                        </span>
+            
+                        <span class="text-xs text-gray-500 block truncate">
+                            {{ session.get("usuarioCorreo") }}
+                        </span>
+            
+                    </div>
+            
+                </div>
+            
+                <ul class="p-1.5 text-sm">
+                    <li>
+                        <a href="{{ url_for('clientes.detalle_cliente') }}"
+                            class="flex items-center w-full px-3 py-2 text-gray-700 hover:bg-green-50 rounded-md transition-colors duration-200">
+                            Cuenta
+                        </a>
+                    </li>
+            
+                    <li>
+                        <a href="{{ url_for('auth.cerrarSesion') }}"
+                            class="flex items-center w-full px-3 py-2 text-red-500 hover:bg-red-50 rounded-md transition-colors duration-200">
+                            Cerrar sesión
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            
+            {% else %}
+            <a href="{{ url_for('auth.iniciarSesion') }}"
+                class="relative rounded-full inline-flex items-center justify-center px-8 py-3 overflow-hidden font-medium transition-all bg-[#B83728] hover:bg-[#632119] group border border-[#B83728] hover:border-[#632119]">
+            
+                <span class="relative w-full text-left text-white uppercase tracking-[0.15em] text-sm">
+                    Registrarse
+                </span>            
             </a>
-          </li>
-        </ul>
-      </div>
-  
+            
+            {% endif %}
+
+            <button id="mobile-menu-button"
+                type="button"
+                class="inline-flex items-center justify-center w-10 h-10 text-sm text-body rounded-base md:hidden hover:bg-neutral-secondary-soft hover:text-heading focus:outline-none">
+
+                <svg
+                    class="w-6 h-6"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24">
+
+                    <path
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-width="2"
+                        d="M5 7h14M5 12h14M5 17h14"
+                    />
+
+                </svg>
+
+            </button>
+
+        </div>
+
+        <div class="hidden md:flex md:w-auto md:order-1 justify-end" id="navbar-user">
+            <ul class="flex items-end gap-4 md:gap-6">
+                <li>
+                    <a href="{{ url_for('index') }}"
+                        class="inline-block pt-2 px-2 pb-2 text-[1rem] font-medium tracking-[0.1em] uppercase text-[#4B3621] hover:text-red-600 border-b-[3px] border-transparent hover:border-red-600 transition-all duration-75"
+                        style="font-family: 'Montserrat', sans-serif;">
+
+                        Home
+
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{{ url_for('inicio.productos') }}"
+                        class="inline-block pt-2 px-2 pb-2 text-[1rem] font-medium tracking-[0.1em] uppercase text-[#4B3621] hover:text-red-600 border-b-[3px] border-transparent hover:border-red-600 transition-all duration-75"
+                        style="font-family: 'Montserrat', sans-serif;">
+
+                        Productos
+
+                    </a>
+                </li>
+
+            </ul>
+
+        </div>
+
     </div>
-  </nav>
+
+    <!-- MOBILE MENU -->
+    <div id="mobile-menu"
+        class="hidden md:hidden px-4 pb-4 bg-neutral-primary border-t border-gray-200">
+
+        <!-- SEARCH -->
+        <form action="#" method="GET" class="mb-4">
+
+            <div class="relative">
+
+                <input
+                    type="text"
+                    name="q"
+                    placeholder="Buscar productos..."
+                    class="w-full py-2 pl-10 pr-4 text-sm border border-gray-300 rounded-full focus:ring-2 focus:ring-green-500 focus:outline-none"
+                >
+
+                <i class="fa mt-2 fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+
+            </div>
+
+        </form>
+
+        <!-- LINKS -->
+        <ul class="flex flex-col gap-2">
+
+            <li>
+                <a href="{{ url_for('index') }}"
+                    class="block py-2 text-[0.85rem] font-medium tracking-[0.1em] uppercase text-[#4B3621]">
+
+                    Home
+
+                </a>
+            </li>
+
+            <li>
+                <a href="{{ url_for('inicio.productos') }}"
+                    class="block py-2 text-[0.8rem] font-medium tracking-[0.1em] uppercase text-[#4B3621]">
+
+                    Productos
+
+                </a>
+            </li>
+
+        </ul>
+
+    </div>
+
+</nav>
 
   <div class="flex-grow {% block content_class %}pt-[92px]{% endblock %}">
 
@@ -177,38 +240,63 @@
   </div>
 
   {% block footer %}
-  <footer class="bg-[#3E2723] text-white mt-auto">
-    <div class="max-w-6xl mx-auto px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
+  <footer class="bg-black text-white py-8 px-4 md:px-12">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
 
-      <!-- Logo -->
-      <div class="flex items-center gap-3">
-        <img src="{{url_for('static',filename='src/imagenes/otros/logo_blanco.png')}}" alt="logo" class="h-10 w-10">
-        <span class="text-lg font-semibold">Urban Coffee</span>
-      </div>
+        <div class="text-sm font-semibold tracking-wider">
+            El Zarape © 2026
+        </div>
 
-      <!-- Texto -->
-      <p class="text-sm text-center md:text-left">
-        © 2026 Urban Coffee. Todos los derechos reservados.
-      </p>
+        <nav class="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 text-[10px] md:text-xs font-medium uppercase tracking-widest text-gray-300">
+            <a href="/billing" class="hover:text-white transition-colors">Billing</a>
+            <span class="text-gray-600 text-[8px]">•</span>
 
-      <!-- Redes -->
-      <div class="flex items-center gap-4">
-        <a href="#" class="hover:opacity-80 transition">
-          <i class="fa-brands fa-facebook text-xl"></i>
-        </a>
+            <a href="/privacy-policy" class="hover:text-white transition-colors">Privacy Policy</a>
+            <span class="text-gray-600 text-[8px]">•</span>
 
-        <a href="#" class="hover:opacity-80 transition">
-          <i class="fa-brands fa-x-twitter text-xl"></i>
-        </a>
+            <a href="/work-with-us" class="hover:text-white transition-colors">Work with us</a>
+            <span class="text-gray-600 text-[8px]">•</span>
 
-        <a href="#" class="hover:opacity-80 transition">
-          <i class="fa-brands fa-whatsapp text-xl"></i>
-        </a>
-      </div>
+            <a href="/grupo-andersons" class="hover:text-white transition-colors">Grupo Anderson's</a>
+            <span class="text-gray-600 text-[8px]">•</span>
+
+            <a href="/promotions" class="hover:text-white transition-colors">Promotions</a>
+        </nav>
+
+        <div class="flex items-center gap-5">
+            <a href="#" aria-label="Facebook" class="hover:opacity-70 transition-opacity">
+                <FaFacebookF size={18} />
+            </a>
+
+            <a href="#" aria-label="Instagram" class="hover:opacity-70 transition-opacity">
+                <FaInstagram size={18} />
+            </a>
+
+            <a href="#" aria-label="Tripadvisor" class="hover:opacity-70 transition-opacity">
+                <FaTripadvisor size={20} />
+            </a>
+
+            <a href="#" aria-label="TikTok" class="hover:opacity-70 transition-opacity">
+                <FaTiktok size={18} />
+            </a>
+
+            <a href="#" aria-label="YouTube" class="hover:opacity-70 transition-opacity">
+                <FaYoutube size={18} />
+            </a>
+        </div>
 
     </div>
-  </footer>
+</footer>
   {% endblock %}
+
+  <script>
+    const mobileButton = document.getElementById("mobile-menu-button");
+    const mobileMenu = document.getElementById("mobile-menu");
+
+    mobileButton.addEventListener("click", () => {
+        mobileMenu.classList.toggle("hidden");
+    });
+</script>
 
   <script src="https://unpkg.com/flowbite@1.6.5/dist/flowbite.min.js"></script>
   <script>

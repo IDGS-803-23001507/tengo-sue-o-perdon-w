@@ -2,7 +2,12 @@
 
 {% block container %}
 
-<div class="max-w-3xl mx-auto my-12 p-8 bg-white border border-gray-100 shadow-xl rounded-2xl"
+<div class="flex-grow flex items-center justify-center bg-cover bg-center bg-no-repeat"
+    style="background-image: url('{{ url_for('static', filename='src/imagenes/home/bg_section.jpg') }}'); min-height: 80vh;">
+
+    <div class="absolute inset-0 bg-black/30"></div>
+
+    <div class="relative z-10 max-w-3xl mx-auto bg-white my-12 p-8 border border-gray-100 shadow-xl rounded-2xl"
     style="font-family: 'Montserrat', sans-serif;">
 
     <div class="flex items-center gap-6 pb-8 border-b border-gray-100 mb-8">
@@ -123,7 +128,7 @@
 
         </div>
     </div>
-
+</div>
 </div>
 
 <script>

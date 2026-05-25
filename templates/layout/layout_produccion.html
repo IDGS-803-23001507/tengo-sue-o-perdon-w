@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Urban Coffee</title>
+  <title>El Zarape</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://unpkg.com/flowbite@latest/dist/flowbite.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -17,9 +17,9 @@
     <aside class="w-64 bg-white border-r flex flex-col">
 
       <div class="flex items-center gap-3 px-6 py-5 border-b">
-        <img src="{{url_for('static',filename='src/imagenes/otros/logo.png')}}" class="h-10 w-10" alt="Logo">
+        <img src="{{url_for('static',filename='src/imagenes/otros/logoo.png')}}" class="h-10 w-10" alt="Logo">
         <span class="text-[21px] font-bold text-gray-800 tracking-tighter">
-          Urban Coffee
+          El Zarape
         </span>
       </div>
 
@@ -41,140 +41,51 @@
 
         <p class="text-xs text-gray-400 font-semibold px-2 mb-2 uppercase">Principal</p>
 
-        {% if session.usuarioRol == "Gerente" %}
-        <a href="{{ url_for('dashboard_gerente') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-        {% if active_page == 'dashboard' %}
+        <a href="{{ url_for('bebidas.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'bebidas' %}
             bg-gray-100 text-gray-900
         {% else %}
             text-gray-600 hover:bg-gray-100
         {% endif %}">
-          <i class="fa-solid fa-chart-line w-5"></i>
-          <span>Dashboard</span>
+        <i class="fa-solid fa-mug-hot w-5"></i>
+          <span>Bebidas</span>
         </a>
 
-        <a href="{{ url_for('ventas.ventas') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-        {% if active_page == 'ventas' %}
-            bg-gray-100 text-gray-900
-        {% else %}
-            text-gray-600 hover:bg-gray-100
-        {% endif %}">
-        <i class="fa-solid fa-dollar-sign w-5"></i>
-          <span>Ventas</span>
-        </a>
-        {% endif %}
-
-        <a href="{{ url_for('ventas.venta_fisica') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-        {% if active_page == 'POS' %}
+        <a href="{{ url_for('alimentos.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'alimentos' %}
             bg-gray-100 text-gray-900
         {% else %}
             text-gray-600 hover:bg-gray-100
         {% endif %}">
 
-          <i class="fa-solid fa-cash-register w-5"></i>
-          <span>Punto de Venta</span>
+        <i class="fa-solid fa-bowl-food w-5"></i>
+          <span>Alimentos</span>
         </a>
 
-        <a href="{{ url_for('pedidos.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-        {% if active_page == 'pedidos' %}
-            bg-gray-100 text-gray-900
-        {% else %}
-            text-gray-600 hover:bg-gray-100
-        {% endif %}">
-          <i class="fa-solid fa-receipt w-5"></i>
-          <span>Pedidos Online</span>
-        </a>
-
-        <p class="text-xs text-gray-400 font-semibold px-2 mt-4 mb-2 uppercase">Operación</p>
-
-        <a href="{{ url_for('inventario.materias_primas') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-        {% if active_page == 'materias' %}
+        
+        <a href="{{ url_for('combos.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'combos' %}
             bg-gray-100 text-gray-900
         {% else %}
             text-gray-600 hover:bg-gray-100
         {% endif %}">
 
-          <i class="fa-solid fa-boxes-stacked w-5"></i>
-          <span>Materias Primas</span>
-        </a>
-
-        <a href="{{ url_for('producto.producto_index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-            {% if active_page == 'productos' %}
-                bg-gray-100 text-gray-900
-            {% else %}
-                text-gray-600 hover:bg-gray-100
-            {% endif %}">
-
-          <i class="fa-solid fa-mug-hot w-5"></i>
-          <span>Productos</span>
-        </a>
-
-        <a href="{{ url_for('solicitud.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-        {% if active_page == 'solicitudes' %}
-            bg-gray-100 text-gray-900
-        {% else %}
-            text-gray-600 hover:bg-gray-100
-        {% endif %}">
-
-          <i class="fa-solid fa-file-lines w-5"></i>
-          <span>Solicitudes</span>
-        </a>
-
-        <a href="{{ url_for('produccion.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-        {% if active_page == 'produccion' %}
-            bg-gray-100 text-gray-900
-        {% else %}
-            text-gray-600 hover:bg-gray-100
-        {% endif %}">
-
-          <i class="fa-solid fa-industry w-5"></i>
-          <span>Producción</span>
-        </a>
-
-        <a href="{{ url_for('recetas.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-            {% if active_page == 'recetas' %}
-                bg-gray-100 text-gray-900
-            {% else %}
-                text-gray-600 hover:bg-gray-100
-            {% endif %}">
-
-          <i class="fa-solid fa-book-open w-5"></i>
-          <span>Recetas</span>
+        <i class="fa-solid fa-utensils w-5"></i>
+          <span>Combos</span>
         </a>
 
         <p class="text-xs text-gray-400 font-semibold px-2 mt-4 mb-2 uppercase">Administración</p>
+    
         
-        {% if session.usuarioRol == "Gerente" %}
-        <a href="{{ url_for('compras.listar_compras') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-        {% if active_page == 'compras' %}
+        <a href="{{url_for('sucursales.index')}}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
+        {% if active_page == 'sucursales' %}
             bg-gray-100 text-gray-900
         {% else %}
             text-gray-600 hover:bg-gray-100
         {% endif %}">
 
-          <i class="fa-solid fa-cart-shopping w-5"></i>
-          <span>Compras</span>
-        </a>
-
-        <a href="{{ url_for('pedido_proveedor.listar_pedidos') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-        {% if active_page == 'pedido_proveedor' %}
-            bg-gray-100 text-gray-900
-        {% else %}
-            text-gray-600 hover:bg-gray-100
-        {% endif %}">
-
-        <i class="fas fa-clipboard-list mr-2"></i>
-          <span>Pedidos Proveedores</span>
-        </a>
-
-        <a href="{{ url_for('proveedor.proveedores') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-        {% if active_page == 'proveedores' %}
-            bg-gray-100 text-gray-900
-        {% else %}
-            text-gray-600 hover:bg-gray-100
-        {% endif %}">
-
-          <i class="fa-solid fa-truck w-5"></i>
-          <span>Proveedores</span>
+          <i class="fa-solid fa-store w-5"></i>
+          <span>Sucursales</span>
         </a>
 
         <a href="{{url_for('usuarios.index')}}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
@@ -188,53 +99,7 @@
           <span>Empleados</span>
         </a>
 
-        <a href="{{ url_for('utilidad.index')}}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-        {% if active_page == 'costos_utilidades' %}
-            bg-gray-100 text-gray-900
-        {% else %}
-            text-gray-600 hover:bg-gray-100
-        {% endif %}">
-
-          <i class="fa-solid fa-chart-pie w-5"></i>
-          <span>Costos y Utilidad</span>
-        </a>
-        {% endif %}
-
-        {% if session.usuarioRol in ["Gerente", "Gerente de Tienda", "Admin General (TI)", "Admin General"] %}
-        <a href="{{ url_for('backups.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-        {% if active_page == 'backups' %}
-            bg-gray-100 text-gray-900
-        {% else %}
-            text-gray-600 hover:bg-gray-100
-        {% endif %}">
-          <i class="fa-solid fa-database w-5"></i>
-          <span>Backups</span>
-        </a>
-        {% endif %}
-
-        {% if session.usuarioRol in ["Admin General (TI)", "Admin General"] %}
-        <a href="{{ url_for('dashboard_auditoria') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-        {% if active_page == 'dashboard' %}
-            bg-gray-100 text-gray-900
-        {% else %}
-            text-gray-600 hover:bg-gray-100
-        {% endif %}">
-          <i class="fa-solid fa-shield-halved w-5"></i>
-          <span>Auditoría</span>
-        </a>
-        {% endif %}
-
-        <a href="{{ url_for('merma.merma') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg 
-        {% if active_page == 'merma' %}
-            bg-gray-100 text-gray-900
-        {% else %}
-            text-gray-600 hover:bg-gray-100
-        {% endif %}">
-
-          <i class="fa-solid fa-trash-can w-5"></i>
-          <span>Merma</span>
-        </a>
-
+      
       </nav>
 
       <div class="px-4 py-4 border-t">

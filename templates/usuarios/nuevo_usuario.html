@@ -39,7 +39,7 @@
 
             {{ form.username(class="bg-gray-50 border border-gray-300 text-sm rounded-lg
             focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
-            placeholder="usuario.urbancoffee") }}
+            placeholder="usuario.zarape") }}
 
             {% for error in form.username.errors %}
             <p class="mt-1 text-sm text-red-600">{{ error }}</p>
@@ -53,22 +53,9 @@
 
             {{ form.correo(class="bg-gray-50 border border-gray-300 text-sm rounded-lg
             focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm",
-            placeholder="usuario@urbancoffee.com") }}
+            placeholder="usuario@zarape.com") }}
 
             {% for error in form.correo.errors %}
-            <p class="mt-1 text-sm text-red-600">{{ error }}</p>
-            {% endfor %}
-        </div>
-
-        <div>
-            <label class="block mb-2 text-sm font-medium text-gray-900">
-                Rol *
-            </label>
-
-            {{ form.rol(class="bg-gray-50 border border-gray-300 text-sm rounded-lg
-            focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm") }}
-
-            {% for error in form.rol.errors %}
             <p class="mt-1 text-sm text-red-600">{{ error }}</p>
             {% endfor %}
         </div>

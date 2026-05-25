@@ -1,7 +1,8 @@
 from datetime import date, datetime
 from decimal import Decimal
 from flask_wtf import FlaskForm
-from wtforms import StringField, FieldList, FormField, DateTimeLocalField, IntegerField, RadioField, TextAreaField, PasswordField, DecimalField, DateField, SelectField, HiddenField, SubmitField
+from flask_wtf.file import FileField, FileAllowed
+from wtforms import StringField, FieldList, FormField, BooleanField, SelectMultipleField,  DateTimeLocalField, IntegerField, RadioField, TextAreaField, PasswordField, DecimalField, DateField, SelectField, HiddenField, SubmitField
 from wtforms.validators import DataRequired, ValidationError, NumberRange, EqualTo, Length, Email, Optional
 
 ROLES_USUARIO = [
@@ -60,193 +61,93 @@ class ResetearContrasenaForm(FlaskForm):
             EqualTo("contrasena", message="Las contraseñas no coinciden"),
         ],
     )
+    
+class ProductooForm(FlaskForm):
 
-class ProveedorForm(FlaskForm):
-    nombre = StringField('Nombre / Razón Social', validators=[
-        DataRequired(message='El nombre es obligatorio'),
-        Length(min=3, max=150, message='El nombre debe tener entre 3 y 150 caracteres')
-    ])
-    rfc = StringField('RFC', validators=[
-        DataRequired(message='El RFC es obligatorio'),
-        Length(min=12, max=13, message='El RFC debe tener 12 o 13 caracteres')
-    ])
-    telefono = StringField('Teléfono', validators=[
-        Optional(),
-        Length(max=20, message='El teléfono no puede exceder 20 caracteres')
-    ])
-    email = StringField('Correo Electrónico', validators=[
-        Optional(),
-        Email(message='Ingrese un correo válido'),
-        Length(max=100, message='El email no puede exceder 100 caracteres')
-    ])
+    nombre = StringField(
+        "Nombre",
+        validators=[
+            DataRequired(),
+            Length(min=2, max=50)
+        ]
+    )
+
+    descripcion = TextAreaField(
+        "Descripción",
+        validators=[
+            DataRequired(),
+            Length(min=5, max=200)
+        ]
+    )
+
+    foto = FileField(
+        "Foto",
+        validators=[
+            FileAllowed(
+                ['jpg', 'jpeg', 'png', 'webp'],
+                'Solo imágenes válidas'
+            )
+        ]
+    )
+
+    precio = DecimalField(
+        "Precio",
+        places=2,
+        validators=[
+            DataRequired(),
+            NumberRange(min=1)
+        ]
+    )
+
+    submit = SubmitField("Guardar")
+
+
+class AlimentoForm(ProductooForm):
+
+    submit = SubmitField("Guardar Alimento")
+
+
+class BebidaForm(ProductooForm):
+
+    submit = SubmitField("Guardar Bebida")
+
+
+class ComboForm(ProductooForm):
+
+    submit = SubmitField("Guardar Combo")
+
+
+class DetalleComboForm(FlaskForm):
+
+    idProducto = SelectField(
+        "Producto",
+        coerce=int,
+        validators=[DataRequired()]
+    )
+
+    cantidad = IntegerField(
+        "Cantidad",
+        default=1,
+        validators=[
+            DataRequired(),
+            NumberRange(min=1)
+        ]
+    )
     
-    colonia = StringField('Colonia', validators=[
-        Optional(),
-        Length(max=100, message='El email no puede exceder 100 caracteres')
-    ])
     
-    calle = StringField('Calle', validators=[
-        Optional(),
-        Length(max=100, message='El email no puede exceder 100 caracteres')
-    ])
-    
-    num_exterior = StringField('Numero Exterior', validators=[
-        Optional(),
-        Length(max=5, message='El email no puede exceder 6 caracteres')
-    ])
-    
+class SucursalForm(FlaskForm):
+    nombre = StringField("Nombre", validators=[DataRequired(), Length(max=50)])
+    foto = FileField("Foto", validators=[ Optional(), FileAllowed(['jpg', 'jpeg', 'png', 'webp'], 'Solo imágenes')])
+    ciudad = StringField("Ciudad", validators=[DataRequired(), Length(max=50)])
+    calle = StringField("Calle",validators=[DataRequired(), Length(max=50)])
+    colonia = StringField("Colonia",validators=[DataRequired(), Length(max=50)])
+    numInt = StringField("Numero Interior", validators=[DataRequired(), Length(max=6)])
+    cp = StringField("Codigo Postal", validators=[ DataRequired(), Length(max=10)])
     
 class DesactivarForm(FlaskForm):
     id = HiddenField()
     submit = SubmitField('Sí, Desactivar')
-    
-class MermaForm(FlaskForm):
-    
-    cantidad = DecimalField('Cantidad',
-        validators=[
-            DataRequired(message="La cantidad es obligatoria"),
-            NumberRange(min=0, message="La cantidad debe ser mayor a 0")
-        ], places=2)
-    
-    fecha = DateField('Fecha', default= date.today,
-        validators=[
-            DataRequired(message="La fecha es obligatoria")], format='%Y-%m-%d')
-    
-    motivo = SelectField('Motivo',
-        choices=[
-            ("Error en preparación", "Error en preparación"),
-            ("Derrame o caída", "Derrame o caída"),
-            ("Insumo en mal estado", "Insumo en mal estado"),
-            ("Producto caducado", "Producto caducado"),
-            ("Sobrante de producción diaria", "Sobrante de producción diaria"),
-            ("Falla de refrigeración/almacenaje", "Falla de refrigeración/almacenaje"),
-            ("Muestra o degustación", "Muestra o degustación"),
-            ("Pérdida no identificada", "Pérdida no identificada"),
-            ("Devolución por cliente", "Devolución por cliente")
-        ], validators=[DataRequired(message="Selecciona un motivo")])
-    
-    materia_id = SelectField('Materia Prima', coerce=int,
-        validators=[DataRequired(message="Selecciona una materia prima")]
-    )
-    
-class CompraForm(FlaskForm):
-
-    id_proveedor = SelectField('Proveedor', coerce=int,
-        validators=[DataRequired(message='Debe seleccionar un proveedor')]
-    )
-
-    fecha = DateField('Fecha de Compra',
-        format='%Y-%m-%d', validators=[DataRequired(message='La fecha es obligatoria')]
-    )
-
-    def set_proveedores(self, proveedores):
-        self.id_proveedor.choices = [(p.id, p.nombre) for p in proveedores]
-
-
-class FiltroComprasForm(FlaskForm):
-
-    fecha_inicio = DateField('Fecha Inicio',
-        format='%Y-%m-%d', validators=[Optional()]
-    )
-
-    fecha_fin = DateField('Fecha Fin', format='%Y-%m-%d',
-        validators=[Optional()]
-    )
-
-    id_proveedor = SelectField('Proveedor',
-        coerce=int, validators=[Optional()]
-    )
-
-    def set_proveedores(self, proveedores):     
-        self.id_proveedor.choices = [(0, 'Todos')] + [
-            (p.id, p.nombre) for p in proveedores
-        ]
-
-    def validate(self, extra_validators=None):
-        if not super().validate(extra_validators):
-            return False
-
-        if self.fecha_inicio.data and self.fecha_fin.data:
-            if self.fecha_inicio.data > self.fecha_fin.data:
-                self.fecha_fin.errors.append(
-                    "La fecha fin debe ser mayor o igual a la fecha inicio"
-                )
-                return False
-
-        return True
-    
-class PedidoForm(FlaskForm):
-    
-    nombre = StringField('Nombre', 
-            validators=[DataRequired(), Length(max=120)])
-    
-    telefono = StringField('Teléfono', 
-            validators=[Length(max=15)])
-
-    hora_recogida = DateTimeLocalField('Hora de recogida', format='%Y-%m-%dT%H:%M',
-            validators=[DataRequired()])
-
-    notas = TextAreaField('Notas', 
-            validators=[Length(max=200)])
-
-    submit = SubmitField('Crear Pedido')
-
-    def validate_hora_recogida(self, field):
-        ahora = datetime.now()
-        diferencia = (field.data - ahora).total_seconds() / 60
-
-        if field.data.date() != ahora.date():
-            raise ValidationError("El pedido debe ser para hoy.")
-
-        if diferencia < 10:
-            raise ValidationError("Debe pedir con al menos 10 minutos de anticipación.")
-
-        if diferencia > 60:
-            raise ValidationError("No puedes pedir con más de 1 hora de anticipación.")
-
-class VentaForm(FlaskForm):
- 
-    producto = SelectField("Producto", 
-                coerce=int, validators=[Optional()])
-
-    cantidad = IntegerField("Cantidad", 
-                default=1, validators=[DataRequired()])
-
-    tipo_venta = RadioField("Tipo", choices=[
-        ("fisica", "Física"),
-        ("en_linea", "En línea")
-    ], validators=[Optional()])
-
-
-    metodo_pago = SelectField("Método de pago", choices=[
-        ("efectivo", "Efectivo"),
-        ("tarjeta", "Tarjeta"),
-        ("transferencia", "Transferencia")
-    ], validators=[Optional()])
-
-  
-    hora_recogida = DateTimeLocalField(
-        "Hora recogida",
-        format='%Y-%m-%dT%H:%M',
-        validators=[Optional()]
-    )
-
-    notas = StringField("Notas", validators=[Optional()])
-
-    agregar = SubmitField("Agregar producto")
-    terminar = SubmitField("Finalizar venta")
-
-
-class PagoForm(FlaskForm):
-    
-    metodo_pago = SelectField("Método de Pago", choices=[
-        ('efectivo', 'Efectivo'),
-        ('tarjeta', 'Tarjeta'),
-        ('transferencia', 'Transferencia')
-    ], validators=[DataRequired()])
-    
-    submit = SubmitField("Registrar Pago")
-    
+        
 class ClienteForm(FlaskForm):
     
     nombre = StringField(
@@ -356,12 +257,6 @@ class CrearEmpleadoForm(FlaskForm):
         ],
     )
 
-    rol = SelectField(
-        "Rol",
-        choices=ROLES_USUARIO,
-        validators=[DataRequired("Rol requerido")],
-    )
-
     contrasenaTemporal = PasswordField(
         "Contraseña",
         validators=[
@@ -397,12 +292,6 @@ class EmpleadoActualizarForm(FlaskForm):
             DataRequired(message="El nombre es obligatorio"),
             Length(max=60),
         ],
-    )
-
-    rol = SelectField(
-        "Rol",
-        choices=ROLES_USUARIO,
-        validators=[DataRequired()],
     )
 
     contrasenaTemporal = PasswordField(

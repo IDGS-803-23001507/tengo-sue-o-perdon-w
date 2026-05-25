@@ -1,50 +1,210 @@
 {% extends "layout/layout.html" %}
+
 {% block container %}
 
-<section>
-    <div class="w-full max-w-6xl mx-auto py-12 px-4 border-b-1 border-grey-50/30">
+<section class="bg-[f6f3ef] min-h-screen">
 
-        <div class="flex justify-center mb-10">
-            <h2 class="text-center text-4xl font-light text-[#814c59] tracking-wide uppercase">
+    
+    <div class="w-full max-w-7xl mx-auto py-14 px-4">
+
+        <div class="flex flex-col items-center justify-center mb-14">
+
+            <span class="uppercase tracking-[0.3em] text-sm text-[#814c59] mb-3">
+                Menú
+            </span>
+
+            <h1 class="text-4xl md:text-5xl font-light text-[#814c59] text-center">
+
                 Nuestros Productos
-            </h2>
+
+            </h1>
+
+            <div class="w-24 h-[2px] bg-[#814c59] mt-5 rounded-full"></div>
+
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
 
             {% for producto in productos %}
-            <div class="flex flex-col items-center text-center group {{ 'opacity-50' if producto.disponible_stock == 0 }}">
 
-                <div class="overflow-hidden rounded-lg shadow-md w-full relative">
-                    {% if producto.disponible_stock == 0 %}
-                    <div class="absolute inset-0 z-10 flex items-center justify-center bg-black/10 backdrop-blur-[1px]">
-                        <span class="bg-[#b39aa8] text-white text-xs font-bold px-4 py-1 rounded-full uppercase tracking-widest">AGOTADO</span>
-                    </div>
-                    {% endif %}
-                    <img 
-                        src="{{ producto.imagen if producto.imagen else url_for('static', filename='img/default.png') }}" 
+            <div class="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition duration-500 group">
+                <div class="relative overflow-hidden">
+
+                    {% if producto.foto %}
+
+                    <img
+                        src="{{ producto.foto }}"
                         alt="{{ producto.nombre }}"
-                        class="w-full h-72 object-cover hover:scale-105 transition-transform duration-300">
+                        class="w-full h-80 object-cover group-hover:scale-105 transition duration-700">
+
+                    {% else %}
+
+                    <img
+                        src="{{ url_for('static', filename='img/default.png') }}"
+                        alt="Sin imagen"
+                        class="w-full h-80 object-cover">
+
+                    {% endif %}
+
+                    <div class="absolute top-4 left-4">
+
+                        {% if producto.tipo.name == "ALIMENTO" %}
+
+                        <span class="bg-orange-100 text-orange-700 text-xs font-semibold px-4 py-1.5 rounded-full shadow">
+
+                            Alimento
+
+                        </span>
+
+                        {% elif producto.tipo.name == "BEBIDA" %}
+
+                        <span class="bg-sky-100 text-sky-700 text-xs font-semibold px-4 py-1.5 rounded-full shadow">
+
+                            Bebida
+
+                        </span>
+
+                        {% elif producto.tipo.name == "COMBO" %}
+
+                        <span class="bg-purple-100 text-purple-700 text-xs font-semibold px-4 py-1.5 rounded-full shadow">
+
+                            Combo
+
+                        </span>
+
+                        {% endif %}
+
+                    </div>
+
+                    {% if not producto.estatus %}
+
+                    <div class="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center">
+
+                        <span class="bg-red-600 text-white text-xs font-bold px-5 py-2 rounded-full tracking-widest">
+
+                            NO DISPONIBLE
+
+                        </span>
+
+                    </div>
+
+                    {% endif %}
+
                 </div>
 
-                <p class="mt-3 text-lg font-medium text-gray-800">
-                    {{ producto.nombre }} - ${{ producto.precio_venta }}
-                </p>
+                <div class="p-6">
 
-                <p class="text-sm text-gray-500">
-                    {{ producto.descripcion }}
-                </p>
+                    <div class="flex justify-between items-start gap-4 mb-3">
 
-                <a href="{{ url_for('ventas.venta_online') }}#prod-{{ producto.id_producto }}" class="inline-flex items-center gap-2 mt-2 text-white bg-[#814c59] hover:bg-[#C27C3A] focus:ring-4 focus:ring-[#e5cbb2] font-medium rounded-lg text-sm px-5 py-2.5 transition {{ 'opacity-40 pointer-events-none cursor-not-allowed' if producto.disponible_stock == 0 else '' }}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                    Ordenar ahora
-                </a>
+                        <h2 class="text-2xl font-semibold text-gray-800 leading-tight">
+
+                            {{ producto.nombre }}
+
+                        </h2>
+
+                        <span class="text-xl font-bold text-[#814c59] whitespace-nowrap">
+
+                            ${{ "%.2f"|format(producto.precio) }}
+
+                        </span>
+
+                    </div>
+                    
+                    <p class="text-gray-500 text-sm leading-relaxed mb-5">
+
+                        {{ producto.descripcion }}
+
+                    </p>
+
+            {% if producto.tipo.name == "COMBO" and producto.combo %}
+
+                        {% set comboData = producto.combo[0] %}
+
+                        <div class="mb-6">
+
+                            <p class="text-xs uppercase tracking-widest text-gray-400 mb-3 font-semibold">
+
+                                Incluye
+
+                            </p>
+
+                            <div class="flex flex-wrap gap-2">
+
+                                {% for detalle in comboData.detalles %}
+
+                                <span class="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full border border-gray-200">
+
+                                    {{ detalle.cantidad }}x
+                                    {{ detalle.producto.nombre }}
+
+                                </span>
+
+                                {% endfor %}
+
+                            </div>
+
+                        </div>
+
+                    {% endif %}
+
+                    <a href="{{ url_for('pedidos.index') }}"
+                        class="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#814c59] hover:bg-[#6d3f4b] text-white py-3 text-sm font-medium transition duration-300
+                        {{ 'opacity-40 pointer-events-none cursor-not-allowed' if not producto.estatus else '' }}">
+
+                        <svg class="w-5 h-5"
+                             fill="none"
+                             stroke="currentColor"
+                             viewBox="0 0 24 24">
+
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z">
+                            </path>
+
+                        </svg>
+
+                        Ordenar ahora
+
+                    </a>
+
+                </div>
 
             </div>
+
             {% endfor %}
 
         </div>
 
+        {% if not productos %}
+
+        <div class="text-center py-24">
+
+            <div class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-6">
+
+                <i class="fa-solid fa-box-open text-4xl text-gray-400"></i>
+
+            </div>
+
+            <h3 class="text-2xl font-semibold text-gray-700 mb-2">
+
+                No hay productos disponibles
+
+            </h3>
+
+            <p class="text-gray-500">
+
+                Intenta nuevamente más tarde.
+
+            </p>
+
+        </div>
+
+        {% endif %}
+
     </div>
+
 </section>
+
 {% endblock %}
